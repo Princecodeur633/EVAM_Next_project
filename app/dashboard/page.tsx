@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { formatDa, formatQty } from "@/lib/utils";
 import { DataTable, Metric, PageHeader, Panel } from "@/components/ui";
@@ -8,6 +8,7 @@ import { OfBadge, OrderBadge } from "@/components/badges";
 
 export default function DashboardPage() {
   const { state, productName, customerName } = useStore();
+  const router = useRouter();
   const stockPf = state.stock.filter((s) => s.articleType === "produit");
   const caJour = state.payments.filter((p) => p.success && p.at.startsWith("2026-08-19")).reduce((a, p) => a + p.amount, 0);
   const ofOpen = state.ofList.filter((o) => !["cloture", "bloque"].includes(o.status)).length;
@@ -18,25 +19,35 @@ export default function DashboardPage() {
   }).length;
 
   return (
-    <div>
+    <div className="anim-in">
       <PageHeader
         eyebrow="Direction"
         title="Tableau de bord"
-        description="Indicateurs vitaux uniquement — pas un reporting de module. Drill-down vers le flux réel."
+        description="Cinq indicateurs vitaux. Chaque chiffre se clique vers le flux réel — pas un reporting décoratif."
       />
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-6">
-        <Metric label="Stock PF (unités)" value={formatQty(stockPf.reduce((a, s) => a + s.qty, 0))} hint="Lots vendables uniquement" />
+        <button className="text-left" onClick={() => router.push("/stocks")}>
+          <Metric label="Stock PF (unités)" value={formatQty(stockPf.reduce((a, s) => a + s.qty, 0))} hint="Lots vendables uniquement" />
+        </button>
         <Metric label="CA du jour" value={formatDa(caJour)} hint="Encaissements réussis" tone="success" />
-        <Metric label="OF en cours" value={ofOpen} hint="Hors clôturés / bloqués" tone="warning" />
-        <Metric label="Factures suspendues" value={suspendues} hint="Jamais exportables Sage" tone="danger" />
-        <Metric label="Alertes seuils" value={alertes} hint="Matières sous minimum" tone={alertes ? "warning" : "default"} />
+        <button className="text-left" onClick={() => router.push("/production/of")}>
+          <Metric label="OF en cours" value={ofOpen} hint="Hors clôturés / bloqués" tone="warning" />
+        </button>
+        <button className="text-left" onClick={() => router.push("/caisse/suspendues")}>
+          <Metric label="Factures suspendues" value={suspendues} hint="Jamais exportables Sage" tone="danger" />
+        </button>
+        <button className="text-left" onClick={() => router.push("/stocks/alertes")}>
+          <Metric label="Alertes seuils" value={alertes} hint="Matières sous minimum" tone={alertes ? "warning" : "default"} />
+        </button>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Panel>
-          <div className="px-4 py-3 border-b border-line flex justify-between">
+          <div className="px-4 py-3 border-b border-line flex justify-between items-center">
             <h2 className="text-[13px] font-semibold">Ordres de fabrication actifs</h2>
-            <Link href="/production/of" className="text-[12px] text-primary">Voir les OF</Link>
+            <button onClick={() => router.push("/production/of")} className="text-[12px] text-primary hover:underline">
+              Tous les OF
+            </button>
           </div>
           <DataTable
             columns={[
@@ -54,12 +65,15 @@ export default function DashboardPage() {
                 st: <OfBadge status={o.status} />,
                 lot: o.lot ?? "—",
               }))}
+            onRowClick={(row) => router.push(String(row.href))}
           />
         </Panel>
         <Panel>
-          <div className="px-4 py-3 border-b border-line flex justify-between">
-            <h2 className="text-[13px] font-semibold">Commandes du jour</h2>
-            <Link href="/commercial/commandes" className="text-[12px] text-primary">Commercial</Link>
+          <div className="px-4 py-3 border-b border-line flex justify-between items-center">
+            <h2 className="text-[13px] font-semibold">Commandes</h2>
+            <button onClick={() => router.push("/commercial/commandes")} className="text-[12px] text-primary hover:underline">
+              Commercial
+            </button>
           </div>
           <DataTable
             columns={[
@@ -68,10 +82,12 @@ export default function DashboardPage() {
               { key: "st", label: "Statut" },
             ]}
             rows={state.orders.map((o) => ({
+              href: `/commercial/commandes/${o.id}`,
               n: <span className="num">{o.number}</span>,
               c: customerName(o.customerId),
               st: <OrderBadge status={o.status} />,
             }))}
+            onRowClick={(row) => router.push(String(row.href))}
           />
         </Panel>
       </div>

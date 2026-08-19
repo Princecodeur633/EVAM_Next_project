@@ -1,19 +1,6 @@
 import type { AppState } from "./types";
 
-export const ROLE_LABEL: Record<AppState["users"][number]["role"], string> = {
-  administrateur: "Administrateur",
-  direction: "Direction",
-  responsable_production: "Responsable Production",
-  agent_production: "Agent de production",
-  controleur_qualite: "Contrôleur Qualité",
-  magasinier: "Magasinier",
-  responsable_achats: "Responsable Achats",
-  commercial: "Commercial",
-  caissier: "Caissier",
-  preparateur: "Préparateur",
-  logistique: "Logistique / Livreur",
-  comptabilite: "Comptabilité",
-};
+export { ROLE_LABEL } from "./roles";
 
 export const FAMILY_LABEL = {
   eau: "Eau",

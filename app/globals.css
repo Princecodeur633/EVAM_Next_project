@@ -1,22 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f4f6f8;
+  --bg: #eef2f4;
   --surface: #ffffff;
-  --ink: #0f172a;
-  --muted: #475569;
-  --line: #e2e8f0;
-  --line-strong: #cbd5e1;
+  --ink: #12202b;
+  --muted: #5b6b76;
+  --line: #e3eaee;
+  --line-strong: #cfd8de;
   --primary: #0e4d6c;
-  --primary-hover: #0a3a52;
+  --primary-hover: #0b3d56;
+  --primary-soft: #e7f1f6;
   --teal: #0f766e;
-  --success: #15803d;
-  --warning: #b45309;
-  --danger: #b91c1c;
-  --sidebar: #0a3044;
-  --sidebar-hover: #0c3d56;
+  --teal-soft: #e6f4f2;
+  --success: #157a3c;
+  --success-soft: #e8f6ee;
+  --warning: #a85b12;
+  --warning-soft: #f8efe4;
+  --danger: #b42318;
+  --danger-soft: #f8eaea;
+  --sidebar: #08293a;
+  --sidebar-2: #0b3348;
   --sidebar-text: #b7c9d4;
-  --sidebar-active: #ffffff;
 }
 
 @theme inline {
@@ -28,10 +32,15 @@
   --color-line-strong: var(--line-strong);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
   --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
   --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --color-sidebar: var(--sidebar);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -43,7 +52,7 @@ body {
   color: var(--ink);
   font-family: var(--font-sans), "IBM Plex Sans", system-ui, sans-serif;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 * {
@@ -57,16 +66,42 @@ textarea {
   font-family: inherit;
 }
 
+a {
+  color: inherit;
+}
+
 .num {
   font-family: var(--font-mono), "IBM Plex Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 0;
+  background: #c5d0d8;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-in {
+  animation: fade-up 0.28s ease-out;
 }
