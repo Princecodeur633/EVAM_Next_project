@@ -1,41 +1,42 @@
 "use client";
 
-import Link from "next/link";
-import { PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import { formatDateTime } from "@/lib/utils";
 
 export default function ReceptionsPage() {
-  const { state } = useStore();
+  const { state, dispatch, can, userName } = useStore();
+  const router = useRouter();
+  const [commande, setCommande] = useState(state.commandesFournisseur[0]?.id ?? 0);
+  const cfNum = (id: number) => state.commandesFournisseur.find((c) => c.id === id)?.numero ?? `#${id}`;
+
   return (
-    <div>
-      <PageHeader eyebrow="Approvisionnement" title="Réceptions" description="Écarts commandé / reçu. Seule la réception conforme (ou écart validé) entre en stock matières." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Magasin" title="Réceptions achat" description="Enregistrez les quantités reçues. Le statut de la commande fournisseur se met à jour automatiquement." />
+      {can("CREATE_RECEPTION") && (
+        <Panel className="p-4 grid sm:grid-cols-2 gap-3 items-end">
+          <Field label="Commande fournisseur">
+            <select className={inputClass} value={commande} onChange={(e) => setCommande(Number(e.target.value))}>
+              {state.commandesFournisseur.map((c) => <option key={c.id} value={c.id}>{c.numero}</option>)}
+            </select>
+          </Field>
+          <Button disabled={!commande} onClick={() => void dispatch({ type: "CREATE_RECEPTION", commande })}>Créer réception</Button>
+        </Panel>
+      )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
-              <th className="text-left px-3 py-2">N°</th>
-              <th className="text-left px-3 py-2">Commande</th>
-              <th className="text-left px-3 py-2">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.receptions.map((r) => (
-              <tr key={r.id} className="border-b border-line">
-                <td className="px-3 py-2">
-                  <Link className="text-primary num" href={`/approvisionnement/receptions/${r.id}`}>
-                    {r.number}
-                  </Link>
-                </td>
-                <td className="px-3 py-2 num">{state.purchaseOrders.find((p) => p.id === r.poId)?.number}</td>
-                <td className="px-3 py-2">
-                  <StatusBadge tone={r.stockEntered ? "success" : r.status === "ecart" ? "warning" : "info"}>
-                    {r.stockEntered ? "stock entré" : r.status}
-                  </StatusBadge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "c", label: "Commande" }, { key: "p", label: "Réceptionnée par" }, { key: "ok", label: "Conforme" }, { key: "d", label: "Date" }]}
+          rows={state.receptions.map((r) => ({
+            c: cfNum(r.commande),
+            p: userName(r.receptionne_par),
+            ok: r.conforme ? "Oui" : "Non",
+            d: formatDateTime(r.date_reception),
+            href: `/approvisionnement/receptions/${r.id}`,
+          }))}
+          onRowClick={(row) => router.push(String(row.href))}
+        />
       </Panel>
     </div>
   );

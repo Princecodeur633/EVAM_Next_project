@@ -1,99 +1,61 @@
 "use client";
 
-import Link from "next/link";
-import { OrderBadge } from "@/components/badges";
-import { DonutChart, KpiCard, SparkBars, WidgetCard } from "@/components/charts";
-import { PageHeader, Panel } from "@/components/ui";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { MODE_PAIEMENT_LABEL, STATUT_FACTURE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
+import { formatDa, num } from "@/lib/utils";
+import type { ModePaiement } from "@/lib/types";
 
 export default function CaissePage() {
-  const { state, customerName } = useStore();
-  const aPayer = state.invoices.filter((i) => i.status === "a_payer");
-  const payees = state.invoices.filter((i) => i.status === "payee");
-  const suspendues = state.invoices.filter((i) => i.status === "suspendue");
-  const aEncaisser = aPayer.reduce((a, i) => a + i.amount, 0);
-  const encaissé = state.payments.filter((p) => p.success).reduce((a, p) => a + p.amount, 0);
-
-  const mix = [
-    { label: "À encaisser", value: aPayer.length || 0.001, color: "var(--chart-3)" },
-    { label: "Payées", value: payees.length, color: "var(--chart-5)" },
-    { label: "Suspendues", value: suspendues.length || 0.001, color: "var(--danger)" },
-  ];
+  const { state, dispatch, clientName, can } = useStore();
+  const session = state.sessionsCaisse.find((s) => s.statut === "OUVERTE");
+  const [mode, setMode] = useState<ModePaiement>("ESPECES");
+  const [caisse, setCaisse] = useState(state.caisses[0]?.id ?? 0);
+  const [solde, setSolde] = useState(0);
 
   return (
-    <div className="space-y-4 anim-in">
+    <div className="space-y-4">
       <PageHeader
-        eyebrow="Caisse · Finance"
-        title="Encaissements du jour"
-        description="Espèces, CB ou virement selon le type client. Un échec suspend la facture, libère le stock, et interdit Sage."
+        eyebrow="Caisse"
+        title="Factures et encaissements"
+        description="Ouvrez une session, puis encaissez les factures en espèces, mobile money, virement ou chèque."
       />
-
-      <div className="grid sm:grid-cols-3 gap-3">
-        <KpiCard label="À encaisser" value={formatDa(aEncaisser)} tone="warning" hint={`${aPayer.length} facture(s)`} />
-        <KpiCard label="Déjà encaissé" value={formatDa(encaissé)} tone="success" hint="Paiements réussis" />
-        <KpiCard
-          label="Session caisse"
-          value={state.cashSession.open ? "Ouverte" : "Clôturée"}
-          hint={`Théorique ${formatDa(state.cashSession.theoretical)}`}
-          tone={state.cashSession.open ? "teal" : "default"}
-        />
-      </div>
-
-      <div className="grid lg:grid-cols-[1fr_280px] gap-4">
-        <Panel>
-          <div className="px-4 py-3 border-b border-line flex items-center justify-between bg-surface-2">
-            <h2 className="text-[13px] font-semibold">File à encaisser</h2>
-            <SparkBars values={[12, 18, 9, 22, 15, 28, 20]} tone="success" />
-          </div>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase text-muted border-b border-line">
-                <th className="text-left px-3 py-2">Facture</th>
-                <th className="text-left px-3 py-2">Client</th>
-                <th className="text-right px-3 py-2">Montant</th>
-                <th className="text-left px-3 py-2">Commande</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {aPayer.map((inv) => {
-                const order = state.orders.find((o) => o.id === inv.orderId);
-                return (
-                  <tr key={inv.id} className="border-b border-line hover:bg-primary-soft/40">
-                    <td className="px-3 py-2 num font-medium">{inv.number}</td>
-                    <td className="px-3 py-2">{order ? customerName(order.customerId) : "—"}</td>
-                    <td className="px-3 py-2 text-right num">{formatDa(inv.amount)}</td>
-                    <td className="px-3 py-2">{order && <OrderBadge status={order.status} />}</td>
-                    <td className="px-3 py-2">
-                      <Link
-                        href={`/caisse/encaissement/${inv.id}`}
-                        className="inline-flex items-center h-8 px-3 text-[13px] font-medium rounded-[7px] bg-primary text-white hover:bg-primary-hover"
-                      >
-                        Encaisser
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-              {aPayer.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-muted text-[13px]">
-                    Aucune facture à encaisser.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {!session && can("ENCAISSER") && (
+        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+          <Field label="Caisse">
+            <select className={inputClass} value={caisse} onChange={(e) => setCaisse(Number(e.target.value))}>
+              {state.caisses.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
+            </select>
+          </Field>
+          <Field label="Solde d'ouverture">
+            <input type="number" className={inputClass} value={solde} onChange={(e) => setSolde(Number(e.target.value))} />
+          </Field>
+          <Button disabled={!caisse} onClick={() => void dispatch({ type: "CREATE_SESSION", caisse, solde_ouverture: solde })}>Ouvrir session</Button>
         </Panel>
-
-        <WidgetCard title="Répartition" subtitle="Statuts factures">
-          <DonutChart data={mix} centerValue={String(aPayer.length)} centerLabel="en file" />
-          <Link href="/caisse/suspendues" className="mt-4 block text-[12px] text-primary font-medium hover:underline">
-            Voir les factures suspendues →
-          </Link>
-        </WidgetCard>
-      </div>
+      )}
+      {session && <p className="text-[13px] text-muted">Session ouverte · solde d’ouverture {formatDa(num(session.solde_ouverture))}</p>}
+      <Panel>
+        <DataTable
+          columns={[{ key: "n", label: "Facture" }, { key: "c", label: "Client" }, { key: "m", label: "Montant" }, { key: "s", label: "Statut" }, { key: "act", label: "" }]}
+          rows={state.factures.map((f) => ({
+            n: f.numero,
+            c: clientName(f.client),
+            m: formatDa(num(f.montant_total)),
+            s: <StatusBadge tone={f.statut === "PAYEE" ? "success" : "warning"}>{STATUT_FACTURE_LABEL[f.statut]}</StatusBadge>,
+            act: session && f.statut === "EMISE" && can("ENCAISSER") ? (
+              <span className="flex gap-2 items-center">
+                <select className="h-8 border border-line rounded px-1 text-[12px]" value={mode} onChange={(e) => setMode(e.target.value as ModePaiement)}>
+                  {(Object.keys(MODE_PAIEMENT_LABEL) as ModePaiement[]).map((k) => <option key={k} value={k}>{MODE_PAIEMENT_LABEL[k]}</option>)}
+                </select>
+                <button className="text-primary text-[12px]" onClick={() => void dispatch({ type: "ENCAISSER", session_caisse: session.id, facture: f.id, montant: num(f.montant_total), mode_paiement: mode })}>
+                  Encaisser
+                </button>
+              </span>
+            ) : "—",
+          }))}
+        />
+      </Panel>
     </div>
   );
 }

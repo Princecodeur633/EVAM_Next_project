@@ -2,45 +2,30 @@
 
 import { useParams } from "next/navigation";
 import { BlBadge } from "@/components/badges";
-import { Button, Guard, PageHeader, Panel } from "@/components/ui";
+import { Button, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
 
 export default function BlDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, customerName, productName, can } = useStore();
-  const bl = state.deliveryNotes.find((b) => b.id === id);
-  const order = state.orders.find((o) => o.id === bl?.orderId);
-  const invoice = state.invoices.find((i) => i.id === order?.invoiceId);
-  if (!bl || !order || !invoice) return <p>BL introuvable</p>;
-  const paid = invoice.status === "payee";
-
+  const { state, dispatch, can } = useStore();
+  const bl = state.bonsLivraison.find((b) => b.id === Number(id));
+  if (!bl) return <p className="text-[13px] text-muted">Bon de livraison introuvable.</p>;
+  const cmd = state.commandes.find((c) => c.id === bl.commande);
+  const tournee = bl.tournee ? state.tournees.find((t) => t.id === bl.tournee) : null;
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Bon de livraison" title={bl.number} status={<BlBadge status={bl.status} />} description={customerName(order.customerId)} />
-      {paid ? (
-        <Guard variant="ok" title="Facture payée — livraison autorisée">
-          {invoice.number} · {formatDa(invoice.amount)}
-        </Guard>
-      ) : (
-        <Guard variant="block" title="Livraison interdite — facture non payée">
-          La préparation a pu avancer. Le BL reste verrouillé tant que {invoice.number} n'est pas encaissée. Seule la caisse déverrouille.
-        </Guard>
-      )}
-      <Panel className="p-4">
-        {order.lines.map((l) => (
-          <p key={l.productId} className="text-[13px]">
-            {productName(l.productId)} · {l.qty}
-          </p>
-        ))}
-        <div className="flex gap-2 mt-4">
-          <Button disabled={!paid || bl.status === "livre" || !can("VALIDATE_BL")} onClick={() => dispatch({ type: "VALIDATE_BL", orderId: order.id })}>
-            Valider le BL
-          </Button>
-          <Button variant="secondary" disabled={!paid || bl.status === "verrouille"} onClick={() => window.print()}>
-            Imprimer
-          </Button>
-        </div>
+      <PageHeader
+        eyebrow="Bon de livraison"
+        title={bl.numero}
+        status={<BlBadge status={bl.statut} />}
+        description={cmd?.numero}
+        actions={can("CONFIRMER_BL") && bl.statut !== "LIVREE" ? (
+          <Button onClick={() => void dispatch({ type: "CONFIRMER_BL", id: bl.id })}>Confirmer la livraison</Button>
+        ) : null}
+      />
+      <Panel className="p-4 text-[13px] space-y-1">
+        <p>Signature client : {bl.signature_client ? "Oui" : "Non"}</p>
+        <p>Tournée : {tournee?.numero ?? "—"}</p>
       </Panel>
     </div>
   );

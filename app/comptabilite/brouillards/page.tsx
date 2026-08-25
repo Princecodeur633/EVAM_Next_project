@@ -1,82 +1,33 @@
 "use client";
 
-import { DonutChart, KpiCard, WidgetCard } from "@/components/charts";
-import { Button, Guard, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { STATUT_ANOMALIE_LABEL, TYPE_ANOMALIE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
-export default function BrouillardsPage() {
+export default function AnomaliesPage() {
   const { state, dispatch, can } = useStore();
-  const aValider = state.drafts.filter((d) => d.status === "a_valider");
-  const exclus = state.drafts.filter((d) => d.status === "exclu");
-  const amountPending = aValider.reduce((a, d) => a + d.amount, 0);
-
-  const mix = [
-    { label: "À valider", value: aValider.length || 0.001, color: "var(--chart-3)" },
-    { label: "Validés", value: state.drafts.filter((d) => d.status === "valide").length, color: "var(--chart-2)" },
-    { label: "Exportés", value: state.drafts.filter((d) => d.status === "exporte").length, color: "var(--chart-5)" },
-    { label: "Exclus", value: exclus.length || 0.001, color: "var(--danger)" },
-  ];
-
   return (
-    <div className="space-y-4 anim-in">
-      <PageHeader
-        eyebrow="Comptabilité · Finance"
-        title="Brouillards"
-        description="Générés automatiquement à chaque facture vente/achat. Seule la comptabilité valide. Les suspendues sont exclues."
-      />
-      <Guard variant="warn" title="Jamais de saisie manuelle d'écriture">
-        Le brouillard naît de la commande ou de l'achat. La comptabilité contrôle, elle ne recopie pas.
-      </Guard>
-
-      <div className="grid sm:grid-cols-3 gap-3">
-        <KpiCard label="À valider" value={aValider.length} tone="warning" hint={formatDa(amountPending)} />
-        <KpiCard label="Exclus Sage" value={exclus.length} tone="danger" hint="Factures suspendues" />
-        <KpiCard label="Total pièces" value={state.drafts.length} hint="Ventes + achats" />
-      </div>
-
-      <div className="grid lg:grid-cols-[280px_1fr] gap-4">
-        <WidgetCard title="Pipeline comptable" subtitle="Statuts des brouillards">
-          <DonutChart data={mix} centerValue={String(aValider.length)} centerLabel="file" />
-        </WidgetCard>
-
-        <Panel>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
-                <th className="text-left px-3 py-2">Journal</th>
-                <th className="text-left px-3 py-2">Réf</th>
-                <th className="text-left px-3 py-2">Type</th>
-                <th className="text-right px-3 py-2">Montant</th>
-                <th className="text-left px-3 py-2">Statut</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.drafts.map((d) => (
-                <tr key={d.id} className="border-b border-line">
-                  <td className="px-3 py-2 num">{d.journal}</td>
-                  <td className="px-3 py-2 num">{d.ref}</td>
-                  <td className="px-3 py-2">{d.kind}</td>
-                  <td className="px-3 py-2 text-right num">{formatDa(d.amount)}</td>
-                  <td className="px-3 py-2">
-                    <StatusBadge
-                      tone={d.status === "exclu" ? "danger" : d.status === "exporte" ? "success" : d.status === "valide" ? "teal" : "warning"}
-                    >
-                      {d.status}
-                    </StatusBadge>
-                  </td>
-                  <td className="px-3 py-2">
-                    {d.status === "a_valider" && can("VALIDATE_DRAFT") && (
-                      <Button onClick={() => dispatch({ type: "VALIDATE_DRAFT", id: d.id })}>Valider</Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Panel>
-      </div>
+    <div className="space-y-4">
+      <PageHeader eyebrow="Comptabilité" title="Anomalies" description="Écarts de stock ou de caisse, dépassements matières, lots vendus trop tôt. Marquez-les comme traitées une fois contrôlées." />
+      <Panel>
+        <DataTable
+          columns={[{ key: "t", label: "Type" }, { key: "m", label: "Module" }, { key: "d", label: "Description" }, { key: "s", label: "Statut" }, { key: "dt", label: "Date" }, { key: "act", label: "" }]}
+          rows={state.anomalies.map((a) => ({
+            t: TYPE_ANOMALIE_LABEL[a.type_anomalie] ?? a.type_anomalie,
+            m: a.module_source,
+            d: a.description,
+            s: <StatusBadge tone={a.statut === "DETECTEE" || a.statut === "EN_TRAITEMENT" ? "warning" : "success"}>{STATUT_ANOMALIE_LABEL[a.statut] ?? a.statut}</StatusBadge>,
+            dt: formatDateTime(a.date_detection),
+            act: can("TRAITER_ANOMALIE") && (a.statut === "DETECTEE" || a.statut === "EN_TRAITEMENT") ? (
+              <span className="flex gap-2">
+                <button className="text-success text-[12px]" onClick={() => void dispatch({ type: "TRAITER_ANOMALIE", id: a.id, statut: "TRAITEE" })}>Traiter</button>
+                <button className="text-muted text-[12px]" onClick={() => void dispatch({ type: "TRAITER_ANOMALIE", id: a.id, statut: "IGNOREE" })}>Ignorer</button>
+              </span>
+            ) : "—",
+          }))}
+        />
+      </Panel>
     </div>
   );
 }

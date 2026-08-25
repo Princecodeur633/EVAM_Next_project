@@ -1,51 +1,121 @@
 "use client";
 
-import { Button, PageHeader, Panel } from "@/components/ui";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { TYPE_SORTIE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { materialAvail } from "@/lib/engine";
-import { formatQty } from "@/lib/utils";
+import { formatQty, num } from "@/lib/utils";
+import type { TypeSortie } from "@/lib/types";
 
-export default function DemandesMatieresPage() {
-  const { state, dispatch, materialName, can } = useStore();
+export default function SortiesPage() {
+  const { state, dispatch, articleName, ofNumero, matieres, can } = useStore();
+  const ofOptions =
+    state.ofList.length > 0
+      ? state.ofList.map((o) => ({ id: o.id, label: o.numero }))
+      : Array.from(
+          new Set([
+            ...state.besoinsMatieres.map((b) => b.ordre_fabrication),
+            ...state.sortiesMatieres.map((s) => s.ordre_fabrication),
+            ...state.retoursMatieres.map((r) => r.ordre_fabrication),
+          ]),
+        ).map((id) => ({ id, label: ofNumero(id) }));
+  const [ofId, setOfId] = useState(ofOptions[0]?.id ?? 0);
+  const [matiere, setMatiere] = useState(matieres[0]?.id ?? 0);
+  const [qty, setQty] = useState(0);
+  const [type, setType] = useState<TypeSortie>("NORMALE");
+  const [motif, setMotif] = useState("");
+  const [retourOf, setRetourOf] = useState(ofOptions[0]?.id ?? 0);
+  const [retourMat, setRetourMat] = useState(matieres[0]?.id ?? 0);
+  const [retourQty, setRetourQty] = useState(0);
+
+  const motifObligatoire = type === "COMPLEMENTAIRE";
+  const canSortir = ofId && matiere && qty > 0 && (!motifObligatoire || motif.trim().length > 0);
+
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
-        eyebrow="Production / Magasin"
-        title="Demandes de matières"
-        description="Workflow : demandée → validée magasin → sortie de stock. L'atelier ne sort pas lui-même les matières. Le magasinier ne saisit pas d'entrée PF."
+        eyebrow="Magasin"
+        title="Matières atelier"
+        description="Déclarez les sorties vers l’atelier et les retours non utilisés. Une sortie complémentaire exige un motif."
       />
-      <div className="space-y-3">
-        {state.materialRequests.map((r) => (
-          <Panel key={r.id} className="p-4 flex items-start justify-between gap-4">
-            <div>
-              <p className="font-medium num">{r.ofId}</p>
-              <ul className="text-[13px] text-muted mt-1">
-                {r.lines.map((l) => {
-                  const avail = materialAvail(state, l.materialId);
-                  const short = avail < l.qty;
-                  return (
-                    <li key={l.materialId} className={short ? "text-danger" : undefined}>
-                      {materialName(l.materialId)} · besoin {formatQty(l.qty, 1)} · dispo {formatQty(avail, 1)}
-                      {short ? " — insuffisant" : ""}
-                    </li>
-                  );
-                })}
-              </ul>
-              <p className="text-[12px] mt-2 uppercase tracking-wide text-muted">{r.status}</p>
-            </div>
-            <div className="flex flex-col gap-2 shrink-0">
-              {r.status === "demandee" && can("ACK_MATERIAL_REQUEST") && (
-                <Button onClick={() => dispatch({ type: "ACK_MATERIAL_REQUEST", id: r.id })}>Valider la demande</Button>
-              )}
-              {r.status === "validee" && can("SERVE_MATERIAL_REQUEST") && (
-                <Button variant="success" onClick={() => dispatch({ type: "SERVE_MATERIAL_REQUEST", id: r.id })}>
-                  Servir (sortie stock)
-                </Button>
-              )}
-            </div>
-          </Panel>
-        ))}
-      </div>
+      {can("CREATE_SORTIE") && (
+        <Panel className="p-4 grid sm:grid-cols-5 gap-3 items-end">
+          <Field label="OF">
+            <select className={inputClass} value={ofId} onChange={(e) => setOfId(Number(e.target.value))}>
+              {ofOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Matière">
+            <select className={inputClass} value={matiere} onChange={(e) => setMatiere(Number(e.target.value))}>
+              {matieres.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
+            </select>
+          </Field>
+          <Field label="Quantité">
+            <input type="number" className={inputClass} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+          </Field>
+          <Field label="Type">
+            <select className={inputClass} value={type} onChange={(e) => setType(e.target.value as TypeSortie)}>
+              {(Object.keys(TYPE_SORTIE_LABEL) as TypeSortie[]).map((k) => (
+                <option key={k} value={k}>{TYPE_SORTIE_LABEL[k]}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label={motifObligatoire ? "Motif (obligatoire)" : "Motif"}>
+            <input className={inputClass} value={motif} onChange={(e) => setMotif(e.target.value)} />
+          </Field>
+          <Button
+            disabled={!canSortir}
+            onClick={() => void dispatch({ type: "CREATE_SORTIE", ordre_fabrication: ofId, matiere, quantite_sortie: qty, type_sortie: type, motif })}
+          >
+            Sortir
+          </Button>
+        </Panel>
+      )}
+      <Panel>
+        <DataTable
+          columns={[{ key: "of", label: "OF" }, { key: "m", label: "Matière" }, { key: "q", label: "Qté" }, { key: "t", label: "Type" }]}
+          rows={state.sortiesMatieres.map((s) => ({
+            of: ofNumero(s.ordre_fabrication),
+            m: articleName(s.matiere),
+            q: formatQty(num(s.quantite_sortie), 3),
+            t: TYPE_SORTIE_LABEL[s.type_sortie] ?? s.type_sortie,
+          }))}
+        />
+      </Panel>
+      {can("CREATE_RETOUR_MAT") && (
+        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+          <h2 className="sm:col-span-4 text-[13px] font-semibold">Retour matière</h2>
+          <Field label="OF">
+            <select className={inputClass} value={retourOf} onChange={(e) => setRetourOf(Number(e.target.value))}>
+              {ofOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Matière">
+            <select className={inputClass} value={retourMat} onChange={(e) => setRetourMat(Number(e.target.value))}>
+              {matieres.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
+            </select>
+          </Field>
+          <Field label="Quantité">
+            <input type="number" className={inputClass} value={retourQty} onChange={(e) => setRetourQty(Number(e.target.value))} />
+          </Field>
+          <Button
+            disabled={!retourOf || !retourMat || retourQty <= 0}
+            onClick={() => void dispatch({ type: "CREATE_RETOUR_MAT", ordre_fabrication: retourOf, matiere: retourMat, quantite_retournee: retourQty })}
+          >
+            Retourner
+          </Button>
+        </Panel>
+      )}
+      <Panel>
+        <DataTable
+          columns={[{ key: "of", label: "OF" }, { key: "m", label: "Matière" }, { key: "q", label: "Qté retournée" }]}
+          rows={state.retoursMatieres.map((r) => ({
+            of: ofNumero(r.ordre_fabrication),
+            m: articleName(r.matiere),
+            q: formatQty(num(r.quantite_retournee), 3),
+          }))}
+        />
+      </Panel>
     </div>
   );
 }

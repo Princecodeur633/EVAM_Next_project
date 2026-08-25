@@ -1,65 +1,57 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { Button, Guard, PageHeader, Panel } from "@/components/ui";
-import { OfBadge } from "@/components/badges";
+import { LotBadge } from "@/components/badges";
+import { Button, Field, Guard, PageHeader, Panel, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import { formatDate, formatQty, num } from "@/lib/utils";
+import { useState } from "react";
 
-export default function QualiteDetailPage() {
+export default function LotDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, productName, can } = useStore();
-  const of = state.ofList.find((o) => o.id === decodeURIComponent(id));
-  const sheet = of ? state.sheets.find((s) => s.productId === of.productId && s.status === "active") : undefined;
-  if (!of) return <p>Lot introuvable</p>;
-
-  const waiting = of.status === "fin_production" || of.status === "controle_qualite";
+  const { state, dispatch, articleName, ofNumero, can, userName } = useStore();
+  const lot = state.lots.find((l) => l.id === Number(id));
+  const [obs, setObs] = useState("");
+  if (!lot) return <p className="text-[13px] text-muted">Lot introuvable.</p>;
+  const ctrl = state.controles.find((c) => c.lot === lot.id);
 
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Contrôle qualité" title={of.lot ?? of.id} status={<OfBadge status={of.status} />} description={productName(of.productId)} />
-      {of.status === "bloque" && (
-        <Guard variant="block" title="Non conforme — stock PF non alimenté">
-          {of.qualityNotes}
-        </Guard>
+      <PageHeader
+        eyebrow="Lot"
+        title={lot.numero_lot}
+        status={<LotBadge status={lot.statut} />}
+        description={`${articleName(lot.article)} · OF ${ofNumero(lot.ordre_fabrication)} · ${formatQty(num(lot.quantite), 2)} · prod. ${formatDate(lot.date_production)}`}
+      />
+      {lot.statut === "LIBERE" && <Guard variant="ok" title="Lot libéré — vendable">Seul ce statut autorise la vente.</Guard>}
+      {lot.statut === "BLOQUE" && <Guard variant="block" title="Lot bloqué">Non vendable.</Guard>}
+      {!ctrl && can("CREATE_CONTROLE") && (
+        <Panel className="p-4 space-y-3">
+          <h2 className="text-[13px] font-semibold">Résultat du contrôle</h2>
+          <Field label="Observations">
+            <input className={inputClass} value={obs} onChange={(e) => setObs(e.target.value)} />
+          </Field>
+          <div className="flex gap-2">
+            <Button variant="success" onClick={() => void dispatch({ type: "CREATE_CONTROLE", lot: lot.id, resultat: "CONFORME", observations: obs })}>Conforme</Button>
+            <Button variant="danger" onClick={() => void dispatch({ type: "CREATE_CONTROLE", lot: lot.id, resultat: "NON_CONFORME", observations: obs })}>Non conforme</Button>
+          </div>
+        </Panel>
       )}
-      {of.status === "cloture" && (
-        <Guard variant="ok" title="Lot conforme entré en stock">
-          Disponible à la vente.
-        </Guard>
+      {ctrl && (
+        <Panel className="p-4 text-[13px]">
+          Contrôle {ctrl.resultat === "CONFORME" ? "conforme" : "non conforme"}
+          {ctrl.controleur ? ` · ${userName(ctrl.controleur)}` : ""}
+          {ctrl.observations ? ` — ${ctrl.observations}` : ""}
+        </Panel>
       )}
-      <Panel className="p-4">
-        <h2 className="text-[13px] font-semibold mb-3">Critères de la fiche technique</h2>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted">
-              <th className="text-left py-1">Contrôle</th>
-              <th className="text-left py-1">Seuils</th>
-              <th className="text-left py-1">Obligatoire</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sheet?.qualityChecks.map((c) => (
-              <tr key={c.name} className="border-t border-line">
-                <td className="py-1.5">{c.name}</td>
-                <td className="py-1.5 num">
-                  {c.min ?? "—"} / {c.max ?? "—"} {c.unit}
-                </td>
-                <td className="py-1.5">{c.required ? "Oui" : "Informe"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
-      {waiting && can("QUALITY_CLOSE") && (
-        <div className="flex gap-2">
-          <Button variant="danger" onClick={() => dispatch({ type: "QUALITY_BLOCK", ofId: of.id, notes: "Hors tolérance — lot en quarantaine" })}>
-            Non conforme — bloquer
-          </Button>
-          <Button variant="success" onClick={() => dispatch({ type: "QUALITY_CLOSE", ofId: of.id })}>
-            Conforme — clôturer et entrer en stock
-          </Button>
-        </div>
-      )}
+      <div className="flex gap-2">
+        {lot.statut === "CONFORME" && can("LIBERER_LOT") && (
+          <Button variant="success" onClick={() => void dispatch({ type: "LIBERER_LOT", id: lot.id })}>Libérer le lot</Button>
+        )}
+        {can("BLOQUER_LOT") && lot.statut !== "LIBERE" && lot.statut !== "BLOQUE" && (
+          <Button variant="danger" onClick={() => void dispatch({ type: "BLOQUER_LOT", id: lot.id, motif: obs })}>Bloquer</Button>
+        )}
+      </div>
     </div>
   );
 }

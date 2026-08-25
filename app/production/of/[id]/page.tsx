@@ -1,121 +1,89 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { OfBadge } from "@/components/badges";
 import { Button, Guard, OF_STEPS, PageHeader, Panel, StatusStepper } from "@/components/ui";
-import { useStore } from "@/lib/store";
-import { formatDa, formatQty } from "@/lib/utils";
+import { nextOfStatut, useStore } from "@/lib/store";
+import { formatDateTime, formatQty, num } from "@/lib/utils";
+import { ETAPE_LABEL, MOTIF_PERTE_LABEL, STATUT_LOT_LABEL, STATUT_OF_LABEL, TYPE_SORTIE_LABEL } from "@/lib/labels";
 
 export default function OfDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, productName, materialName, can } = useStore();
-  const of = state.ofList.find((o) => o.id === decodeURIComponent(id));
-  if (!of) return <p>OF introuvable</p>;
+  const { state, dispatch, articleName, can, userName } = useStore();
+  const ofId = Number(id);
+  const of = state.ofList.find((o) => o.id === ofId);
+  if (!of) return <p className="text-[13px] text-muted">Ordre de fabrication introuvable.</p>;
 
-  const product = state.products.find((p) => p.id === of.productId);
-  const sheet = state.sheets.find((s) => s.productId === of.productId && s.status === "active");
-  const req = state.materialRequests.find((r) => r.ofId === of.id);
-  const ofLosses = state.losses.filter((l) => l.ofId === of.id);
-  const stepperId = of.status === "bloque" ? "fin_production" : of.status === "controle_qualite" ? "controle_qualite" : of.status;
-
-  const canEnd = can("END_PRODUCTION");
-  const canQuality = can("QUALITY_CLOSE");
-  const canStart = can("START_OF");
+  const besoins = state.besoinsMatieres.filter((b) => b.ordre_fabrication === of.id);
+  const sorties = state.sortiesMatieres.filter((s) => s.ordre_fabrication === of.id);
+  const etapes = state.etapes.filter((e) => e.ordre_fabrication === of.id);
+  const pertes = state.pertes.filter((p) => p.ordre_fabrication === of.id);
+  const lots = state.lots.filter((l) => l.ordre_fabrication === of.id);
+  const next = nextOfStatut(of.statut);
 
   return (
     <div className="space-y-4">
       <PageHeader
         eyebrow="Ordre de fabrication"
-        title={of.id}
-        status={<OfBadge status={of.status} />}
-        description={`${productName(of.productId)} · prévu ${formatQty(of.qtyPlanned)} ${product?.unit ?? ""}`}
+        title={of.numero}
+        status={<OfBadge status={of.statut} />}
+        description={`${articleName(of.article)} · ${formatQty(num(of.quantite_a_produire), 2)}`}
         actions={
-          <>
-            {of.status === "planifie" && canStart && (
-              <Button onClick={() => dispatch({ type: "START_OF", ofId: of.id })}>Démarrer la production</Button>
-            )}
-            {of.status === "en_production" && canEnd && (
-              <Button onClick={() => dispatch({ type: "END_PRODUCTION", ofId: of.id })}>Valider fin de production</Button>
-            )}
-            {(of.status === "fin_production" || of.status === "controle_qualite") && canQuality && (
-              <>
-                <Button variant="danger" onClick={() => dispatch({ type: "QUALITY_BLOCK", ofId: of.id, notes: "Non-conformité saisie en maquette" })}>
-                  Bloquer le lot
-                </Button>
-                <Button variant="success" onClick={() => dispatch({ type: "QUALITY_CLOSE", ofId: of.id })}>
-                  Clôture qualité — entrer en stock
-                </Button>
-              </>
-            )}
-          </>
+          can("AVANCER_OF") && next ? (
+            <Button onClick={() => void dispatch({ type: "AVANCER_OF", id: of.id })}>
+              Avancer → {STATUT_OF_LABEL[next]}
+            </Button>
+          ) : null
         }
       />
-
-      <StatusStepper steps={OF_STEPS} current={of.status === "bloque" ? "fin_production" : stepperId} />
-
-      {of.status === "fin_production" && (
-        <Guard variant="warn" title="Fin de production validée — stock PF non alimenté">
-          Seule la clôture du contrôleur qualité fait entrer le lot en stock vendable. Un OF « terminé » n'est pas un OF « vendable ».
+      <StatusStepper steps={OF_STEPS} current={of.statut} />
+      {of.statut === "TERMINE" && (
+        <Guard variant="warn" title="Production terminée — lot pas encore libéré">
+          Le stock vendable n’existe qu’après le contrôle qualité, puis la libération du lot.
         </Guard>
       )}
-      {of.status === "bloque" && (
-        <Guard variant="block" title="Lot non conforme — aucune entrée stock PF">
-          {of.qualityNotes || "Blocage qualité."} Le lot peut être dirigé vers la quarantaine.
-        </Guard>
-      )}
-      {of.status === "cloture" && (
-        <Guard variant="ok" title="Clôturé qualité — lot disponible à la vente">
-          Lot <span className="num font-medium">{of.lot}</span> entré en dépôt Produits finis. CMUP figé à la clôture.
-        </Guard>
-      )}
-
       <div className="grid lg:grid-cols-3 gap-4">
         <Panel className="p-4 space-y-2">
           <h2 className="text-[13px] font-semibold">Synthèse</h2>
-          <Row k="Produit" v={productName(of.productId)} />
-          <Row k="Lot" v={of.lot ?? "Attribué à la clôture"} />
-          <Row k="Réel saisi" v={String(of.qtyReal)} />
-          <Row k="Rendement" v={of.yieldActual ? `${of.yieldActual.toFixed(1)} %` : "—"} />
-          <Row k="Coût OF" v={of.cost ? formatDa(of.cost) : "Calculé à la clôture"} />
-          <Row k="Volume eau" v={of.waterVolumeM3 != null ? `${of.waterVolumeM3} m³` : "—"} />
+          <Row k="Article" v={articleName(of.article)} />
+          <Row k="Responsable" v={userName(of.responsable)} />
+          <Row k="Lancement" v={of.date_lancement ? formatDateTime(of.date_lancement) : "—"} />
+          <Row k="Fin" v={of.date_fin ? formatDateTime(of.date_fin) : "—"} />
+          <Row k="Agents" v={of.agents_affectes.length ? of.agents_affectes.map((id) => userName(id)).join(", ") : "Aucun"} />
         </Panel>
         <Panel className="p-4 lg:col-span-2">
-          <div className="flex justify-between mb-2">
-            <h2 className="text-[13px] font-semibold">Besoins matières (fiche technique v{sheet?.version})</h2>
-            <Link href="/production/demandes-matieres" className="text-[12px] text-primary">Demandes magasin</Link>
-          </div>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase text-muted">
-                <th className="text-left py-1 font-medium">Article</th>
-                <th className="text-right py-1 font-medium">Besoin</th>
-              </tr>
-            </thead>
-            <tbody>
-              {req?.lines.map((l) => (
-                <tr key={l.materialId} className="border-t border-line">
-                  <td className="py-1.5">{materialName(l.materialId)}</td>
-                  <td className="py-1.5 text-right num">{formatQty(l.qty, 1)}</td>
-                </tr>
+          <h2 className="text-[13px] font-semibold mb-2">Besoins matières</h2>
+          {besoins.length === 0 ? (
+            <p className="text-[13px] text-muted">Aucun besoin — l’OF n’est pas encore lancé ou fiche technique manquante.</p>
+          ) : (
+            <ul className="text-[13px] space-y-1">
+              {besoins.map((b) => (
+                <li key={b.id}>{articleName(b.matiere)} · théorique {formatQty(num(b.quantite_theorique), 3)}</li>
               ))}
-            </tbody>
-          </table>
-          {req && <p className="text-[12px] text-muted mt-2">Demande magasin : {req.status}</p>}
+            </ul>
+          )}
         </Panel>
       </div>
-
       <Panel className="p-4">
-        <h2 className="text-[13px] font-semibold mb-2">Pertes / rebuts</h2>
-        {ofLosses.length === 0 ? (
-          <p className="text-muted text-[13px]">Aucune perte saisie.</p>
-        ) : (
-          ofLosses.map((l) => (
-            <p key={l.id} className="text-[13px]">
-              {state.lossCauses.find((c) => c.id === l.causeId)?.label} — {l.qty} u
-            </p>
-          ))
-        )}
+        <h2 className="text-[13px] font-semibold mb-2">Sorties matières</h2>
+        {sorties.length === 0 ? <p className="text-[13px] text-muted">Aucune sortie.</p> : sorties.map((s) => (
+          <p key={s.id} className="text-[13px]">{articleName(s.matiere)} · {formatQty(num(s.quantite_sortie), 3)} · {TYPE_SORTIE_LABEL[s.type_sortie] ?? s.type_sortie}</p>
+        ))}
+      </Panel>
+      <Panel className="p-4">
+        <h2 className="text-[13px] font-semibold mb-2">Étapes</h2>
+        {etapes.length === 0 ? <p className="text-[13px] text-muted">Aucune étape saisie.</p> : etapes.map((e) => (
+          <p key={e.id} className="text-[13px]">{ETAPE_LABEL[e.etape]} · {e.quantite_produite ?? "—"}</p>
+        ))}
+      </Panel>
+      <Panel className="p-4">
+        <h2 className="text-[13px] font-semibold mb-2">Pertes · Lots</h2>
+        {pertes.map((p) => (
+          <p key={p.id} className="text-[13px]">{MOTIF_PERTE_LABEL[p.motif]} · {formatQty(num(p.quantite_perte), 2)}</p>
+        ))}
+        {lots.map((l) => (
+          <p key={l.id} className="text-[13px]">{l.numero_lot} · {STATUT_LOT_LABEL[l.statut] ?? l.statut}</p>
+        ))}
       </Panel>
     </div>
   );
@@ -123,9 +91,9 @@ export default function OfDetailPage() {
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex justify-between text-[13px] gap-4">
+    <p className="flex justify-between gap-3 text-[13px]">
       <span className="text-muted">{k}</span>
-      <span className="num">{v}</span>
-    </div>
+      <span className="text-right">{v}</span>
+    </p>
   );
 }

@@ -1,41 +1,17 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { Button, Field, inputClass, PageHeader, Panel } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { PageHeader, Panel } from "@/components/ui";
 
 export default function MotifsSuspensionPage() {
-  const { state, dispatch, canEditParam } = useStore();
-  const edit = canEditParam("/parametrage/motifs-suspension");
-  const [label, setLabel] = useState("");
-
-  function onAdd(e: FormEvent) {
-    e.preventDefault();
-    dispatch({ type: "ADD_SUSPEND_REASON", label });
-    setLabel("");
-  }
-
   return (
-    <div className="space-y-4">
-      <PageHeader eyebrow="Paramétrage" title="Motifs de suspension" description="Liste fermée. Une facture suspendue n'est jamais exportable Sage." />
-      {edit && (
-        <form onSubmit={onAdd} className="flex gap-2 max-w-lg">
-          <Field label="Nouveau motif">
-            <input className={inputClass} value={label} onChange={(e) => setLabel(e.target.value)} required />
-          </Field>
-          <Button type="submit" className="mt-5">
-            Ajouter
-          </Button>
-        </form>
-      )}
-      <Panel>
-        <ul className="divide-y divide-line">
-          {state.suspendReasons.map((c) => (
-            <li key={c.id} className="px-4 py-2 text-[13px]">
-              {c.label}
-            </li>
-          ))}
-        </ul>
+    <div>
+      <PageHeader
+        eyebrow="Référentiel"
+        title="Motifs de suspension"
+        description="Cette liste n’est pas encore disponible dans EVAM."
+      />
+      <Panel className="p-5 text-[13px] text-muted leading-relaxed">
+        Les suspensions de commande se gèrent aujourd’hui en bloquant le client depuis sa fiche.
       </Panel>
     </div>
   );

@@ -4,9 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, LogOut, Moon, Search, Sun } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { breadcrumbs, canAccess, flattenNav, isNavActive, navForRole, ROLE_HOME } from "@/lib/nav";
+import { breadcrumbs, canAccess, flattenNav, isNavActive, navForRole } from "@/lib/nav";
 import { ROLE_PROFILES } from "@/lib/roles";
-import { ROLE_LABEL } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -29,23 +28,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const crumbs = breadcrumbs(pathname);
   const IconRole = ROLE_ICONS[profile.icon];
   const allHrefs = flattenNav(currentUser.role).map((i) => i.href);
-  const showDepot = ["magasinier", "responsable_production", "responsable_achats", "agent_production", "controleur_qualite", "preparateur", "logistique"].includes(
+  const showDepot = ["MAGASINIER", "RESPONSABLE_PRODUCTION", "RESPONSABLE_ACHATS", "AGENT_PRODUCTION", "RESPONSABLE_QUALITE", "RESPONSABLE_DISTRIBUTION"].includes(
     currentUser.role,
   );
 
   const notifs = (
     [
-      state.ofList.some((o) => o.status === "fin_production") && {
-        text: "Lot en attente de clôture qualité",
+      state.lots.some((l) => l.statut === "EN_ATTENTE") && {
+        text: `${state.lots.filter((l) => l.statut === "EN_ATTENTE").length} lot(s) en attente de contrôle`,
         href: "/production/qualite",
       },
-      state.invoices.some((i) => i.status === "suspendue") && {
-        text: "Facture suspendue — non exportable Sage",
-        href: "/caisse/suspendues",
+      state.factures.some((i) => i.statut === "EMISE") && {
+        text: `${state.factures.filter((i) => i.statut === "EMISE").length} facture(s) émise(s) à encaisser`,
+        href: "/caisse",
       },
-      state.stock.some((s) => s.articleType === "matiere" && s.qty < 200) && {
-        text: "Alerte seuil matières",
-        href: "/stocks/alertes",
+      state.demandesAchat.some((d) => d.statut === "EN_ATTENTE") && {
+        text: `${state.demandesAchat.filter((d) => d.statut === "EN_ATTENTE").length} demande(s) d'achat en attente`,
+        href: "/approvisionnement/demandes",
       },
     ].filter(Boolean) as { text: string; href: string }[]
   ).filter((n) => canAccess(currentUser.role, n.href));
@@ -115,8 +114,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <p className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-white/25 border-t border-white/10">
-          Maquette V1 · 2026
+        <p className="px-4 py-3 text-[11px] text-white/30 border-t border-white/10">
+          Eau · Jus · Yaourts
         </p>
       </aside>
 
@@ -150,15 +149,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <kbd className="text-[10px] border border-line rounded px-1 bg-surface-2">Ctrl K</kbd>
             </button>
 
-            {showDepot && (
+            {showDepot && state.depots.length > 0 && (
               <select
-                value={state.depotId}
-                onChange={(e) => dispatch({ type: "SET_DEPOT", depotId: e.target.value })}
+                value={state.depotId ?? ""}
+                onChange={(e) => dispatch({ type: "SET_DEPOT", depotId: Number(e.target.value) })}
                 className="h-8 border border-line rounded-[7px] px-2 text-[12px] text-ink bg-surface"
               >
                 {state.depots.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.code} · {d.name}
+                    {d.nom}
                   </option>
                 ))}
               </select>
@@ -185,7 +184,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
               {openNotif && (
                 <div className="absolute right-0 top-10 w-80 bg-surface border border-line rounded-[10px] z-40 overflow-hidden shadow-[var(--shadow)]">
-                  <p className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted border-b border-line bg-surface-2">Alertes métier</p>
+                  <p className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted border-b border-line bg-surface-2">Alertes</p>
                   {notifs.length === 0 ? (
                     <p className="text-[12px] text-muted px-3 py-4">Aucune alerte</p>
                   ) : (
@@ -213,54 +212,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="h-8 pl-1 pr-2 flex items-center gap-2 border border-line rounded-[7px] hover:border-line-strong bg-surface"
               >
                 <span className={cn("h-6 w-6 rounded-[5px] text-white text-[10px] flex items-center justify-center font-semibold", ACCENT_CLASS[profile.accent])}>
-                  {currentUser.name.split(" ").map((p) => p[0]).join("").slice(0, 2)}
+                  {currentUser.name.split(" ").map((p) => p[0]).join("").slice(0, 2) || currentUser.username.slice(0, 2).toUpperCase()}
                 </span>
                 <span className="text-[12px] text-ink hidden lg:block max-w-[140px] truncate font-medium">{currentUser.name}</span>
                 <ChevronDown size={12} className="text-muted" />
               </button>
               {openUser && (
-                <div className="absolute right-0 top-10 w-[340px] bg-surface border border-line rounded-[10px] z-40 overflow-hidden shadow-[var(--shadow)]">
-                  <div className="px-3 py-3 border-b border-line bg-surface-2">
+                <div className="absolute right-0 top-10 w-[280px] bg-surface border border-line rounded-[10px] z-40 overflow-hidden shadow-[var(--shadow)]">
+                  <div className="px-4 py-3 border-b border-line bg-surface-2">
                     <p className="text-[13px] font-semibold">{currentUser.name}</p>
-                    <p className={cn("inline-flex mt-1 text-[11px] px-2 py-0.5 rounded-[4px]", ACCENT_SOFT[profile.accent])}>
+                    <p className={cn("inline-flex mt-1.5 text-[11px] px-2 py-0.5 rounded-[4px]", ACCENT_SOFT[profile.accent])}>
                       {profile.label}
                     </p>
-                    <p className="text-[12px] text-muted mt-2 leading-relaxed">{profile.mission}</p>
-                  </div>
-                  <p className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted">Changer de poste (démo)</p>
-                  <div className="max-h-64 overflow-y-auto">
-                    {state.users.filter((u) => u.active).map((u) => {
-                      const p = ROLE_PROFILES[u.role];
-                      return (
-                        <button
-                          key={u.id}
-                          onClick={() => {
-                            dispatch({ type: "SWITCH_ROLE_USER", userId: u.id });
-                            setOpenUser(false);
-                            router.push(ROLE_HOME[u.role]);
-                          }}
-                          className={cn(
-                            "w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-primary-soft border-b border-line last:border-0",
-                            u.id === currentUser.id && "bg-primary-soft/70",
-                          )}
-                        >
-                          <span className={cn("mt-0.5 h-2 w-2 rounded-full shrink-0", ACCENT_CLASS[p.accent])} />
-                          <span>
-                            <span className="block text-[12px] font-medium">{u.name}</span>
-                            <span className="block text-[11px] text-muted">{ROLE_LABEL[u.role]} · {p.station}</span>
-                          </span>
-                        </button>
-                      );
-                    })}
                   </div>
                   <button
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-muted hover:text-ink border-t border-line"
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] text-muted hover:text-ink hover:bg-primary-soft"
                     onClick={() => {
                       dispatch({ type: "LOGOUT" });
                       router.push("/login");
                     }}
                   >
-                    <LogOut size={13} /> Quitter la session
+                    <LogOut size={14} /> Se déconnecter
                   </button>
                 </div>
               )}
@@ -268,15 +240,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <div className="bg-surface border-b border-line px-5 py-2 flex items-center gap-3">
-          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", ACCENT_CLASS[profile.accent])} />
-          <p className="text-[12.5px] text-muted leading-snug">
-            <span className="text-ink font-medium">{profile.label}.</span> {profile.posture}
-          </p>
-        </div>
-
-        <main className="p-6 lg:p-7 relative">
-          <div className="pointer-events-none absolute inset-0 evam-grid-bg opacity-40" />
+        <main className="p-6 lg:p-8 relative">
           <div className="relative">{children}</div>
         </main>
       </div>
@@ -286,7 +250,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex">
             <span className="w-1 bg-danger shrink-0" />
             <div className="px-4 py-3">
-              <p className="text-[12px] font-semibold text-danger">Règle métier — action refusée</p>
+              <p className="text-[12px] font-semibold text-danger">Action impossible</p>
               <p className="text-[13px] mt-1 leading-relaxed">{state.lastError}</p>
               <button className="mt-2 text-[12px] text-primary font-medium" onClick={() => dispatch({ type: "CLEAR_ERROR" })}>
                 Fermer
@@ -362,7 +326,7 @@ function JumpModal({
             ref={ref}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher un écran de votre poste…"
+            placeholder="Rechercher un écran…"
             className="h-11 flex-1 outline-none text-[14px] bg-transparent text-ink"
           />
         </div>

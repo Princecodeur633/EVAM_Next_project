@@ -1,54 +1,41 @@
 "use client";
 
-import Link from "next/link";
-import { Button, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { STATUT_FT_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 
 export default function FichesTechniquesPage() {
-  const { state, productName, dispatch, canEditParam } = useStore();
-  const edit = canEditParam("/parametrage/fiches-techniques");
+  const { state, dispatch, articleName, produitsFinis, canEditParam } = useStore();
+  const router = useRouter();
+  const writable = canEditParam("/parametrage/fiches-techniques");
+  const [article, setArticle] = useState(produitsFinis[0]?.id ?? 0);
+
   return (
-    <div>
-      <PageHeader
-        eyebrow="Paramétrage"
-        title="Fiches techniques"
-        description="Une seule FT active par produit. Versionnée. Multi-onglets : composition, emballages, process, rendement, contrôles."
-      />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Référentiel" title="Fiches techniques" description="Validez une recette pour qu’elle serve au calcul des besoins d’un OF." />
+      {writable && (
+        <Panel className="p-4 grid sm:grid-cols-2 gap-3 items-end">
+          <Field label="Article">
+            <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
+              {produitsFinis.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
+            </select>
+          </Field>
+          <Button disabled={!article} onClick={() => void dispatch({ type: "CREATE_FT", article })}>Créer brouillon</Button>
+        </Panel>
+      )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
-              <th className="text-left px-3 py-2">Produit</th>
-              <th className="text-left px-3 py-2">Version</th>
-              <th className="text-left px-3 py-2">Statut</th>
-              <th className="text-right px-3 py-2">Rendement</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.sheets.map((s) => (
-              <tr key={s.id} className="border-b border-line">
-                <td className="px-3 py-2">
-                  <Link className="text-primary" href={`/parametrage/fiches-techniques/${s.id}`}>
-                    {productName(s.productId)}
-                  </Link>
-                </td>
-                <td className="px-3 py-2 num">v{s.version}</td>
-                <td className="px-3 py-2">
-                  <StatusBadge tone={s.status === "active" ? "success" : "neutral"}>{s.status}</StatusBadge>
-                </td>
-                <td className="px-3 py-2 text-right num">{s.yieldExpected} %</td>
-                <td className="px-3 py-2 text-right">
-                  {edit && s.status !== "active" && (
-                    <Button variant="ghost" onClick={() => dispatch({ type: "ACTIVATE_SHEET", id: s.id })}>
-                      Activer
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "a", label: "Article" }, { key: "v", label: "Version" }, { key: "s", label: "Statut" }]}
+          rows={state.fichesTechniques.map((f) => ({
+            a: articleName(f.article),
+            v: f.version,
+            s: <StatusBadge tone={f.statut === "VALIDEE" ? "success" : "neutral"}>{STATUT_FT_LABEL[f.statut]}</StatusBadge>,
+            href: `/parametrage/fiches-techniques/${f.id}`,
+          }))}
+          onRowClick={(row) => router.push(String(row.href))}
+        />
       </Panel>
     </div>
   );

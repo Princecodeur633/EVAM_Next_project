@@ -1,41 +1,33 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { Button, Guard, PageHeader, Panel } from "@/components/ui";
+import { Button, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { STATUT_PREP_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 
 export default function PreparationDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, productName, can } = useStore();
-  const order = state.orders.find((o) => o.id === id);
-  if (!order) return <p>Commande introuvable</p>;
-  const invoice = state.invoices.find((i) => i.id === order.invoiceId);
+  const { state, dispatch, can, userName, clientName } = useStore();
+  const p = state.preparations.find((x) => x.id === Number(id));
+  if (!p) return <p className="text-[13px] text-muted">Préparation introuvable.</p>;
+  const cmd = state.commandes.find((c) => c.id === p.commande);
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Préparation" title={order.number} />
-      {invoice?.status !== "payee" ? (
-        <Guard variant="warn" title="Facture non payée — la préparation peut continuer">
-          Le BL restera verrouillé. Préparer n'autorise pas à livrer.
-        </Guard>
-      ) : (
-        <Guard variant="ok" title="Facture payée">
-          Après préparation complète, le BL peut être validé.
-        </Guard>
-      )}
-      <Panel className="p-4">
-        {order.lines.map((l) => (
-          <p key={l.productId} className="text-[13px]">
-            {productName(l.productId)} · {l.qty}
-          </p>
-        ))}
-        {order.status !== "annulee" && can("PREPARE_ORDER") && (
-        <div className="flex gap-2 mt-4">
-          <Button variant="secondary" onClick={() => dispatch({ type: "PREPARE_ORDER", orderId: order.id, status: "partielle" })}>
-            Partielle
-          </Button>
-          <Button onClick={() => dispatch({ type: "PREPARE_ORDER", orderId: order.id, status: "complete" })}>Complète</Button>
-        </div>
-        )}
+      <PageHeader
+        eyebrow="Préparation"
+        title={cmd?.numero ?? `Préparation ${p.id}`}
+        status={<StatusBadge tone="info">{STATUT_PREP_LABEL[p.statut]}</StatusBadge>}
+        description={cmd ? clientName(cmd.client) : undefined}
+        actions={
+          <>
+            {p.statut === "A_PREPARER" && can("PREP_CONFIRMER") && <Button onClick={() => void dispatch({ type: "PREP_CONFIRMER", id: p.id })}>Confirmer préparation</Button>}
+            {can("PREP_SORTIE") && <Button onClick={() => void dispatch({ type: "PREP_SORTIE", id: p.id })}>Confirmer sortie magasin</Button>}
+          </>
+        }
+      />
+      <Panel className="p-4 text-[13px] space-y-1">
+        <p>Lancée par {userName(p.lancee_par)}</p>
+        <p>Préparée par {p.preparee_par ? userName(p.preparee_par) : "—"}</p>
       </Panel>
     </div>
   );

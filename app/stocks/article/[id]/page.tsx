@@ -1,48 +1,32 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { PageHeader, Panel } from "@/components/ui";
+import { DataTable, PageHeader, Panel } from "@/components/ui";
+import { TYPE_ARTICLE_LABEL } from "@/lib/labels";
+import { stockDisponible } from "@/lib/engine";
 import { useStore } from "@/lib/store";
-import { formatDa, formatDateTime, formatQty } from "@/lib/utils";
+import { formatQty } from "@/lib/utils";
 
-export default function StockArticlePage() {
+export default function ArticleStockPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, productName, materialName } = useStore();
-  const name = productName(id) !== id ? productName(id) : materialName(id);
-  const lines = state.stock.filter((s) => s.articleId === id);
-  const mvs = state.movements.filter((m) => m.articleId === id);
+  const { state, articleName } = useStore();
+  const articleId = Number(id);
+  const article = state.articles.find((a) => a.id === articleId);
+  const lines = state.stock.filter((s) => s.article === articleId);
+  const depotName = (did: number) => state.depots.find((d) => d.id === did)?.nom ?? `#${did}`;
+
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Fiche stock" title={name} description="CMUP jamais saisi à la main — recalculé à chaque mouvement." />
-      <Panel className="p-4">
-        {lines.map((s) => (
-          <p key={s.id} className="text-[13px]">
-            {state.depots.find((d) => d.id === s.depotId)?.name} · lot {s.lot ?? "—"} · {formatQty(s.qty)} · CMUP {formatDa(s.cmup)}
-          </p>
-        ))}
-      </Panel>
+      <PageHeader
+        eyebrow="Article"
+        title={article ? `${article.code} · ${article.designation}` : articleName(articleId)}
+        description={article ? `${TYPE_ARTICLE_LABEL[article.type_article]} · ${article.unite_mesure}` : "Article introuvable."}
+      />
       <Panel>
-        <div className="px-4 py-3 border-b border-line font-medium text-[13px]">Mouvements</div>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted">
-              <th className="text-left px-3 py-2">Date</th>
-              <th className="text-left px-3 py-2">Type</th>
-              <th className="text-right px-3 py-2">Qté</th>
-              <th className="text-left px-3 py-2">Origine</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mvs.map((m) => (
-              <tr key={m.id} className="border-t border-line">
-                <td className="px-3 py-2">{formatDateTime(m.at)}</td>
-                <td className="px-3 py-2">{m.type}</td>
-                <td className="px-3 py-2 text-right num">{m.qty}</td>
-                <td className="px-3 py-2">{m.origin}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "d", label: "Dépôt" }, { key: "p", label: "Physique" }, { key: "v", label: "Disponible" }]}
+          rows={lines.map((s) => ({ d: depotName(s.depot), p: formatQty(Number(s.quantite_physique), 2), v: formatQty(stockDisponible(s), 2) }))}
+        />
       </Panel>
     </div>
   );

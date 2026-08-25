@@ -17,7 +17,7 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "EVAM — Gestion intégrée",
-  description: "Maquette UI/UX du logiciel de gestion intégré EVAM",
+  description: "EVAM — eau, jus et yaourts. Production, stocks, ventes et distribution.",
 };
 
 const themeBoot = `(function(){try{var t=localStorage.getItem('evam-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t);if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})();`;

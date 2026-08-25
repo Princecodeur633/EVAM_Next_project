@@ -1,121 +1,46 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import Link from "next/link";
-import { FAMILY_LABEL } from "@/lib/seed";
-import { Button, Field, inputClass, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { TYPE_ARTICLE_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { ProductFamily } from "@/lib/types";
-import { formatDa } from "@/lib/utils";
+import type { TypeArticle, UniteMesure } from "@/lib/types";
 
-export default function ProduitsPage() {
+export default function ArticlesPage() {
   const { state, dispatch, canEditParam } = useStore();
-  const edit = canEditParam("/parametrage/produits");
-  const [open, setOpen] = useState(false);
+  const writable = canEditParam("/parametrage/articles") || canEditParam("/parametrage/produits");
   const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [family, setFamily] = useState<ProductFamily>("eau");
-  const [unit, setUnit] = useState("bouteille");
-  const [priceHt, setPriceHt] = useState(100);
-  const [minStock, setMinStock] = useState(200);
-
-  function onCreate(e: FormEvent) {
-    e.preventDefault();
-    const id = `p-${Date.now()}`;
-    dispatch({
-      type: "UPSERT_PRODUCT",
-      product: {
-        id,
-        code,
-        name,
-        family,
-        unit,
-        active: true,
-        technicalSheetId: "",
-        saleUnit: unit,
-        minStock,
-        priceHt,
-      },
-    });
-    setOpen(false);
-    setCode("");
-    setName("");
-  }
+  const [designation, setDesignation] = useState("");
+  const [type, setType] = useState<TypeArticle>("PRODUIT_FINI");
+  const [unite, setUnite] = useState<UniteMesure>("UNITE");
+  const [famille, setFamille] = useState("");
+  const rows = state.articles.filter((a) => a.type_article === "PRODUIT_FINI" || a.type_article === "PRODUIT_INTERMEDIAIRE");
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        eyebrow="Paramétrage"
-        title="Produits finis"
-        description="Une fiche = un produit planifiable. Famille = filtre structurant (eau / jus / yaourt)."
-        actions={
-          edit ? (
-            <Button onClick={() => setOpen(!open)}>{open ? "Fermer" : "Nouveau produit"}</Button>
-          ) : undefined
-        }
-      />
-      {open && edit && (
-        <Panel className="p-4">
-          <form onSubmit={onCreate} className="grid md:grid-cols-3 gap-2">
-            <Field label="Code">
-              <input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} required />
-            </Field>
-            <Field label="Libellé">
-              <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} required />
-            </Field>
-            <Field label="Famille">
-              <select className={inputClass} value={family} onChange={(e) => setFamily(e.target.value as ProductFamily)}>
-                <option value="eau">Eau</option>
-                <option value="jus">Jus</option>
-                <option value="yaourt">Yaourt</option>
-              </select>
-            </Field>
-            <Field label="Unité">
-              <input className={inputClass} value={unit} onChange={(e) => setUnit(e.target.value)} />
-            </Field>
-            <Field label="Prix HT catalogue">
-              <input type="number" className={inputClass + " num"} value={priceHt} onChange={(e) => setPriceHt(Number(e.target.value))} />
-            </Field>
-            <Field label="Seuil PF">
-              <input type="number" className={inputClass + " num"} value={minStock} onChange={(e) => setMinStock(Number(e.target.value))} />
-            </Field>
-            <div className="md:col-span-3">
-              <Button type="submit">Enregistrer</Button>
-            </div>
-          </form>
+      <PageHeader eyebrow="Référentiel" title="Articles" description="Produits finis et intermédiaires : eau, jus et yaourts." />
+      {writable && (
+        <Panel className="p-4 grid sm:grid-cols-5 gap-3 items-end">
+          <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
+          <Field label="Désignation"><input className={inputClass} value={designation} onChange={(e) => setDesignation(e.target.value)} /></Field>
+          <Field label="Type">
+            <select className={inputClass} value={type} onChange={(e) => setType(e.target.value as TypeArticle)}>
+              {(Object.keys(TYPE_ARTICLE_LABEL) as TypeArticle[]).map((k) => <option key={k} value={k}>{TYPE_ARTICLE_LABEL[k]}</option>)}
+            </select>
+          </Field>
+          <Field label="Unité">
+            <select className={inputClass} value={unite} onChange={(e) => setUnite(e.target.value as UniteMesure)}>
+              {(Object.keys(UNITE_LABEL) as UniteMesure[]).map((k) => <option key={k} value={k}>{UNITE_LABEL[k]}</option>)}
+            </select>
+          </Field>
+          <Button disabled={!code} onClick={() => void dispatch({ type: "CREATE_ARTICLE", code, designation, type_article: type, unite_mesure: unite, famille })}>Créer</Button>
         </Panel>
       )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
-              <th className="text-left px-3 py-2">Code</th>
-              <th className="text-left px-3 py-2">Libellé</th>
-              <th className="text-left px-3 py-2">Famille</th>
-              <th className="text-left px-3 py-2">Unité</th>
-              <th className="text-right px-3 py-2">Prix HT</th>
-              <th className="text-left px-3 py-2">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.products.map((p) => (
-              <tr key={p.id} className="border-b border-line">
-                <td className="px-3 py-2">
-                  <Link className="text-primary num" href={`/parametrage/produits/${p.id}`}>
-                    {p.code}
-                  </Link>
-                </td>
-                <td className="px-3 py-2">{p.name}</td>
-                <td className="px-3 py-2">{FAMILY_LABEL[p.family]}</td>
-                <td className="px-3 py-2">{p.unit}</td>
-                <td className="px-3 py-2 text-right num">{formatDa(p.priceHt)}</td>
-                <td className="px-3 py-2">
-                  <StatusBadge tone={p.active ? "success" : "neutral"}>{p.active ? "Actif" : "Inactif"}</StatusBadge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "c", label: "Code" }, { key: "d", label: "Désignation" }, { key: "t", label: "Type" }, { key: "u", label: "Unité" }, { key: "f", label: "Famille" }]}
+          rows={rows.map((a) => ({ c: a.code, d: a.designation, t: TYPE_ARTICLE_LABEL[a.type_article], u: a.unite_mesure, f: a.famille || "—" }))}
+        />
       </Panel>
     </div>
   );

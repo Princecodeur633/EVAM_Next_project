@@ -1,85 +1,51 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { ROLE_LABEL } from "@/lib/seed";
-import { Button, Field, inputClass, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { displayName, PROFIL_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { Role } from "@/lib/types";
+import type { Profil } from "@/lib/types";
 
 export default function UtilisateursPage() {
   const { state, dispatch, can } = useStore();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("agent_production");
-
-  function onCreate(e: FormEvent) {
-    e.preventDefault();
-    dispatch({ type: "CREATE_USER", name, email, role });
-    setName("");
-    setEmail("");
-  }
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [profil, setProfil] = useState<Profil>("AGENT_PRODUCTION");
+  const [first, setFirst] = useState("");
+  const [last, setLast] = useState("");
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        eyebrow="Administration"
-        title="Utilisateurs"
-        description="Activation, rattachement profil. Un compte inactif ne se connecte pas. L'administrateur ne saisit pas l'opérationnel."
-      />
+      <PageHeader eyebrow="Administration" title="Utilisateurs" description="Créez les comptes de l’usine et activez ou désactivez un accès." />
       {can("ADMIN_USERS") && (
-        <Panel className="p-4">
-          <h2 className="text-[13px] font-semibold mb-3">Créer un compte</h2>
-          <form onSubmit={onCreate} className="grid md:grid-cols-4 gap-2 items-end">
-            <Field label="Nom">
-              <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} required />
-            </Field>
-            <Field label="E-mail">
-              <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </Field>
-            <Field label="Profil">
-              <select className={inputClass} value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                {Object.entries(ROLE_LABEL).map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Button type="submit">Créer</Button>
-          </form>
+        <Panel className="p-4 grid sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+          <Field label="Prénom"><input className={inputClass} value={first} onChange={(e) => setFirst(e.target.value)} /></Field>
+          <Field label="Nom"><input className={inputClass} value={last} onChange={(e) => setLast(e.target.value)} /></Field>
+          <Field label="Identifiant"><input className={inputClass} value={username} onChange={(e) => setUsername(e.target.value)} /></Field>
+          <Field label="Mot de passe"><input className={inputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+          <Field label="Profil">
+            <select className={inputClass} value={profil} onChange={(e) => setProfil(e.target.value as Profil)}>
+              {(Object.keys(PROFIL_LABEL) as Profil[]).map((k) => <option key={k} value={k}>{PROFIL_LABEL[k]}</option>)}
+            </select>
+          </Field>
+          <Button disabled={!username || !password} onClick={() => void dispatch({ type: "CREATE_USER", username, password, profil, first_name: first, last_name: last })}>Créer</Button>
         </Panel>
       )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
-              <th className="text-left px-3 py-2">Nom</th>
-              <th className="text-left px-3 py-2">E-mail</th>
-              <th className="text-left px-3 py-2">Profil</th>
-              <th className="text-left px-3 py-2">Statut</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.users.map((u) => (
-              <tr key={u.id} className="border-b border-line">
-                <td className="px-3 py-2">{u.name}</td>
-                <td className="px-3 py-2">{u.email}</td>
-                <td className="px-3 py-2">{ROLE_LABEL[u.role]}</td>
-                <td className="px-3 py-2">
-                  <StatusBadge tone={u.active ? "success" : "neutral"}>{u.active ? "Actif" : "Inactif"}</StatusBadge>
-                </td>
-                <td className="px-3 py-2 text-right">
-                  {can("ADMIN_USERS") && (
-                    <Button variant="ghost" onClick={() => dispatch({ type: "TOGGLE_USER", id: u.id })}>
-                      {u.active ? "Désactiver" : "Activer"}
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "n", label: "Nom" }, { key: "p", label: "Profil" }, { key: "u", label: "Identifiant" }, { key: "a", label: "Actif" }, { key: "act", label: "" }]}
+          rows={state.utilisateurs.map((u) => ({
+            n: displayName(u),
+            p: PROFIL_LABEL[u.profil] ?? u.profil,
+            u: u.username,
+            a: u.actif ? "Oui" : "Non",
+            act: can("ADMIN_USERS") ? (
+              <button className="text-primary text-[12px]" onClick={() => void dispatch({ type: "TOGGLE_USER", id: u.id, actif: !u.actif })}>
+                {u.actif ? "Désactiver" : "Activer"}
+              </button>
+            ) : "—",
+          }))}
+        />
       </Panel>
     </div>
   );

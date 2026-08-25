@@ -236,22 +236,30 @@ export function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr
-              key={i}
-              onClick={() => onRowClick?.(row)}
-              className={cn(
-                "border-b border-line last:border-0 transition-colors",
-                onRowClick && "hover:bg-primary-soft/60 cursor-pointer",
-              )}
-            >
-              {columns.map((c) => (
-                <td key={c.key} className={cn("px-3.5 py-2.5 text-[13px] align-middle", c.className)}>
-                  {row[c.key]}
-                </td>
-              ))}
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} className="px-3.5 py-12 text-center text-[13px] text-muted">
+                Aucun enregistrement pour le moment.
+              </td>
             </tr>
-          ))}
+          ) : (
+            rows.map((row, i) => (
+              <tr
+                key={i}
+                onClick={() => onRowClick?.(row)}
+                className={cn(
+                  "border-b border-line last:border-0 transition-colors",
+                  onRowClick && "hover:bg-primary-soft/60 cursor-pointer",
+                )}
+              >
+                {columns.map((c) => (
+                  <td key={c.key} className={cn("px-3.5 py-2.5 text-[13px] align-middle", c.className)}>
+                    {row[c.key]}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
@@ -259,20 +267,20 @@ export function DataTable({
 }
 
 export const OF_STEPS = [
-  { id: "cree", label: "Créé" },
-  { id: "planifie", label: "Planifié" },
-  { id: "en_production", label: "En production" },
-  { id: "fin_production", label: "Fin production" },
-  { id: "controle_qualite", label: "Contrôle qualité" },
-  { id: "cloture", label: "Clôturé" },
+  { id: "BROUILLON", label: "Brouillon" },
+  { id: "PLANIFIE", label: "Planifié" },
+  { id: "LANCE", label: "Lancé" },
+  { id: "EN_PRODUCTION", label: "En production" },
+  { id: "TERMINE", label: "Terminé" },
+  { id: "CONTROLE_QUALITE", label: "Contrôle qualité" },
+  { id: "LIBERE", label: "Libéré" },
+  { id: "CLOTURE", label: "Clôturé" },
 ];
 
 export const ORDER_STEPS = [
-  { id: "creee", label: "Créée" },
-  { id: "stock_verifie", label: "Stock vérifié" },
-  { id: "a_payer", label: "À payer" },
-  { id: "payee", label: "Payée" },
-  { id: "preparee", label: "Préparée" },
-  { id: "livree", label: "Livrée" },
-  { id: "exportee", label: "Exportée" },
+  { id: "BROUILLON", label: "Brouillon" },
+  { id: "VALIDEE", label: "Validée" },
+  { id: "EN_PREPARATION", label: "En préparation" },
+  { id: "LIVREE", label: "Livrée" },
+  { id: "FACTUREE", label: "Facturée" },
 ];

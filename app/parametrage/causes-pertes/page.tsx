@@ -1,41 +1,18 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { Button, Field, inputClass, PageHeader, Panel } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { DataTable, PageHeader, Panel } from "@/components/ui";
+import { MOTIF_PERTE_LABEL } from "@/lib/labels";
+import type { MotifPerte } from "@/lib/types";
 
 export default function CausesPertesPage() {
-  const { state, dispatch, canEditParam } = useStore();
-  const edit = canEditParam("/parametrage/causes-pertes");
-  const [label, setLabel] = useState("");
-
-  function onAdd(e: FormEvent) {
-    e.preventDefault();
-    dispatch({ type: "ADD_LOSS_CAUSE", label });
-    setLabel("");
-  }
-
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Paramétrage" title="Causes de pertes / rebuts" description="Liste fermée utilisée à l'atelier. Pas de saisie libre sans trace." />
-      {edit && (
-        <form onSubmit={onAdd} className="flex gap-2 max-w-lg">
-          <Field label="Nouvelle cause">
-            <input className={inputClass} value={label} onChange={(e) => setLabel(e.target.value)} required />
-          </Field>
-          <Button type="submit" className="mt-5">
-            Ajouter
-          </Button>
-        </form>
-      )}
+      <PageHeader title="Motifs de pertes" description="Casse, non-conformité, panne machine, erreur de manipulation." />
       <Panel>
-        <ul className="divide-y divide-line">
-          {state.lossCauses.map((c) => (
-            <li key={c.id} className="px-4 py-2 text-[13px]">
-              {c.label}
-            </li>
-          ))}
-        </ul>
+        <DataTable
+          columns={[{ key: "l", label: "Motif" }]}
+          rows={(Object.keys(MOTIF_PERTE_LABEL) as MotifPerte[]).map((k) => ({ l: MOTIF_PERTE_LABEL[k] }))}
+        />
       </Panel>
     </div>
   );
