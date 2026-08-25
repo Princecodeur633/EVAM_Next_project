@@ -21,7 +21,7 @@ export default function ProfilsPage() {
           const p = ROLE_PROFILES[r];
           const Icon = ROLE_ICONS[p.icon];
           return (
-            <article key={r} className="bg-white border border-line rounded-[8px] overflow-hidden">
+            <article key={r} className="evam-card border border-line rounded-[8px] overflow-hidden">
               <div className={cn("h-0.5", ACCENT_CLASS[p.accent])} />
               <div className="p-4">
                 <div className="flex items-center gap-2.5">

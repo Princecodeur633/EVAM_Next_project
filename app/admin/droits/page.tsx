@@ -31,7 +31,7 @@ export default function DroitsPage() {
       <Panel className="overflow-x-auto">
         <table className="w-full text-[12px]">
           <thead>
-            <tr className="border-b border-line bg-[#f8fafb]">
+            <tr className="border-b border-line bg-surface-2">
               <th className="text-left px-3 py-2 font-medium">Profil</th>
               {ACTIONS.map((a) => (
                 <th key={a} className="px-3 py-2 font-medium text-center">

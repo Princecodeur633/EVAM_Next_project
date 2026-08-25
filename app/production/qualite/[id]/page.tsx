@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 
 export default function QualiteDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, productName } = useStore();
+  const { state, dispatch, productName, can } = useStore();
   const of = state.ofList.find((o) => o.id === decodeURIComponent(id));
   const sheet = of ? state.sheets.find((s) => s.productId === of.productId && s.status === "active") : undefined;
   if (!of) return <p>Lot introuvable</p>;
@@ -50,7 +50,7 @@ export default function QualiteDetailPage() {
           </tbody>
         </table>
       </Panel>
-      {waiting && (
+      {waiting && can("QUALITY_CLOSE") && (
         <div className="flex gap-2">
           <Button variant="danger" onClick={() => dispatch({ type: "QUALITY_BLOCK", ofId: of.id, notes: "Hors tolérance — lot en quarantaine" })}>
             Non conforme — bloquer

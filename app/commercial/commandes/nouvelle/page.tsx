@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 import { formatDa, formatQty } from "@/lib/utils";
 
 export default function NouvelleCommandePage() {
-  const { state, dispatch, canCreateOrder, availableFor, productName } = useStore();
+  const { state, dispatch, canCreateOrder, availableFor, productName, unitPrice, can } = useStore();
   const router = useRouter();
   const [customerId, setCustomerId] = useState(state.customers[0]?.id ?? "");
   const [lines, setLines] = useState([{ productId: "p-eau", qty: 60 }]);
@@ -19,38 +19,40 @@ export default function NouvelleCommandePage() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!check.ok) return;
+    if (!check.ok || !can("CREATE_ORDER")) return;
     dispatch({ type: "CREATE_ORDER", customerId, lines });
     router.push("/commercial/commandes");
   }
 
-  const amount = lines.reduce((s, l) => s + (state.products.find((p) => p.id === l.productId)?.priceHt ?? 0) * l.qty, 0);
+  const amount = lines.reduce((s, l) => s + unitPrice(customerId, l.productId) * l.qty, 0);
+  const tariff = state.tariffs.find((t) => t.id === state.customers.find((c) => c.id === customerId)?.tariffId);
 
   return (
     <div className="space-y-4">
       <PageHeader
         eyebrow="Commercial"
         title="Nouvelle commande"
-        description="Le commercial ne peut pas forcer le stock. Le refus explique pourquoi et où aller."
+        description="Le commercial ne peut pas forcer le stock. Prix = grille tarifaire du client. La production n'est pas déclenchée par cette saisie."
       />
 
       {check.ok ? (
-        <Guard variant="ok" title="Stock disponible — commande validable">
-          Les quantités demandées sont couvertes par le disponible (hors réservations).
+        <Guard variant="ok" title="Stock vendable disponible — commande validable">
+          Couverture sur le dépôt Produits finis uniquement (hors quarantaine, hors réservé).
         </Guard>
       ) : (
         <Guard
           variant="block"
           title="Stock insuffisant — commande bloquée"
           action={
-            <a href="/production/planning" className="text-[13px] text-primary underline">
-              Voir le planning
+            <a href="/stocks" className="text-[13px] text-primary underline">
+              Voir le stock vendable
             </a>
           }
         >
           {check.missing.map((m) => (
             <p key={m.productId}>
-              {productName(m.productId)} : demandé {formatQty(m.need)} · disponible {formatQty(m.available)}. Écart {formatQty(m.need - m.available)}.
+              {productName(m.productId)} : demandé {formatQty(m.need)} · disponible {formatQty(m.available)}. Écart{" "}
+              {formatQty(m.need - m.available)}. Aucune dérogation.
             </p>
           ))}
         </Guard>
@@ -62,13 +64,13 @@ export default function NouvelleCommandePage() {
             <select className={inputClass} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
               {state.customers.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} ({c.type === "comptant" ? "comptant" : "à terme"})
+                  {c.name} ({c.type === "comptant" ? "comptant" : "à terme"} · {state.tariffs.find((t) => t.id === c.tariffId)?.name})
                 </option>
               ))}
             </select>
           </Field>
           {lines.map((l, i) => (
-            <div key={i} className="grid grid-cols-[1fr_120px_120px] gap-2 items-end">
+            <div key={i} className="grid grid-cols-[1fr_120px_140px] gap-2 items-end">
               <Field label="Produit">
                 <select
                   className={inputClass}
@@ -79,7 +81,7 @@ export default function NouvelleCommandePage() {
                     setLines(n);
                   }}
                 >
-                  {state.products.map((p) => (
+                  {state.products.filter((p) => p.active).map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>
@@ -98,7 +100,9 @@ export default function NouvelleCommandePage() {
                   }}
                 />
               </Field>
-              <p className="text-[12px] text-muted pb-2">Dispo {formatQty(availableFor(l.productId))}</p>
+              <p className="text-[12px] text-muted pb-2">
+                Dispo {formatQty(availableFor(l.productId))} · {formatDa(unitPrice(customerId, l.productId))}
+              </p>
             </div>
           ))}
           <Button type="button" variant="secondary" onClick={addLine}>
@@ -108,8 +112,10 @@ export default function NouvelleCommandePage() {
         <Panel className="p-4 h-fit space-y-3">
           <p className="text-[11px] uppercase text-muted">Facture à générer</p>
           <p className="text-[22px] font-semibold num">{formatDa(amount)}</p>
-          <p className="text-[12px] text-muted">La facture « à payer » est créée à la validation. Paiement et préparation partent ensuite en parallèle.</p>
-          <Button type="submit" className="w-full justify-center" disabled={!check.ok}>
+          <p className="text-[12px] text-muted">
+            Grille {tariff?.name} (×{tariff?.factor}). La facture « à payer » naît à la validation. Paiement et préparation partent ensuite en parallèle.
+          </p>
+          <Button type="submit" className="w-full justify-center" disabled={!check.ok || !can("CREATE_ORDER")}>
             Valider la commande
           </Button>
         </Panel>

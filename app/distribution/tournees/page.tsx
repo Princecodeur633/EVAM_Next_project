@@ -5,7 +5,7 @@ import { Button, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
 
 export default function TourneesPage() {
-  const { state, dispatch, customerName } = useStore();
+  const { state, dispatch, customerName, can } = useStore();
   const tour = state.deliveryNotes.filter((b) => b.status === "valide" || b.status === "livre");
   return (
     <div>
@@ -26,7 +26,7 @@ export default function TourneesPage() {
                   <BlBadge status={b.status} />
                 </div>
               </div>
-              {b.status === "valide" && order && (
+              {b.status === "valide" && order && can("DELIVER") && (
                 <Button onClick={() => dispatch({ type: "DELIVER", orderId: order.id })}>Signature + preuve — livrer</Button>
               )}
               {b.status === "livre" && <p className="text-[12px] text-success">Signé · preuve jointe</p>}

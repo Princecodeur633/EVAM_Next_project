@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import { formatDa, formatDateTime } from "@/lib/utils";
 
 export default function ClotureCaissePage() {
-  const { state, dispatch } = useStore();
+  const { state, dispatch, can } = useStore();
   const [counted, setCounted] = useState(state.cashSession.theoretical);
   const ecart = counted - state.cashSession.theoretical;
   return (
@@ -30,7 +30,7 @@ export default function ClotureCaissePage() {
           />
         </Field>
         <p className={`text-[13px] ${ecart === 0 ? "text-success" : "text-warning"}`}>Écart : {formatDa(ecart)}</p>
-        {state.cashSession.open && (
+        {state.cashSession.open && can("CLOSE_CASH") && (
           <Button
             onClick={() => {
               if (confirm("Clôturer la caisse ? Cette action est irréversible dans le flux métier.")) {

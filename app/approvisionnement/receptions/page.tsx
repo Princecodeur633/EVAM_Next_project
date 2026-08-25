@@ -12,7 +12,7 @@ export default function ReceptionsPage() {
       <Panel>
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
+            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
               <th className="text-left px-3 py-2">N°</th>
               <th className="text-left px-3 py-2">Commande</th>
               <th className="text-left px-3 py-2">Statut</th>
@@ -28,7 +28,9 @@ export default function ReceptionsPage() {
                 </td>
                 <td className="px-3 py-2 num">{state.purchaseOrders.find((p) => p.id === r.poId)?.number}</td>
                 <td className="px-3 py-2">
-                  <StatusBadge tone={r.status === "ecart" ? "warning" : "success"}>{r.status}</StatusBadge>
+                  <StatusBadge tone={r.stockEntered ? "success" : r.status === "ecart" ? "warning" : "info"}>
+                    {r.stockEntered ? "stock entré" : r.status}
+                  </StatusBadge>
                 </td>
               </tr>
             ))}

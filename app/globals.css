@@ -1,31 +1,75 @@
 @import "tailwindcss";
 
-:root {
-  --bg: #eef2f4;
+:root,
+[data-theme="light"] {
+  --bg: #eef2f5;
+  --bg-elevated: #f7f9fb;
   --surface: #ffffff;
-  --ink: #12202b;
-  --muted: #5b6b76;
-  --line: #e3eaee;
-  --line-strong: #cfd8de;
-  --primary: #0e4d6c;
-  --primary-hover: #0b3d56;
-  --primary-soft: #e7f1f6;
+  --surface-2: #f4f7f9;
+  --ink: #0f1c26;
+  --muted: #5a6b78;
+  --line: #e2e9ee;
+  --line-strong: #c9d4dc;
+  --primary: #0c4a6e;
+  --primary-hover: #0a3d5c;
+  --primary-soft: #e6f2f8;
   --teal: #0f766e;
-  --teal-soft: #e6f4f2;
-  --success: #157a3c;
+  --teal-soft: #e5f5f2;
+  --success: #15803d;
   --success-soft: #e8f6ee;
-  --warning: #a85b12;
+  --warning: #b45309;
   --warning-soft: #f8efe4;
-  --danger: #b42318;
+  --danger: #b91c1c;
   --danger-soft: #f8eaea;
-  --sidebar: #08293a;
-  --sidebar-2: #0b3348;
-  --sidebar-text: #b7c9d4;
+  --sidebar: #0a2433;
+  --sidebar-2: #0d2f42;
+  --sidebar-text: #a8c0ce;
+  --chart-1: #0c4a6e;
+  --chart-2: #0f766e;
+  --chart-3: #b45309;
+  --chart-4: #64748b;
+  --chart-5: #15803d;
+  --shadow: 0 1px 2px rgba(15, 28, 38, 0.04), 0 8px 24px rgba(15, 28, 38, 0.04);
+  --ring: rgba(12, 74, 110, 0.35);
+}
+
+[data-theme="dark"] {
+  --bg: #0a1018;
+  --bg-elevated: #0e1622;
+  --surface: #121c28;
+  --surface-2: #172434;
+  --ink: #e8eef4;
+  --muted: #8fa0b0;
+  --line: #223041;
+  --line-strong: #314456;
+  --primary: #5eb3d9;
+  --primary-hover: #7ec4e3;
+  --primary-soft: #143247;
+  --teal: #2dd4bf;
+  --teal-soft: #12352f;
+  --success: #4ade80;
+  --success-soft: #143323;
+  --warning: #fbbf24;
+  --warning-soft: #3a2c12;
+  --danger: #f87171;
+  --danger-soft: #3a1818;
+  --sidebar: #060b12;
+  --sidebar-2: #0c1420;
+  --sidebar-text: #8fa3b5;
+  --chart-1: #5eb3d9;
+  --chart-2: #2dd4bf;
+  --chart-3: #fbbf24;
+  --chart-4: #94a3b8;
+  --chart-5: #4ade80;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.28);
+  --ring: rgba(94, 179, 217, 0.4);
 }
 
 @theme inline {
   --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
@@ -42,6 +86,12 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-sidebar: var(--sidebar);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 }
@@ -50,9 +100,10 @@ html,
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-family: var(--font-sans), "Plus Jakarta Sans", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 * {
@@ -71,7 +122,7 @@ a {
 }
 
 .num {
-  font-family: var(--font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 
@@ -88,13 +139,17 @@ select:focus-visible {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #c5d0d8;
+  background: var(--line-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -103,5 +158,21 @@ select:focus-visible {
 }
 
 .anim-in {
-  animation: fade-up 0.28s ease-out;
+  animation: fade-up 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.evam-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.evam-grid-bg {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), transparent 85%);
 }

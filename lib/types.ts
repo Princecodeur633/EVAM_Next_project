@@ -130,6 +130,7 @@ export interface WorkOrder {
   qualityResult?: "conforme" | "non_conforme" | "en_attente";
   qualityNotes?: string;
   waterVolumeM3?: number;
+  incidents?: string;
 }
 
 export interface MaterialRequest {
@@ -230,7 +231,9 @@ export interface PurchaseOrder {
   supplierId: string;
   daId: string;
   status: "envoyee" | "recue" | "partielle";
-  lines: { materialId: string; qty: number }[];
+  lines: { materialId: string; qty: number; unitPrice: number }[];
+  amount: number;
+  invoiceNumber: string;
 }
 
 export interface Reception {
@@ -239,6 +242,7 @@ export interface Reception {
   poId: string;
   status: ReceptionStatus;
   lines: { materialId: string; ordered: number; received: number }[];
+  stockEntered: boolean;
 }
 
 export interface InventorySession {
@@ -329,8 +333,14 @@ export interface AppState {
     ofPrefix: string;
     faPrefix: string;
     blPrefix: string;
-    counters: { of: number; fa: number; bl: number; da: number };
+    daPrefix: string;
+    cfPrefix: string;
+    lotFormat: string;
+    counters: { of: number; fa: number; bl: number; da: number; cf: number; rc: number; re: number };
   };
+  units: { id: string; code: string; label: string }[];
+  tariffs: { id: string; name: string; factor: number }[];
+  lastError: string | null;
   suspendReasons: { id: string; label: string }[];
   claimReasons: { id: string; label: string }[];
   sageMapping: { journalVente: string; journalAchat: string; compteClient: string; compteFournisseur: string };

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { StoreProvider, useStore } from "@/lib/store";
+import { ThemeProvider } from "@/lib/theme";
 import { canAccess } from "@/lib/nav";
 import { AppShell } from "./AppShell";
 
@@ -26,8 +27,10 @@ function Gate({ children }: { children: React.ReactNode }) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <StoreProvider>
-      <Gate>{children}</Gate>
-    </StoreProvider>
+    <ThemeProvider>
+      <StoreProvider>
+        <Gate>{children}</Gate>
+      </StoreProvider>
+    </ThemeProvider>
   );
 }

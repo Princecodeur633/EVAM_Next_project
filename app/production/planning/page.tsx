@@ -7,7 +7,7 @@ import { FAMILY_LABEL } from "@/lib/seed";
 import { Button, Field, inputClass, PageHeader, Panel } from "@/components/ui";
 
 export default function PlanningPage() {
-  const { state, dispatch, productName } = useStore();
+  const { state, dispatch, productName, can } = useStore();
   const router = useRouter();
   const [productId, setProductId] = useState(state.products[0]?.id ?? "");
   const [date, setDate] = useState("2026-08-20");
@@ -29,6 +29,7 @@ export default function PlanningPage() {
       <div className="grid lg:grid-cols-[340px_1fr] gap-4">
         <Panel className="p-4">
           <h2 className="text-[13px] font-semibold mb-3">Nouveau plan</h2>
+          {can("CREATE_PLAN") ? (
           <form onSubmit={onSubmit} className="space-y-3">
             <Field label="Produit fini">
               <select className={inputClass} value={productId} onChange={(e) => setProductId(e.target.value)}>
@@ -49,6 +50,9 @@ export default function PlanningPage() {
               Générer l'OF
             </Button>
           </form>
+          ) : (
+            <p className="text-[13px] text-muted">Lecture seule. Seul le responsable production crée un plan.</p>
+          )}
         </Panel>
         <Panel>
           <div className="px-4 py-3 border-b border-line">
@@ -56,7 +60,7 @@ export default function PlanningPage() {
           </div>
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-line bg-[#f8fafb] text-[11px] uppercase tracking-wide text-muted">
+              <tr className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-wide text-muted">
                 <th className="px-3 py-2 font-medium">Date</th>
                 <th className="px-3 py-2 font-medium">Produit</th>
                 <th className="px-3 py-2 font-medium">Famille</th>

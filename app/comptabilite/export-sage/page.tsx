@@ -5,10 +5,9 @@ import { useStore } from "@/lib/store";
 import { formatDa } from "@/lib/utils";
 
 export default function ExportSagePage() {
-  const { state, dispatch, role } = useStore();
+  const { state, dispatch, can } = useStore();
   const ready = state.drafts.filter((d) => d.status === "valide");
   const excluded = state.drafts.filter((d) => d.status === "exclu");
-  const can = role === "comptabilite" || role === "administrateur";
   return (
     <div className="space-y-4">
       <PageHeader
@@ -27,7 +26,7 @@ export default function ExportSagePage() {
           Pièces prêtes : <span className="num font-medium">{ready.length}</span> ·{" "}
           {formatDa(ready.reduce((a, d) => a + d.amount, 0))}
         </p>
-        {can && (
+        {can("EXPORT_SAGE") && (
           <Button
             onClick={() => {
               if (confirm("Exporter vers Sage 100 les brouillards validés uniquement ?")) dispatch({ type: "EXPORT_SAGE" });

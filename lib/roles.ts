@@ -134,7 +134,7 @@ export const ROLE_PROFILES: Record<Role, RoleProfile> = {
     accent: "teal",
     icon: "cart",
     homeHint: "Valider la DA lait et traiter l’écart de réception concentré.",
-    paramAllow: ["/parametrage/matieres", "/parametrage/fournisseurs", "/parametrage/seuils"],
+    paramAllow: ["/parametrage/matieres", "/parametrage/conditionnements", "/parametrage/fournisseurs", "/parametrage/seuils"],
   },
   commercial: {
     role: "commercial",
@@ -209,10 +209,17 @@ export const ROLE_PROFILES: Record<Role, RoleProfile> = {
     accent: "slate",
     icon: "ledger",
     homeHint: "Valider FA-2026-01103 puis exporter. Vérifier que FA-2026-01104 est exclue.",
-    paramAllow: ["/parametrage/sage", "/parametrage/general"],
+    paramAllow: ["/parametrage/sage", "/parametrage/general", "/parametrage/motifs-suspension"],
   },
 };
 
 export const ROLE_LABEL: Record<Role, string> = Object.fromEntries(
   Object.values(ROLE_PROFILES).map((p) => [p.role, p.label]),
 ) as Record<Role, string>;
+
+export function canEditParam(role: Role | null, href: string) {
+  if (!role) return false;
+  const allow = ROLE_PROFILES[role].paramAllow;
+  if (allow.includes("*")) return true;
+  return allow.some((p) => href === p || href.startsWith(p + "/"));
+}

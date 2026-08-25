@@ -18,7 +18,7 @@ export default function PreparationsPage() {
       <Panel>
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
+            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
               <th className="text-left px-3 py-2">Commande</th>
               <th className="text-left px-3 py-2">Client</th>
               <th className="text-left px-3 py-2">Paiement</th>

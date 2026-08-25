@@ -8,7 +8,7 @@ import { formatQty } from "@/lib/utils";
 
 export default function InventaireDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, productName } = useStore();
+  const { state, dispatch, productName, can } = useStore();
   const inv = state.inventories.find((i) => i.id === id);
   const [counts, setCounts] = useState<Record<string, number>>({});
   if (!inv) return <p>Session introuvable</p>;
@@ -21,10 +21,10 @@ export default function InventaireDetailPage() {
         description="Le théorique n'est pas éditable. Le physique est saisi par le magasinier. La validation écrit l'ajustement."
         actions={
           <>
-            {inv.status === "ouvert" && (
+            {inv.status === "ouvert" && can("COUNT_INVENTORY") && (
               <Button onClick={() => dispatch({ type: "COUNT_INVENTORY", id: inv.id, counts })}>Enregistrer le comptage</Button>
             )}
-            {inv.status === "compte" && (
+            {inv.status === "compte" && can("VALIDATE_INVENTORY") && (
               <Button variant="success" onClick={() => dispatch({ type: "VALIDATE_INVENTORY", id: inv.id })}>
                 Valider les écarts
               </Button>
@@ -35,7 +35,7 @@ export default function InventaireDetailPage() {
       <Panel>
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
+            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
               <th className="text-left px-3 py-2">Article</th>
               <th className="text-right px-3 py-2">Théorique</th>
               <th className="text-right px-3 py-2">Physique</th>

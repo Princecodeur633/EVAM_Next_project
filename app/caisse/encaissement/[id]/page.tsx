@@ -9,7 +9,7 @@ import { formatDa } from "@/lib/utils";
 
 export default function EncaissementPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, customerName } = useStore();
+  const { state, dispatch, customerName, can } = useStore();
   const router = useRouter();
   const invoice = state.invoices.find((i) => i.id === id);
   const order = state.orders.find((o) => o.id === invoice?.orderId);
@@ -45,36 +45,47 @@ export default function EncaissementPage() {
         <p className="text-[12px] text-muted">
           Client {customer.type}. Les moyens non autorisés n'apparaissent pas — le caissier ne « force » pas un virement comptant.
         </p>
-        <div className="flex gap-2 pt-2">
-          <Button
-            variant="success"
-            onClick={() => {
-              dispatch({ type: "PAY_INVOICE", invoiceId: invoice.id, method, success: true });
-              router.push("/caisse");
-            }}
-          >
-            Paiement réussi
-          </Button>
-        </div>
-        <div className="border-t border-line pt-3 space-y-2">
-          <p className="text-[12px] font-medium">Échec de paiement</p>
-          <Field label="Motif de suspension">
-            <select className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)}>
-              {state.suspendReasons.map((r) => (
-                <option key={r.id}>{r.label}</option>
-              ))}
-            </select>
-          </Field>
-          <Button
-            variant="danger"
-            onClick={() => {
-              dispatch({ type: "PAY_INVOICE", invoiceId: invoice.id, method, success: false, reason });
-              router.push("/caisse/suspendues");
-            }}
-          >
-            Enregistrer l'échec — suspendre
-          </Button>
-        </div>
+        {can("PAY_INVOICE") ? (
+          <>
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="success"
+                onClick={() => {
+                  dispatch({ type: "PAY_INVOICE", invoiceId: invoice.id, method, success: true });
+                  router.push("/caisse");
+                }}
+              >
+                Paiement réussi
+              </Button>
+            </div>
+            <div className="border-t border-line pt-3 space-y-2">
+              <p className="text-[12px] font-medium">Échec de paiement</p>
+              <p className="text-[12px] text-muted">
+                La commande est annulée, le stock réservé libéré, la facture suspendue (motif obligatoire). Jamais Sage.
+              </p>
+              <Field label="Motif de suspension">
+                <select className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)}>
+                  {state.suspendReasons.map((r) => (
+                    <option key={r.id} value={r.label}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  dispatch({ type: "PAY_INVOICE", invoiceId: invoice.id, method, success: false, reason });
+                  router.push("/caisse/suspendues");
+                }}
+              >
+                Enregistrer l'échec — annuler la commande
+              </Button>
+            </div>
+          </>
+        ) : (
+          <p className="text-[13px] text-muted">Lecture — seul le caissier encaisse.</p>
+        )}
       </Panel>
     </div>
   );

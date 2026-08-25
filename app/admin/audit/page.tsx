@@ -12,7 +12,7 @@ export default function AuditPage() {
       <Panel>
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
+            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
               <th className="text-left px-3 py-2">Date</th>
               <th className="text-left px-3 py-2">Utilisateur</th>
               <th className="text-left px-3 py-2">Action</th>

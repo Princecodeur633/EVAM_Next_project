@@ -29,7 +29,7 @@ export default function BesoinsPage() {
                 </thead>
                 <tbody>
                   {r.lines.map((l) => {
-                    const st = state.stock.find((s) => s.articleId === l.materialId);
+                    const st = state.stock.find((s) => s.articleId === l.materialId && s.depotId === "dep-mp");
                     const avail = st ? availableQty(st.qty, st.reserved) : 0;
                     const gap = avail - l.qty;
                     return (

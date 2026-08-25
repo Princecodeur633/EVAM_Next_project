@@ -9,7 +9,7 @@ import { formatDa, formatQty } from "@/lib/utils";
 
 export default function OfDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, productName, materialName, role } = useStore();
+  const { state, dispatch, productName, materialName, can } = useStore();
   const of = state.ofList.find((o) => o.id === decodeURIComponent(id));
   if (!of) return <p>OF introuvable</p>;
 
@@ -19,9 +19,9 @@ export default function OfDetailPage() {
   const ofLosses = state.losses.filter((l) => l.ofId === of.id);
   const stepperId = of.status === "bloque" ? "fin_production" : of.status === "controle_qualite" ? "controle_qualite" : of.status;
 
-  const canEnd = role === "responsable_production" || role === "administrateur";
-  const canQuality = role === "controleur_qualite" || role === "administrateur";
-  const canTrack = role === "agent_production" || role === "responsable_production" || role === "administrateur";
+  const canEnd = can("END_PRODUCTION");
+  const canQuality = can("QUALITY_CLOSE");
+  const canStart = can("START_OF");
 
   return (
     <div className="space-y-4">
@@ -32,7 +32,7 @@ export default function OfDetailPage() {
         description={`${productName(of.productId)} · prévu ${formatQty(of.qtyPlanned)} ${product?.unit ?? ""}`}
         actions={
           <>
-            {of.status === "planifie" && canTrack && (
+            {of.status === "planifie" && canStart && (
               <Button onClick={() => dispatch({ type: "START_OF", ofId: of.id })}>Démarrer la production</Button>
             )}
             {of.status === "en_production" && canEnd && (

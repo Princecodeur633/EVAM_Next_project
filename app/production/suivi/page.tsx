@@ -6,7 +6,7 @@ import { OfBadge } from "@/components/badges";
 import { useStore } from "@/lib/store";
 
 export default function SuiviPage() {
-  const { state, dispatch, productName } = useStore();
+  const { state, dispatch, productName, can } = useStore();
   const running = state.ofList.filter((o) => ["en_production", "planifie"].includes(o.status));
   const [qty, setQty] = useState<Record<string, number>>({});
 
@@ -32,6 +32,12 @@ export default function SuiviPage() {
                   onChange={(e) => setQty({ ...qty, [o.id]: Number(e.target.value) })}
                 />
               </Field>
+            {o.status === "planifie" && can("START_OF") && (
+              <Button variant="secondary" onClick={() => dispatch({ type: "START_OF", ofId: o.id })}>
+                Démarrer
+              </Button>
+            )}
+            {o.status === "en_production" && can("SAVE_TRACKING") && (
               <Button
                 onClick={() =>
                   dispatch({ type: "SAVE_TRACKING", ofId: o.id, qtyReal: qty[o.id] ?? (o.qtyReal || o.qtyPlanned) })
@@ -39,6 +45,7 @@ export default function SuiviPage() {
               >
                 Enregistrer
               </Button>
+            )}
               <a className="text-[13px] text-primary" href={`/production/of/${o.id}`}>
                 Fiche OF
               </a>

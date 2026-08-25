@@ -16,7 +16,7 @@ export default function SuspenduesPage() {
       <Panel>
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
+            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
               <th className="text-left px-3 py-2">Facture</th>
               <th className="text-right px-3 py-2">Montant</th>
               <th className="text-left px-3 py-2">Motif</th>

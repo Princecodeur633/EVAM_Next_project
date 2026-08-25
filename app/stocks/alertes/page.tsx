@@ -1,32 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { Guard, PageHeader, Panel } from "@/components/ui";
+import { Button, Guard, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
 import { formatQty } from "@/lib/utils";
 
 export default function AlertesPage() {
-  const { state, materialName } = useStore();
-  const alerts = state.materials
+  const { state, dispatch, materialName, productName, can, role } = useStore();
+  const matAlerts = state.materials
     .map((m) => {
-      const qty = state.stock.filter((s) => s.articleId === m.id).reduce((a, s) => a + s.qty, 0);
-      return { m, qty, gap: qty - m.minStock };
+      const qty = state.stock.filter((s) => s.articleId === m.id && s.depotId === "dep-mp").reduce((a, s) => a + s.qty, 0);
+      return { kind: "matiere" as const, id: m.id, name: materialName(m.id), qty, min: m.minStock, gap: qty - m.minStock };
+    })
+    .filter((a) => a.gap < 0);
+  const pfAlerts = state.products
+    .map((p) => {
+      const qty = state.stock.filter((s) => s.articleId === p.id && s.depotId === "dep-pf").reduce((a, s) => a + s.qty, 0);
+      return { kind: "produit" as const, id: p.id, name: productName(p.id), qty, min: p.minStock, gap: qty - p.minStock };
     })
     .filter((a) => a.gap < 0);
 
+  const alerts = [...pfAlerts, ...matAlerts];
+
   return (
     <div>
-      <PageHeader eyebrow="Stocks" title="Alertes seuils" description="Seuil min atteint → besoin d'achat. Liste actionnable, pas un simple voyant." />
+      <PageHeader
+        eyebrow="Stocks"
+        title="Alertes seuils"
+        description="Seuil min atteint. Action : planifier (PF) ou créer une DA (matières) — selon votre poste."
+      />
       {alerts.length === 0 ? (
         <Guard variant="ok" title="Aucun article sous seuil">
-          Les matières sont au-dessus des minimums paramétrés.
+          Les stocks sont au-dessus des minimums paramétrés.
         </Guard>
       ) : (
         <Panel>
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-                <th className="text-left px-3 py-2">Matière</th>
+              <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
+                <th className="text-left px-3 py-2">Article</th>
+                <th className="text-left px-3 py-2">Type</th>
                 <th className="text-right px-3 py-2">Stock</th>
                 <th className="text-right px-3 py-2">Seuil</th>
                 <th className="text-right px-3 py-2">Écart</th>
@@ -35,15 +48,33 @@ export default function AlertesPage() {
             </thead>
             <tbody>
               {alerts.map((a) => (
-                <tr key={a.m.id} className="border-b border-line">
-                  <td className="px-3 py-2">{materialName(a.m.id)}</td>
+                <tr key={a.id} className="border-b border-line">
+                  <td className="px-3 py-2">{a.name}</td>
+                  <td className="px-3 py-2">{a.kind === "produit" ? "PF vendable" : "Matière"}</td>
                   <td className="px-3 py-2 text-right num">{formatQty(a.qty, 1)}</td>
-                  <td className="px-3 py-2 text-right num">{formatQty(a.m.minStock, 1)}</td>
+                  <td className="px-3 py-2 text-right num">{formatQty(a.min, 1)}</td>
                   <td className="px-3 py-2 text-right num text-danger">{formatQty(a.gap, 1)}</td>
                   <td className="px-3 py-2">
-                    <Link className="text-primary" href="/approvisionnement/besoins">
-                      Créer un besoin d'achat
-                    </Link>
+                    {a.kind === "matiere" && can("CREATE_DA") ? (
+                      <Button
+                        onClick={() =>
+                          dispatch({
+                            type: "CREATE_DA",
+                            materialId: a.id,
+                            qty: Math.ceil(Math.abs(a.gap) * 1.2),
+                            reason: "Alerte seuil",
+                          })
+                        }
+                      >
+                        Créer une DA
+                      </Button>
+                    ) : a.kind === "produit" && role === "responsable_production" ? (
+                      <Link className="text-primary" href="/production/planning">
+                        Planifier
+                      </Link>
+                    ) : (
+                      <span className="text-[12px] text-muted">Signalé — hors votre action</span>
+                    )}
                   </td>
                 </tr>
               ))}

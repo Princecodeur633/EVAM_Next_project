@@ -8,7 +8,7 @@ import { formatDa } from "@/lib/utils";
 
 export default function BlDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, customerName, productName } = useStore();
+  const { state, dispatch, customerName, productName, can } = useStore();
   const bl = state.deliveryNotes.find((b) => b.id === id);
   const order = state.orders.find((o) => o.id === bl?.orderId);
   const invoice = state.invoices.find((i) => i.id === order?.invoiceId);
@@ -23,16 +23,8 @@ export default function BlDetailPage() {
           {invoice.number} · {formatDa(invoice.amount)}
         </Guard>
       ) : (
-        <Guard
-          variant="block"
-          title="Livraison interdite — facture non payée"
-          action={
-            <a href={`/caisse/encaissement/${invoice.id}`} className="text-[13px] text-primary underline">
-              Aller à la caisse
-            </a>
-          }
-        >
-          La préparation a pu avancer. Le BL reste verrouillé tant que {invoice.number} n'est pas encaissée.
+        <Guard variant="block" title="Livraison interdite — facture non payée">
+          La préparation a pu avancer. Le BL reste verrouillé tant que {invoice.number} n'est pas encaissée. Seule la caisse déverrouille.
         </Guard>
       )}
       <Panel className="p-4">
@@ -42,7 +34,7 @@ export default function BlDetailPage() {
           </p>
         ))}
         <div className="flex gap-2 mt-4">
-          <Button disabled={!paid || bl.status === "livre"} onClick={() => dispatch({ type: "VALIDATE_BL", orderId: order.id })}>
+          <Button disabled={!paid || bl.status === "livre" || !can("VALIDATE_BL")} onClick={() => dispatch({ type: "VALIDATE_BL", orderId: order.id })}>
             Valider le BL
           </Button>
           <Button variant="secondary" disabled={!paid || bl.status === "verrouille"} onClick={() => window.print()}>

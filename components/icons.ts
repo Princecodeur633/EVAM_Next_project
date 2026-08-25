@@ -32,6 +32,8 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   ledger: ClipboardList,
   sliders: SlidersHorizontal,
   shield: Shield,
+  check: CheckCircle2,
+  package: Package,
 };
 
 export const ROLE_ICONS: Record<string, LucideIcon> = {
@@ -64,5 +66,5 @@ export const ACCENT_SOFT: Record<string, string> = {
   amber: "bg-warning-soft text-warning",
   green: "bg-success-soft text-success",
   red: "bg-danger-soft text-danger",
-  slate: "bg-slate-100 text-slate-600",
+  slate: "bg-surface-2 text-muted",
 };

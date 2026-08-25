@@ -5,7 +5,7 @@ import { Button, Field, inputClass, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
 
 export default function PertesPage() {
-  const { state, dispatch } = useStore();
+  const { state, dispatch, can } = useStore();
   const [ofId, setOfId] = useState(state.ofList[0]?.id ?? "");
   const [causeId, setCauseId] = useState(state.lossCauses[0]?.id ?? "");
   const [qty, setQty] = useState(12);
@@ -23,8 +23,10 @@ export default function PertesPage() {
           <form onSubmit={onSubmit} className="space-y-3">
             <Field label="OF">
               <select className={inputClass} value={ofId} onChange={(e) => setOfId(e.target.value)}>
-                {state.ofList.map((o) => (
-                  <option key={o.id}>{o.id}</option>
+                {state.ofList.filter((o) => ["en_production", "fin_production"].includes(o.status)).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.id}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -40,13 +42,13 @@ export default function PertesPage() {
             <Field label="Quantité">
               <input type="number" className={inputClass + " num"} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
             </Field>
-            <Button type="submit">Saisir la perte</Button>
+            {can("ADD_LOSS") && <Button type="submit">Saisir la perte</Button>}
           </form>
         </Panel>
         <Panel>
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
+              <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
                 <th className="text-left px-3 py-2 font-medium">OF</th>
                 <th className="text-left px-3 py-2 font-medium">Cause</th>
                 <th className="text-right px-3 py-2 font-medium">Qté</th>

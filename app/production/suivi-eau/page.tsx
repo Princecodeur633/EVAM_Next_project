@@ -5,7 +5,7 @@ import { Button, Field, inputClass, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
 
 export default function SuiviEauPage() {
-  const { state, dispatch } = useStore();
+  const { state, dispatch, can } = useStore();
   const eau = state.ofList.filter((o) => o.productId === "p-eau" && !["cloture", "bloque"].includes(o.status));
   const [vol, setVol] = useState<Record<string, number>>({});
 
@@ -32,6 +32,7 @@ export default function SuiviEauPage() {
             <Field label="Cadence ligne A">
               <input className={inputClass} readOnly defaultValue="6 000 bph" />
             </Field>
+            {can("SAVE_TRACKING") && (
             <Button
               onClick={() =>
                 dispatch({
@@ -44,6 +45,7 @@ export default function SuiviEauPage() {
             >
               Enregistrer compteur
             </Button>
+            )}
           </div>
         </Panel>
       ))}

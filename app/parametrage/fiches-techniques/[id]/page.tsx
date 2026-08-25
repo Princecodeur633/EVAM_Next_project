@@ -2,15 +2,17 @@
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { Button, Field, inputClass, PageHeader, Panel, StatusBadge } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import type { TechnicalSheet } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const TABS = ["Composition", "Emballages", "Process", "Rendement", "Contrôles qualité"] as const;
 
 export default function FtDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, productName, materialName } = useStore();
+  const { state, productName, materialName, dispatch, canEditParam } = useStore();
+  const edit = canEditParam("/parametrage/fiches-techniques");
   const [tab, setTab] = useState<(typeof TABS)[number]>("Composition");
   const s = state.sheets.find((x) => x.id === id);
   if (!s) return <p>Fiche introuvable</p>;
@@ -22,6 +24,11 @@ export default function FtDetailPage() {
         title={productName(s.productId)}
         status={<StatusBadge tone="success">v{s.version} {s.status}</StatusBadge>}
         description="Document maître du calcul des besoins OF et des contrôles qualité."
+        actions={
+          edit && s.status !== "active" ? (
+            <Button onClick={() => dispatch({ type: "ACTIVATE_SHEET", id: s.id })}>Activer cette version</Button>
+          ) : undefined
+        }
       />
       <div className="flex gap-0 border-b border-line mb-4">
         {TABS.map((t) => (
@@ -52,9 +59,7 @@ export default function FtDetailPage() {
           </ol>
         )}
         {tab === "Rendement" && (
-          <p className="text-[13px]">
-            Attendu {s.yieldExpected} % · tolérance ± {s.yieldTolerance} %. Les écarts apparaissent à la clôture OF.
-          </p>
+          <YieldEditor sheet={s} edit={edit} />
         )}
         {tab === "Contrôles qualité" && (
           <table className="w-full text-[13px]">
@@ -72,6 +77,42 @@ export default function FtDetailPage() {
           </table>
         )}
       </Panel>
+    </div>
+  );
+}
+
+function YieldEditor({ sheet, edit }: { sheet: TechnicalSheet; edit: boolean }) {
+  const { dispatch } = useStore();
+  const [expected, setExpected] = useState(sheet.yieldExpected);
+  const [tol, setTol] = useState(sheet.yieldTolerance);
+  return (
+    <div className="space-y-3 text-[13px] max-w-sm">
+      <p>Les écarts vs ces valeurs apparaissent à la clôture OF.</p>
+      <Field label="Rendement attendu %">
+        <input
+          type="number"
+          className={inputClass + " num"}
+          value={expected}
+          readOnly={!edit}
+          onChange={(e) => setExpected(Number(e.target.value))}
+        />
+      </Field>
+      <Field label="Tolérance ±">
+        <input
+          type="number"
+          className={inputClass + " num"}
+          value={tol}
+          readOnly={!edit}
+          onChange={(e) => setTol(Number(e.target.value))}
+        />
+      </Field>
+      {edit && (
+        <Button
+          onClick={() => dispatch({ type: "UPDATE_SHEET", sheet: { ...sheet, yieldExpected: expected, yieldTolerance: tol } })}
+        >
+          Enregistrer le rendement
+        </Button>
+      )}
     </div>
   );
 }

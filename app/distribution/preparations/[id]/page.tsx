@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 
 export default function PreparationDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, productName } = useStore();
+  const { state, dispatch, productName, can } = useStore();
   const order = state.orders.find((o) => o.id === id);
   if (!order) return <p>Commande introuvable</p>;
   const invoice = state.invoices.find((i) => i.id === order.invoiceId);
@@ -28,12 +28,14 @@ export default function PreparationDetailPage() {
             {productName(l.productId)} · {l.qty}
           </p>
         ))}
+        {order.status !== "annulee" && can("PREPARE_ORDER") && (
         <div className="flex gap-2 mt-4">
           <Button variant="secondary" onClick={() => dispatch({ type: "PREPARE_ORDER", orderId: order.id, status: "partielle" })}>
             Partielle
           </Button>
           <Button onClick={() => dispatch({ type: "PREPARE_ORDER", orderId: order.id, status: "complete" })}>Complète</Button>
         </div>
+        )}
       </Panel>
     </div>
   );

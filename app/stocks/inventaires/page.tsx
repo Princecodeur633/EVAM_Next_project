@@ -1,18 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { Button, PageHeader, Panel, StatusBadge } from "@/components/ui";
 import { useStore } from "@/lib/store";
 
 export default function InventairesPage() {
-  const { state } = useStore();
+  const { state, dispatch, can } = useStore();
   return (
     <div>
-      <PageHeader eyebrow="Stocks" title="Inventaires" description="Session de comptage : théorique vs physique, puis validation des écarts." />
+      <PageHeader
+        eyebrow="Stocks"
+        title="Inventaires"
+        description="Session de comptage : théorique vs physique, puis validation des écarts (écriture d'ajustement, CMUP inchangé)."
+        actions={
+          can("OPEN_INVENTORY") ? (
+            <Button onClick={() => dispatch({ type: "OPEN_INVENTORY", depotId: state.depotId })}>
+              Ouvrir une session ({state.depots.find((d) => d.id === state.depotId)?.name})
+            </Button>
+          ) : undefined
+        }
+      />
       <Panel>
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
+            <tr className="text-[11px] uppercase text-muted border-b border-line bg-surface-2">
               <th className="text-left px-3 py-2 font-medium">Session</th>
               <th className="text-left px-3 py-2 font-medium">Dépôt</th>
               <th className="text-left px-3 py-2 font-medium">Date</th>
