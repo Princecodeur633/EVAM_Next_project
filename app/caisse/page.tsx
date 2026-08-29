@@ -1,51 +1,60 @@
 "use client";
 
-import Link from "next/link";
-import { OrderBadge } from "@/components/badges";
-import { PageHeader, Panel } from "@/components/ui";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { MODE_PAIEMENT_LABEL, STATUT_FACTURE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
+import { formatDa, num } from "@/lib/utils";
+import type { ModePaiement } from "@/lib/types";
 
 export default function CaissePage() {
-  const { state, customerName } = useStore();
-  const aPayer = state.invoices.filter((i) => i.status === "a_payer");
+  const { state, dispatch, clientName, can } = useStore();
+  const session = state.sessionsCaisse.find((s) => s.statut === "OUVERTE");
+  const [mode, setMode] = useState<ModePaiement>("ESPECES");
+  const [caisse, setCaisse] = useState(state.caisses[0]?.id ?? 0);
+  const [solde, setSolde] = useState(0);
+
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         eyebrow="Caisse"
-        title="Encaissements du jour"
-        description="Espèces, CB ou virement selon le type client. Un échec suspend la facture, libère le stock, et interdit Sage."
+        title="Factures et encaissements"
+        description="Ouvrez une session, puis encaissez les factures en espèces, mobile money, virement ou chèque."
       />
+      {!session && can("ENCAISSER") && (
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
+          <Field label="Caisse">
+            <select className={inputClass} value={caisse} onChange={(e) => setCaisse(Number(e.target.value))}>
+              {state.caisses.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
+            </select>
+          </Field>
+          <Field label="Solde d'ouverture">
+            <input type="number" className={inputClass} value={solde} onChange={(e) => setSolde(Number(e.target.value))} />
+          </Field>
+          <Button disabled={!caisse} onClick={() => void dispatch({ type: "CREATE_SESSION", caisse, solde_ouverture: solde })}>Ouvrir session</Button>
+        </Panel>
+      )}
+      {session && <p className="text-[13px] text-muted">Session ouverte · solde d’ouverture {formatDa(num(session.solde_ouverture))}</p>}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Facture</th>
-              <th className="text-left px-3 py-2">Client</th>
-              <th className="text-right px-3 py-2">Montant</th>
-              <th className="text-left px-3 py-2">Commande</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {aPayer.map((inv) => {
-              const order = state.orders.find((o) => o.id === inv.orderId);
-              return (
-                <tr key={inv.id} className="border-b border-line">
-                  <td className="px-3 py-2 num font-medium">{inv.number}</td>
-                  <td className="px-3 py-2">{order ? customerName(order.customerId) : "—"}</td>
-                  <td className="px-3 py-2 text-right num">{formatDa(inv.amount)}</td>
-                  <td className="px-3 py-2">{order && <OrderBadge status={order.status} />}</td>
-                  <td className="px-3 py-2">
-                    <Link href={`/caisse/encaissement/${inv.id}`} className="inline-flex items-center h-8 px-3 text-[13px] font-medium rounded-[6px] bg-primary text-white">
-                      Encaisser
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "n", label: "Facture" }, { key: "c", label: "Client" }, { key: "m", label: "Montant" }, { key: "s", label: "Statut" }, { key: "act", label: "" }]}
+          rows={state.factures.map((f) => ({
+            n: f.numero,
+            c: clientName(f.client),
+            m: formatDa(num(f.montant_total)),
+            s: <StatusBadge tone={f.statut === "PAYEE" ? "success" : "warning"}>{STATUT_FACTURE_LABEL[f.statut]}</StatusBadge>,
+            act: session && f.statut === "EMISE" && can("ENCAISSER") ? (
+              <span className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                <select className="h-8 border border-line rounded px-1 text-[12px]" value={mode} onChange={(e) => setMode(e.target.value as ModePaiement)}>
+                  {(Object.keys(MODE_PAIEMENT_LABEL) as ModePaiement[]).map((k) => <option key={k} value={k}>{MODE_PAIEMENT_LABEL[k]}</option>)}
+                </select>
+                <button className="text-primary text-[12px] whitespace-nowrap" onClick={() => void dispatch({ type: "ENCAISSER", session_caisse: session.id, facture: f.id, montant: num(f.montant_total), mode_paiement: mode })}>
+                  Encaisser
+                </button>
+              </span>
+            ) : "—",
+          }))}
+        />
       </Panel>
     </div>
   );

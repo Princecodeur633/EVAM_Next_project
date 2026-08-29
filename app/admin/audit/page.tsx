@@ -1,33 +1,25 @@
 "use client";
 
-import { PageHeader, Panel } from "@/components/ui";
+import { DataTable, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/utils";
 
 export default function AuditPage() {
-  const { state } = useStore();
+  const { state, userName } = useStore();
   return (
-    <div>
-      <PageHeader eyebrow="Administration" title="Journal d'audit" description="Qui a clôturé, qui a suspendu, qui a exporté Sage." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Administration" title="Journal des actions" description="Historique des opérations réalisées dans EVAM." />
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Date</th>
-              <th className="text-left px-3 py-2">Utilisateur</th>
-              <th className="text-left px-3 py-2">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.audit.map((a) => (
-              <tr key={a.id} className="border-b border-line">
-                <td className="px-3 py-2 num whitespace-nowrap">{formatDateTime(a.at)}</td>
-                <td className="px-3 py-2">{a.user}</td>
-                <td className="px-3 py-2">{a.action}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "d", label: "Date" }, { key: "u", label: "Utilisateur" }, { key: "m", label: "Module" }, { key: "a", label: "Action" }, { key: "doc", label: "Document" }]}
+          rows={state.journal.map((j) => ({
+            d: formatDateTime(j.date_action),
+            u: userName(j.utilisateur),
+            m: j.module,
+            a: j.action,
+            doc: j.document_id || "—",
+          }))}
+        />
       </Panel>
     </div>
   );

@@ -1,80 +1,34 @@
 "use client";
 
-import Link from "next/link";
+import { KpiCard } from "@/components/charts";
+import { DataTable, PageHeader, Panel } from "@/components/ui";
+import { stockDisponible } from "@/lib/engine";
+import { STATUT_OF_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDa, formatQty } from "@/lib/utils";
-import { DataTable, Metric, PageHeader, Panel } from "@/components/ui";
-import { OfBadge, OrderBadge } from "@/components/badges";
+import { formatDa, formatQty, num } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const { state, productName, customerName } = useStore();
-  const stockPf = state.stock.filter((s) => s.articleType === "produit");
-  const caJour = state.payments.filter((p) => p.success && p.at.startsWith("2026-08-19")).reduce((a, p) => a + p.amount, 0);
-  const ofOpen = state.ofList.filter((o) => !["cloture", "bloque"].includes(o.status)).length;
-  const suspendues = state.invoices.filter((i) => i.status === "suspendue").length;
-  const alertes = state.materials.filter((m) => {
-    const qty = state.stock.filter((s) => s.articleId === m.id).reduce((a, s) => a + s.qty, 0);
-    return qty < m.minStock;
-  }).length;
+  const { state, articleName } = useStore();
+  const ofOpen = state.ofList.filter((o) => o.statut !== "CLOTURE").length;
+  const lotsWait = state.lots.filter((l) => l.statut === "EN_ATTENTE").length;
+  const stock = state.stock.reduce((a, s) => a + stockDisponible(s), 0);
+  const ca = state.encaissements.reduce((a, e) => a + num(e.montant), 0);
 
   return (
-    <div>
-      <PageHeader
-        eyebrow="Direction"
-        title="Tableau de bord"
-        description="Indicateurs vitaux uniquement — pas un reporting de module. Drill-down vers le flux réel."
-      />
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-6">
-        <Metric label="Stock PF (unités)" value={formatQty(stockPf.reduce((a, s) => a + s.qty, 0))} hint="Lots vendables uniquement" />
-        <Metric label="CA du jour" value={formatDa(caJour)} hint="Encaissements réussis" tone="success" />
-        <Metric label="OF en cours" value={ofOpen} hint="Hors clôturés / bloqués" tone="warning" />
-        <Metric label="Factures suspendues" value={suspendues} hint="Jamais exportables Sage" tone="danger" />
-        <Metric label="Alertes seuils" value={alertes} hint="Matières sous minimum" tone={alertes ? "warning" : "default"} />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Pilotage" title="Tableau de bord" description="Vue d’ensemble de l’usine : stocks, encaissements, production et qualité." />
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard label="Stock disponible" value={formatQty(stock, 0)} />
+        <KpiCard label="Encaissements" value={formatDa(ca)} tone="success" />
+        <KpiCard label="OF ouverts" value={ofOpen} tone="warning" />
+        <KpiCard label="Lots en attente" value={lotsWait} tone={lotsWait ? "warning" : "success"} />
       </div>
-
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Panel>
-          <div className="px-4 py-3 border-b border-line flex justify-between">
-            <h2 className="text-[13px] font-semibold">Ordres de fabrication actifs</h2>
-            <Link href="/production/of" className="text-[12px] text-primary">Voir les OF</Link>
-          </div>
-          <DataTable
-            columns={[
-              { key: "id", label: "OF" },
-              { key: "p", label: "Produit" },
-              { key: "st", label: "Statut" },
-              { key: "lot", label: "Lot", className: "num" },
-            ]}
-            rows={state.ofList
-              .filter((o) => o.status !== "cloture")
-              .map((o) => ({
-                href: `/production/of/${o.id}`,
-                id: <span className="num">{o.id}</span>,
-                p: productName(o.productId),
-                st: <OfBadge status={o.status} />,
-                lot: o.lot ?? "—",
-              }))}
-          />
-        </Panel>
-        <Panel>
-          <div className="px-4 py-3 border-b border-line flex justify-between">
-            <h2 className="text-[13px] font-semibold">Commandes du jour</h2>
-            <Link href="/commercial/commandes" className="text-[12px] text-primary">Commercial</Link>
-          </div>
-          <DataTable
-            columns={[
-              { key: "n", label: "Commande" },
-              { key: "c", label: "Client" },
-              { key: "st", label: "Statut" },
-            ]}
-            rows={state.orders.map((o) => ({
-              n: <span className="num">{o.number}</span>,
-              c: customerName(o.customerId),
-              st: <OrderBadge status={o.status} />,
-            }))}
-          />
-        </Panel>
-      </div>
+      <Panel>
+        <DataTable
+          columns={[{ key: "n", label: "OF" }, { key: "a", label: "Article" }, { key: "s", label: "Statut" }]}
+          rows={state.ofList.slice(0, 8).map((o) => ({ n: o.numero, a: articleName(o.article), s: STATUT_OF_LABEL[o.statut] ?? o.statut }))}
+        />
+      </Panel>
     </div>
   );
 }

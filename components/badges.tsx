@@ -1,62 +1,81 @@
 import { StatusBadge } from "@/components/ui";
-import type { BlStatus, ClaimStatus, DaStatus, OfStatus, OrderStatus } from "@/lib/types";
+import {
+  STATUT_BL_LABEL,
+  STATUT_CMD_LABEL,
+  STATUT_DA_LABEL,
+  STATUT_LOT_LABEL,
+  STATUT_OF_LABEL,
+} from "@/lib/labels";
+import type { StatutBL, StatutCommande, StatutDemandeAchat, StatutLot, StatutOF } from "@/lib/types";
 
-export function OfBadge({ status }: { status: OfStatus }) {
-  const map: Record<OfStatus, { tone: "neutral" | "info" | "success" | "warning" | "danger" | "teal"; label: string }> = {
-    cree: { tone: "neutral", label: "Créé" },
-    planifie: { tone: "info", label: "Planifié" },
-    en_production: { tone: "warning", label: "En production" },
-    fin_production: { tone: "teal", label: "Fin production" },
-    controle_qualite: { tone: "teal", label: "Contrôle qualité" },
-    cloture: { tone: "success", label: "Clôturé" },
-    bloque: { tone: "danger", label: "Bloqué" },
+const TONE = {
+  neutral: "neutral",
+  info: "info",
+  success: "success",
+  warning: "warning",
+  danger: "danger",
+  teal: "teal",
+} as const;
+
+type Tone = (typeof TONE)[keyof typeof TONE];
+
+export function OfBadge({ status }: { status: StatutOF }) {
+  const tones: Record<StatutOF, Tone> = {
+    BROUILLON: "neutral",
+    PLANIFIE: "info",
+    LANCE: "teal",
+    EN_PRODUCTION: "warning",
+    TERMINE: "teal",
+    CONTROLE_QUALITE: "teal",
+    LIBERE: "success",
+    CLOTURE: "success",
   };
-  const m = map[status];
-  return <StatusBadge tone={m.tone}>{m.label}</StatusBadge>;
+  return <StatusBadge tone={tones[status]}>{STATUT_OF_LABEL[status]}</StatusBadge>;
 }
 
-export function OrderBadge({ status }: { status: OrderStatus }) {
-  const map: Record<OrderStatus, { tone: "neutral" | "info" | "success" | "warning" | "danger" | "teal"; label: string }> = {
-    creee: { tone: "neutral", label: "Créée" },
-    stock_verifie: { tone: "info", label: "Stock OK" },
-    a_payer: { tone: "warning", label: "À payer" },
-    payee: { tone: "success", label: "Payée" },
-    suspendue: { tone: "danger", label: "Suspendue" },
-    preparee: { tone: "teal", label: "Préparée" },
-    livree: { tone: "success", label: "Livrée" },
-    exportee: { tone: "success", label: "Exportée" },
-    annulee: { tone: "neutral", label: "Annulée" },
+export function OrderBadge({ status }: { status: StatutCommande }) {
+  const tones: Record<StatutCommande, Tone> = {
+    BROUILLON: "neutral",
+    VALIDEE: "info",
+    EN_PREPARATION: "warning",
+    LIVREE: "success",
+    FACTUREE: "success",
+    ANNULEE: "neutral",
   };
-  const m = map[status];
-  return <StatusBadge tone={m.tone}>{m.label}</StatusBadge>;
+  return <StatusBadge tone={tones[status]}>{STATUT_CMD_LABEL[status]}</StatusBadge>;
 }
 
-export function DaBadge({ status }: { status: DaStatus }) {
-  const map = {
-    brouillon: { tone: "neutral" as const, label: "Brouillon" },
-    soumise: { tone: "warning" as const, label: "Soumise" },
-    validee: { tone: "success" as const, label: "Validée" },
-    refusee: { tone: "danger" as const, label: "Refusée" },
+export function DaBadge({ status }: { status: StatutDemandeAchat }) {
+  const tones: Record<StatutDemandeAchat, Tone> = {
+    EN_ATTENTE: "warning",
+    APPROUVEE: "success",
+    REJETEE: "danger",
+    TRANSFORMEE: "teal",
   };
-  return <StatusBadge tone={map[status].tone}>{map[status].label}</StatusBadge>;
+  return <StatusBadge tone={tones[status]}>{STATUT_DA_LABEL[status]}</StatusBadge>;
 }
 
-export function BlBadge({ status }: { status: BlStatus }) {
-  const map = {
-    brouillon: { tone: "neutral" as const, label: "Brouillon" },
-    verrouille: { tone: "danger" as const, label: "Verrouillé — impayé" },
-    valide: { tone: "info" as const, label: "Validé" },
-    livre: { tone: "success" as const, label: "Livré" },
+export function BlBadge({ status }: { status: StatutBL }) {
+  const tones: Record<StatutBL, Tone> = {
+    EN_LIVRAISON: "info",
+    LIVREE: "success",
+    PARTIELLEMENT_LIVREE: "warning",
+    RETOURNEE: "danger",
   };
-  return <StatusBadge tone={map[status].tone}>{map[status].label}</StatusBadge>;
+  return <StatusBadge tone={tones[status]}>{STATUT_BL_LABEL[status]}</StatusBadge>;
 }
 
-export function ClaimBadge({ status }: { status: ClaimStatus }) {
-  const map = {
-    ouverte: { tone: "warning" as const, label: "Ouverte" },
-    quarantaine: { tone: "danger" as const, label: "Quarantaine" },
-    acceptee: { tone: "success" as const, label: "Acceptée" },
-    rejetee: { tone: "neutral" as const, label: "Rejetée" },
+export function LotBadge({ status }: { status: StatutLot }) {
+  const tones: Record<StatutLot, Tone> = {
+    EN_ATTENTE: "warning",
+    CONFORME: "teal",
+    NON_CONFORME: "danger",
+    BLOQUE: "danger",
+    LIBERE: "success",
   };
-  return <StatusBadge tone={map[status].tone}>{map[status].label}</StatusBadge>;
+  return <StatusBadge tone={tones[status]}>{STATUT_LOT_LABEL[status]}</StatusBadge>;
+}
+
+export function ClaimBadge({ status }: { status: string }) {
+  return <StatusBadge tone="neutral">{status}</StatusBadge>;
 }

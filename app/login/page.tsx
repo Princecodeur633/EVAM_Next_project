@@ -2,52 +2,76 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Moon, Sun } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ROLE_HOME } from "@/lib/nav";
-import { ROLE_LABEL } from "@/lib/seed";
+import { loadSession } from "@/lib/api";
 import { useStore } from "@/lib/store";
+import { useTheme } from "@/lib/theme";
 import { Button, Field, inputClass } from "@/components/ui";
 
 export default function LoginPage() {
-  const { state, dispatch } = useStore();
+  const { dispatch, state } = useStore();
+  const { theme, toggle } = useTheme();
   const router = useRouter();
-  const [email, setEmail] = useState("production@evam.dz");
-  const [password, setPassword] = useState("evam");
-  const [error, setError] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const user = state.users.find((u) => u.email === email && u.active);
-    if (!user || password !== "evam") {
-      setError("Identifiants incorrects. Mot de passe démo : evam");
-      return;
-    }
-    dispatch({ type: "LOGIN", userId: user.id });
-    router.replace(ROLE_HOME[user.role]);
+    setBusy(true);
+    await dispatch({ type: "LOGIN", username: username.trim(), password });
+    setBusy(false);
+    const session = loadSession();
+    if (!session) return;
+    router.replace(ROLE_HOME[session.profil]);
   }
 
   return (
-    <div className="min-h-screen bg-bg flex">
-      <div className="hidden lg:flex w-[42%] bg-sidebar text-white flex-col justify-between p-12">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-white/50">Unité de production</p>
-          <h1 className="text-[42px] font-semibold tracking-[0.2em] mt-3">EVAM</h1>
-          <p className="mt-6 text-white/70 max-w-sm leading-relaxed">
-            Une information saisie une fois. Du plan de production à Sage 100, sans ressaisie.
+    <div className="min-h-dvh bg-bg flex">
+      <div className="hidden lg:flex w-[min(42%,520px)] bg-sidebar text-white flex-col justify-between p-8 xl:p-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-25 evam-grid-bg pointer-events-none" />
+        <div className="relative">
+          <BrandLogo size="lg" priority className="max-h-14" />
+          <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-white/45">Unité de production</p>
+          <p className="mt-10 text-white/75 max-w-sm leading-relaxed text-[15px]">
+            Eau, jus et yaourts. Un seul outil pour planifier, fabriquer, contrôler, stocker, vendre et livrer.
           </p>
         </div>
-        <ul className="text-[13px] text-white/55 space-y-2">
-          <li>Planifier → Fabriquer → Contrôler</li>
-          <li>Stocker → Vendre → Encaisser → Livrer</li>
-          <li>Coûter → Comptabiliser</li>
-        </ul>
+        <div className="relative space-y-2 text-[13px] text-white/50">
+          <p>Production · Qualité · Stocks</p>
+          <p>Ventes · Caisse · Distribution</p>
+        </div>
       </div>
-      <div className="flex-1 flex items-center justify-center p-8">
-        <form onSubmit={onSubmit} className="w-full max-w-[380px]">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Connexion</p>
-          <h2 className="text-[22px] font-semibold mt-1 mb-6">Accéder à EVAM</h2>
-          <div className="space-y-3">
+
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 relative">
+        <button
+          onClick={toggle}
+          title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+          className="absolute top-5 right-5 h-9 w-9 flex items-center justify-center border border-line rounded-[8px] text-muted hover:text-ink bg-surface"
+        >
+          {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
+
+        <div className="w-full max-w-[400px]">
+          <div className="lg:hidden mb-6">
+            <BrandLogo size="md" priority className="max-h-10" />
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted font-medium mt-2">Unité de production</p>
+          </div>
+          <h1 className="text-[26px] font-semibold tracking-tight mt-1">Bienvenue</h1>
+          <p className="text-muted text-[13px] mt-1 mb-7">Connectez-vous pour ouvrir votre espace de travail.</p>
+
+          <form onSubmit={onSubmit} className="evam-card p-5 space-y-4">
             <Field label="Identifiant">
-              <input className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
+              <input
+                className={inputClass}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                autoFocus
+                required
+              />
             </Field>
             <Field label="Mot de passe">
               <input
@@ -56,31 +80,15 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                required
               />
             </Field>
-            {error && <p className="text-[13px] text-danger">{error}</p>}
-            <Button type="submit" className="w-full justify-center h-9 mt-2">
-              Entrer
+            {state.lastError && <p className="text-[13px] text-danger">{state.lastError}</p>}
+            <Button type="submit" className="w-full h-10" disabled={busy || !username || !password}>
+              {busy ? "Connexion…" : "Se connecter"}
             </Button>
-          </div>
-          <div className="mt-8 border-t border-line pt-4">
-            <p className="text-[11px] uppercase tracking-wide text-muted mb-2">Comptes de démonstration</p>
-            <div className="grid grid-cols-1 gap-1">
-              {state.users.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => setEmail(u.email)}
-                  className="text-left text-[12px] px-2 py-1 hover:bg-white border border-transparent hover:border-line rounded-[4px]"
-                >
-                  <span className="text-ink">{u.email}</span>
-                  <span className="text-muted"> — {ROLE_LABEL[u.role]}</span>
-                </button>
-              ))}
-            </div>
-            <p className="text-[12px] text-muted mt-3">Mot de passe unique : <span className="num text-ink">evam</span></p>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

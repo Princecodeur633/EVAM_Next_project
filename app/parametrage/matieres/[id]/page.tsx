@@ -1,25 +1,27 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { Field, inputClass, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
+import { PageHeader, Panel } from "@/components/ui";
 
 export default function MatiereDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const { state } = useStore();
-  const m = state.materials.find((x) => x.id === id);
-  if (!m) return <p>Matière introuvable</p>;
+  const { matieres } = useStore();
   return (
-    <div className="max-w-xl space-y-4">
-      <PageHeader title={m.name} description={m.code} />
-      <Panel className="p-4 grid gap-3">
-        <Field label="Unité"><input className={inputClass} readOnly defaultValue={m.unit} /></Field>
-        <Field label="CMUP courant"><input className={inputClass} readOnly defaultValue={formatDa(m.cmup)} /></Field>
-        <Field label="Seuil min"><input className={inputClass + " num"} readOnly defaultValue={m.minStock} /></Field>
-        <p className="text-[13px] text-muted">
-          Fournisseurs : {m.supplierIds.map((id) => state.suppliers.find((s) => s.id === id)?.name).join(", ")}
-        </p>
+    <div>
+      <PageHeader
+        eyebrow="Référentiel"
+        title="Matières premières"
+        description="Ingrédients et emballages utilisés en production."
+      />
+      <Panel className="p-4 text-[13px] space-y-1">
+        {matieres.length === 0 ? (
+          <p className="text-muted">Aucune matière enregistrée pour le moment.</p>
+        ) : (
+          matieres.map((a) => (
+            <p key={a.id}>
+              {a.code} · {a.designation}
+            </p>
+          ))
+        )}
       </Panel>
     </div>
   );

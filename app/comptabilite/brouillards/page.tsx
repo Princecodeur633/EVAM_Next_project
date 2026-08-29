@@ -1,57 +1,32 @@
 "use client";
 
-import { Button, Guard, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { STATUT_ANOMALIE_LABEL, TYPE_ANOMALIE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
-export default function BrouillardsPage() {
-  const { state, dispatch, role } = useStore();
-  const can = role === "comptabilite" || role === "administrateur";
+export default function AnomaliesPage() {
+  const { state, dispatch, can } = useStore();
   return (
     <div className="space-y-4">
-      <PageHeader
-        eyebrow="Comptabilité"
-        title="Brouillards"
-        description="Générés automatiquement à chaque facture vente/achat. Seule la comptabilité valide. Les suspendues sont exclues."
-      />
-      <Guard variant="warn" title="Jamais de saisie manuelle d'écriture">
-        Le brouillard naît de la commande ou de l'achat. La comptabilité contrôle, elle ne recopie pas.
-      </Guard>
+      <PageHeader eyebrow="Comptabilité" title="Anomalies" description="Écarts de stock ou de caisse, dépassements matières, lots vendus trop tôt. Marquez-les comme traitées une fois contrôlées." />
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Journal</th>
-              <th className="text-left px-3 py-2">Réf</th>
-              <th className="text-left px-3 py-2">Type</th>
-              <th className="text-right px-3 py-2">Montant</th>
-              <th className="text-left px-3 py-2">Statut</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.drafts.map((d) => (
-              <tr key={d.id} className="border-b border-line">
-                <td className="px-3 py-2 num">{d.journal}</td>
-                <td className="px-3 py-2 num">{d.ref}</td>
-                <td className="px-3 py-2">{d.kind}</td>
-                <td className="px-3 py-2 text-right num">{formatDa(d.amount)}</td>
-                <td className="px-3 py-2">
-                  <StatusBadge
-                    tone={d.status === "exclu" ? "danger" : d.status === "exporte" ? "success" : d.status === "valide" ? "teal" : "warning"}
-                  >
-                    {d.status}
-                  </StatusBadge>
-                </td>
-                <td className="px-3 py-2">
-                  {d.status === "a_valider" && can && (
-                    <Button onClick={() => dispatch({ type: "VALIDATE_DRAFT", id: d.id })}>Valider</Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "t", label: "Type" }, { key: "m", label: "Module" }, { key: "d", label: "Description" }, { key: "s", label: "Statut" }, { key: "dt", label: "Date" }, { key: "act", label: "" }]}
+          rows={state.anomalies.map((a) => ({
+            t: TYPE_ANOMALIE_LABEL[a.type_anomalie] ?? a.type_anomalie,
+            m: a.module_source,
+            d: a.description,
+            s: <StatusBadge tone={a.statut === "DETECTEE" || a.statut === "EN_TRAITEMENT" ? "warning" : "success"}>{STATUT_ANOMALIE_LABEL[a.statut] ?? a.statut}</StatusBadge>,
+            dt: formatDateTime(a.date_detection),
+            act: can("TRAITER_ANOMALIE") && (a.statut === "DETECTEE" || a.statut === "EN_TRAITEMENT") ? (
+              <span className="flex gap-2">
+                <button className="text-success text-[12px]" onClick={() => void dispatch({ type: "TRAITER_ANOMALIE", id: a.id, statut: "TRAITEE" })}>Traiter</button>
+                <button className="text-muted text-[12px]" onClick={() => void dispatch({ type: "TRAITER_ANOMALIE", id: a.id, statut: "IGNOREE" })}>Ignorer</button>
+              </span>
+            ) : "—",
+          }))}
+        />
       </Panel>
     </div>
   );

@@ -1,21 +1,17 @@
 "use client";
 
 import { PageHeader, Panel } from "@/components/ui";
-import { useStore } from "@/lib/store";
 
 export default function MotifsSuspensionPage() {
-  const { state } = useStore();
   return (
     <div>
-      <PageHeader eyebrow="Paramétrage" title="Motifs de suspension" description="Liste fermée + « autre » commenté. Une facture suspendue n'est jamais exportable." />
-      <Panel>
-        <ul className="divide-y divide-line">
-          {state.suspendReasons.map((c) => (
-            <li key={c.id} className="px-4 py-2 text-[13px]">
-              {c.label}
-            </li>
-          ))}
-        </ul>
+      <PageHeader
+        eyebrow="Référentiel"
+        title="Motifs de suspension"
+        description="Cette liste n’est pas encore disponible dans EVAM."
+      />
+      <Panel className="p-5 text-[13px] text-muted leading-relaxed">
+        Les suspensions de commande se gèrent aujourd’hui en bloquant le client depuis sa fiche.
       </Panel>
     </div>
   );

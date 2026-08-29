@@ -1,49 +1,59 @@
 "use client";
 
-import { PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { TYPE_MVT_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDateTime, formatQty } from "@/lib/utils";
-
-const TONE = {
-  entree: "success" as const,
-  sortie: "warning" as const,
-  retour: "info" as const,
-  transfert: "teal" as const,
-  ajustement: "neutral" as const,
-};
+import { formatDateTime, formatQty, num } from "@/lib/utils";
+import type { TypeMouvement } from "@/lib/types";
 
 export default function MouvementsPage() {
-  const { state, productName, materialName } = useStore();
+  const { state, dispatch, articleName, can, userName } = useStore();
+  const [article, setArticle] = useState(state.articles[0]?.id ?? 0);
+  const [depot, setDepot] = useState(state.depotId ?? state.depots[0]?.id ?? 0);
+  const [type, setType] = useState<TypeMouvement>("ENTREE");
+  const [qty, setQty] = useState(0);
+  const depotName = (id: number) => state.depots.find((d) => d.id === id)?.nom ?? `#${id}`;
+
   return (
-    <div>
-      <PageHeader eyebrow="Stocks" title="Mouvements" description="Entrées, sorties, retours, transferts. Chaque ligne porte son CMUP." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Stocks" title="Mouvements de stock" description="Chaque entrée, sortie, transfert ou ajustement met à jour le stock du dépôt." />
+      {can("CREATE_MVT") && (
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
+          <Field label="Article">
+            <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
+              {state.articles.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
+            </select>
+          </Field>
+          <Field label="Dépôt">
+            <select className={inputClass} value={depot} onChange={(e) => setDepot(Number(e.target.value))}>
+              {state.depots.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
+            </select>
+          </Field>
+          <Field label="Type">
+            <select className={inputClass} value={type} onChange={(e) => setType(e.target.value as TypeMouvement)}>
+              {(Object.keys(TYPE_MVT_LABEL) as TypeMouvement[]).map((k) => <option key={k} value={k}>{TYPE_MVT_LABEL[k]}</option>)}
+            </select>
+          </Field>
+          <Field label="Quantité">
+            <input type="number" className={inputClass} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+          </Field>
+          <Button disabled={!article || !depot} onClick={() => void dispatch({ type: "CREATE_MVT", article, depot, type_mouvement: type, quantite: qty })}>Créer</Button>
+        </Panel>
+      )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2 font-medium">Date</th>
-              <th className="text-left px-3 py-2 font-medium">Type</th>
-              <th className="text-left px-3 py-2 font-medium">Article</th>
-              <th className="text-right px-3 py-2 font-medium">Qté</th>
-              <th className="text-left px-3 py-2 font-medium">Origine</th>
-              <th className="text-left px-3 py-2 font-medium">Lot</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.movements.map((m) => (
-              <tr key={m.id} className="border-b border-line">
-                <td className="px-3 py-2">{formatDateTime(m.at)}</td>
-                <td className="px-3 py-2">
-                  <StatusBadge tone={TONE[m.type]}>{m.type}</StatusBadge>
-                </td>
-                <td className="px-3 py-2">{m.articleType === "produit" ? productName(m.articleId) : materialName(m.articleId)}</td>
-                <td className="px-3 py-2 text-right num">{formatQty(m.qty, 1)}</td>
-                <td className="px-3 py-2">{m.origin}</td>
-                <td className="px-3 py-2 num">{m.lot ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "n", label: "N°" }, { key: "t", label: "Type" }, { key: "a", label: "Article" }, { key: "d", label: "Dépôt" }, { key: "q", label: "Qté" }, { key: "u", label: "Saisi par" }, { key: "at", label: "Date" }]}
+          rows={state.mouvements.map((m) => ({
+            n: m.numero,
+            t: TYPE_MVT_LABEL[m.type_mouvement],
+            a: articleName(m.article),
+            d: depotName(m.depot),
+            q: formatQty(num(m.quantite), 2),
+            u: userName(m.utilisateur),
+            at: formatDateTime(m.date_mouvement),
+          }))}
+        />
       </Panel>
     </div>
   );

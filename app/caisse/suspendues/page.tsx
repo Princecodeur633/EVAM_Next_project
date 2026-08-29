@@ -1,37 +1,26 @@
 "use client";
 
-import { Guard, PageHeader, Panel } from "@/components/ui";
+import { DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { STATUT_FACTURE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
+import { formatDa, num } from "@/lib/utils";
 
-export default function SuspenduesPage() {
-  const { state } = useStore();
-  const list = state.invoices.filter((i) => i.status === "suspendue");
+export default function FacturesPartiellesPage() {
+  const { state, clientName } = useStore();
+  const rows = state.factures.filter((f) => f.statut === "PARTIELLEMENT_PAYEE" || f.statut === "EMISE");
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Caisse" title="Factures suspendues" description="Jamais transférables en comptabilité. Stock réservé déjà libéré." />
-      <Guard variant="block" title="Exclusion Sage systématique">
-        Une facture suspendue n'apparaît pas dans l'export, même si un utilisateur tente de la forcer.
-      </Guard>
+      <PageHeader eyebrow="Caisse" title="Factures non soldées" description="Factures émises ou partiellement payées, en attente d’encaissement." />
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Facture</th>
-              <th className="text-right px-3 py-2">Montant</th>
-              <th className="text-left px-3 py-2">Motif</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((i) => (
-              <tr key={i.id} className="border-b border-line">
-                <td className="px-3 py-2 num">{i.number}</td>
-                <td className="px-3 py-2 text-right num">{formatDa(i.amount)}</td>
-                <td className="px-3 py-2">{i.suspendReason}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "n", label: "N°" }, { key: "c", label: "Client" }, { key: "m", label: "Montant" }, { key: "s", label: "Statut" }]}
+          rows={rows.map((f) => ({
+            n: f.numero,
+            c: clientName(f.client),
+            m: formatDa(num(f.montant_total)),
+            s: <StatusBadge tone="warning">{STATUT_FACTURE_LABEL[f.statut]}</StatusBadge>,
+          }))}
+        />
       </Panel>
     </div>
   );

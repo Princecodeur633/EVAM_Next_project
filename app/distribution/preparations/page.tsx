@@ -1,51 +1,51 @@
 "use client";
 
-import Link from "next/link";
-import { OrderBadge } from "@/components/badges";
-import { PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { STATUT_PREP_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 
 export default function PreparationsPage() {
-  const { state, customerName } = useStore();
-  const list = state.orders.filter((o) => !["suspendue", "annulee"].includes(o.status));
+  const { state, dispatch, can } = useStore();
+  const router = useRouter();
+  const [commande, setCommande] = useState(state.commandes[0]?.id ?? 0);
+  const cmdNum = (id: number) => state.commandes.find((c) => c.id === id)?.numero ?? `#${id}`;
+
   return (
-    <div>
-      <PageHeader
-        eyebrow="Distribution"
-        title="File de préparation"
-        description="Les commandes validées peuvent être préparées même avant paiement. La livraison, elle, attend la caisse."
-      />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Distribution" title="Préparations" description="Préparez les commandes, puis confirmez la sortie magasin." />
+      {can("CREATE_PREP") && (
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+          <Field label="Commande">
+            <select className={inputClass} value={commande} onChange={(e) => setCommande(Number(e.target.value))}>
+              {state.commandes.map((c) => <option key={c.id} value={c.id}>{c.numero}</option>)}
+            </select>
+          </Field>
+          <Button disabled={!commande} onClick={() => void dispatch({ type: "CREATE_PREP", commande })}>Lancer</Button>
+        </Panel>
+      )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Commande</th>
-              <th className="text-left px-3 py-2">Client</th>
-              <th className="text-left px-3 py-2">Paiement</th>
-              <th className="text-left px-3 py-2">Préparation</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((o) => (
-              <tr key={o.id} className="border-b border-line">
-                <td className="px-3 py-2">
-                  <Link className="text-primary num" href={`/distribution/preparations/${o.id}`}>
-                    {o.number}
-                  </Link>
-                </td>
-                <td className="px-3 py-2">{customerName(o.customerId)}</td>
-                <td className="px-3 py-2">
-                  <OrderBadge status={o.status} />
-                </td>
-                <td className="px-3 py-2">
-                  <StatusBadge tone={o.prepStatus === "complete" ? "success" : o.prepStatus === "partielle" ? "warning" : "neutral"}>
-                    {o.prepStatus}
-                  </StatusBadge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "id", label: "#" }, { key: "c", label: "Commande" }, { key: "s", label: "Statut" }, { key: "act", label: "" }]}
+          rows={state.preparations.map((p) => ({
+            id: p.id,
+            c: cmdNum(p.commande),
+            s: <StatusBadge tone="info">{STATUT_PREP_LABEL[p.statut]}</StatusBadge>,
+            act: (
+              <span className="flex gap-2">
+                {p.statut === "A_PREPARER" && can("PREP_CONFIRMER") && (
+                  <button className="text-primary text-[12px]" onClick={() => void dispatch({ type: "PREP_CONFIRMER", id: p.id })}>Confirmer préparation</button>
+                )}
+                {p.statut === "EN_PREPARATION" && can("PREP_SORTIE") && (
+                  <button className="text-primary text-[12px]" onClick={() => void dispatch({ type: "PREP_SORTIE", id: p.id })}>Confirmer sortie</button>
+                )}
+              </span>
+            ),
+            href: `/distribution/preparations/${p.id}`,
+          }))}
+          onRowClick={(row) => router.push(String(row.href))}
+        />
       </Panel>
     </div>
   );

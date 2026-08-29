@@ -48,3 +48,9 @@ export function pad(n: number, size = 5) {
 export function availableQty(qty: number, reserved: number) {
   return Math.max(0, qty - reserved);
 }
+
+export function num(value: string | number | null | undefined) {
+  if (value == null || value === "") return 0;
+  const n = typeof value === "number" ? value : Number.parseFloat(String(value));
+  return Number.isFinite(n) ? n : 0;
+}

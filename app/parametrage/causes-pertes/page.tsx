@@ -1,21 +1,18 @@
 "use client";
 
-import { PageHeader, Panel } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { DataTable, PageHeader, Panel } from "@/components/ui";
+import { MOTIF_PERTE_LABEL } from "@/lib/labels";
+import type { MotifPerte } from "@/lib/types";
 
 export default function CausesPertesPage() {
-  const { state } = useStore();
   return (
-    <div>
-      <PageHeader eyebrow="Paramétrage" title="Causes de pertes / rebuts" description="Liste fermée utilisée à l'atelier. Pas de saisie libre sans trace." />
+    <div className="space-y-4">
+      <PageHeader title="Motifs de pertes" description="Casse, non-conformité, panne machine, erreur de manipulation." />
       <Panel>
-        <ul className="divide-y divide-line">
-          {state.lossCauses.map((c) => (
-            <li key={c.id} className="px-4 py-2 text-[13px]">
-              {c.label}
-            </li>
-          ))}
-        </ul>
+        <DataTable
+          columns={[{ key: "l", label: "Motif" }]}
+          rows={(Object.keys(MOTIF_PERTE_LABEL) as MotifPerte[]).map((k) => ({ l: MOTIF_PERTE_LABEL[k] }))}
+        />
       </Panel>
     </div>
   );

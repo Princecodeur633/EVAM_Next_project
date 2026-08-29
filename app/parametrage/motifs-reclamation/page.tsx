@@ -1,21 +1,17 @@
 "use client";
 
 import { PageHeader, Panel } from "@/components/ui";
-import { useStore } from "@/lib/store";
 
 export default function MotifsReclamationPage() {
-  const { state } = useStore();
   return (
     <div>
-      <PageHeader eyebrow="Paramétrage" title="Motifs de réclamation" description="Qualité, casse, écart de quantité, délai." />
-      <Panel>
-        <ul className="divide-y divide-line">
-          {state.claimReasons.map((c) => (
-            <li key={c.id} className="px-4 py-2 text-[13px]">
-              {c.label}
-            </li>
-          ))}
-        </ul>
+      <PageHeader
+        eyebrow="Référentiel"
+        title="Motifs de réclamation"
+        description="Le suivi des réclamations clients n’est pas encore ouvert dans EVAM."
+      />
+      <Panel className="p-5 text-[13px] text-muted leading-relaxed">
+        Les retours magasin et les lots non conformes se traitent dans les stocks et la qualité.
       </Panel>
     </div>
   );

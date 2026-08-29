@@ -1,23 +1,20 @@
 "use client";
 
-import { ROLE_LABEL } from "@/lib/seed";
-import type { Role } from "@/lib/types";
-import { PageHeader, Panel } from "@/components/ui";
-
-const ROLES = Object.keys(ROLE_LABEL) as Role[];
+import { DataTable, PageHeader, Panel } from "@/components/ui";
+import { ROLE_PROFILES } from "@/lib/roles";
+import { PROFIL_LABEL } from "@/lib/labels";
+import type { Profil } from "@/lib/types";
 
 export default function ProfilsPage() {
+  const rows = (Object.keys(PROFIL_LABEL) as Profil[]).map((k) => {
+    const p = ROLE_PROFILES[k];
+    return { p: PROFIL_LABEL[k], s: p.station, m: p.mission };
+  });
   return (
-    <div>
-      <PageHeader eyebrow="Administration" title="Profils / rôles" description="Les 12 profils métier du dossier UML. Le menu est structurellement différent, pas seulement grisé." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Administration" title="Profils métier" description="Les douze postes de l’usine : production, qualité, magasin, ventes, caisse, distribution et finance." />
       <Panel>
-        <ul className="divide-y divide-line">
-          {ROLES.map((r) => (
-            <li key={r} className="px-4 py-2 text-[13px]">
-              {ROLE_LABEL[r]}
-            </li>
-          ))}
-        </ul>
+        <DataTable columns={[{ key: "p", label: "Profil" }, { key: "s", label: "Station" }, { key: "m", label: "Mission" }]} rows={rows} />
       </Panel>
     </div>
   );

@@ -2,71 +2,57 @@
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { Button, PageHeader, Panel } from "@/components/ui";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { STATUT_INV_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatQty } from "@/lib/utils";
+import { formatDate, formatQty, num } from "@/lib/utils";
 
 export default function InventaireDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, productName } = useStore();
-  const inv = state.inventories.find((i) => i.id === id);
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  if (!inv) return <p>Session introuvable</p>;
+  const { state, dispatch, articleName, can, userName } = useStore();
+  const inv = state.inventaires.find((i) => i.id === Number(id));
+  const lines = state.lignesInventaire.filter((l) => l.inventaire === Number(id));
+  const [article, setArticle] = useState(state.articles[0]?.id ?? 0);
+  const [theo, setTheo] = useState(0);
+  const [compte, setCompte] = useState(0);
+  if (!inv) return <p className="text-[13px] text-muted">Inventaire introuvable.</p>;
+
+  const depot = state.depots.find((d) => d.id === inv.depot);
+  const ouvert = inv.statut === "EN_COURS";
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         eyebrow="Inventaire"
-        title={inv.id}
-        description="Le théorique n'est pas éditable. Le physique est saisi par le magasinier. La validation écrit l'ajustement."
+        title={depot?.nom ?? "Inventaire"}
+        description={`${STATUT_INV_LABEL[inv.statut] ?? inv.statut} · ${formatDate(inv.date_inventaire)} · par ${userName(inv.cree_par)}`}
         actions={
-          <>
-            {inv.status === "ouvert" && (
-              <Button onClick={() => dispatch({ type: "COUNT_INVENTORY", id: inv.id, counts })}>Enregistrer le comptage</Button>
-            )}
-            {inv.status === "compte" && (
-              <Button variant="success" onClick={() => dispatch({ type: "VALIDATE_INVENTORY", id: inv.id })}>
-                Valider les écarts
-              </Button>
-            )}
-          </>
+          ouvert && can("CLOTURER_INVENTAIRE") ? (
+            <Button onClick={() => void dispatch({ type: "CLOTURER_INVENTAIRE", id: inv.id })}>Clôturer</Button>
+          ) : null
         }
       />
+      {ouvert && can("CREATE_INVENTAIRE") && (
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
+          <Field label="Article">
+            <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
+              {state.articles.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
+            </select>
+          </Field>
+          <Field label="Théorique">
+            <input type="number" className={inputClass} value={theo} onChange={(e) => setTheo(Number(e.target.value))} />
+          </Field>
+          <Field label="Comptée">
+            <input type="number" className={inputClass} value={compte} onChange={(e) => setCompte(Number(e.target.value))} />
+          </Field>
+          <Button onClick={() => void dispatch({ type: "ADD_LIGNE_INVENTAIRE", inventaire: inv.id, article, quantite_theorique: theo, quantite_comptee: compte })}>Ajouter ligne</Button>
+        </Panel>
+      )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Article</th>
-              <th className="text-right px-3 py-2">Théorique</th>
-              <th className="text-right px-3 py-2">Physique</th>
-              <th className="text-right px-3 py-2">Écart</th>
-            </tr>
-          </thead>
-          <tbody>
-            {inv.lines.map((l) => {
-              const phys = l.physical ?? counts[l.articleId] ?? l.theoretical;
-              return (
-                <tr key={l.articleId} className="border-b border-line">
-                  <td className="px-3 py-2">{productName(l.articleId)}</td>
-                  <td className="px-3 py-2 text-right num">{formatQty(l.theoretical)}</td>
-                  <td className="px-3 py-2 text-right">
-                    {inv.status === "ouvert" ? (
-                      <input
-                        type="number"
-                        className="h-8 w-28 border border-line-strong rounded-[6px] px-2 text-right num"
-                        defaultValue={l.theoretical}
-                        onChange={(e) => setCounts({ ...counts, [l.articleId]: Number(e.target.value) })}
-                      />
-                    ) : (
-                      <span className="num">{phys}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right num">{formatQty(phys - l.theoretical)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "a", label: "Article" }, { key: "t", label: "Théorique" }, { key: "c", label: "Comptée" }]}
+          rows={lines.map((l) => ({ a: articleName(l.article), t: formatQty(num(l.quantite_theorique), 2), c: formatQty(num(l.quantite_comptee), 2) }))}
+        />
       </Panel>
     </div>
   );

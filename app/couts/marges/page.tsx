@@ -1,41 +1,32 @@
 "use client";
 
-import { PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { DataTable, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
+import { formatDa, num } from "@/lib/utils";
 
 export default function MargesPage() {
-  const { state, productName } = useStore();
+  const { state, articleName } = useStore();
   return (
-    <div>
-      <PageHeader eyebrow="P2 — wireframe" title="Marges" description="Prix de vente vs coût de revient. Différable V1.1 si le planning serre." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Coûts" title="Coûts standards" description="Comparez le coût de revient et le tarif de vente de chaque article." />
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Produit</th>
-              <th className="text-right px-3 py-2">Prix HT</th>
-              <th className="text-right px-3 py-2">CMUP PF</th>
-              <th className="text-right px-3 py-2">Marge unitaire</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.products.map((p) => {
-              const cmup = state.stock.find((s) => s.articleId === p.id)?.cmup ?? 0;
-              const marge = p.priceHt - cmup;
-              return (
-                <tr key={p.id} className="border-b border-line">
-                  <td className="px-3 py-2">{productName(p.id)}</td>
-                  <td className="px-3 py-2 text-right num">{formatDa(p.priceHt)}</td>
-                  <td className="px-3 py-2 text-right num">{formatDa(cmup)}</td>
-                  <td className="px-3 py-2 text-right">
-                    <StatusBadge tone={marge > 0 ? "success" : "danger"}>{formatDa(marge)}</StatusBadge>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "a", label: "Article" }, { key: "cs", label: "Coût standard" }, { key: "pv", label: "Tarif public" }]}
+          rows={state.coutsStandards.map((c) => {
+            const tarif = state.tarifs.find((t) => t.article === c.article && t.client == null);
+            return {
+              a: articleName(c.article),
+              cs: formatDa(num(c.cout_standard_unitaire)),
+              pv: tarif ? formatDa(num(tarif.prix_unitaire)) : "—",
+            };
+          })}
+        />
+      </Panel>
+      <Panel>
+        <DataTable
+          columns={[{ key: "a", label: "Article" }, { key: "c", label: "Coût unitaire" }]}
+          rows={state.coutsMatieres.map((c) => ({ a: articleName(c.article), c: formatDa(num(c.cout_unitaire)) }))}
+        />
       </Panel>
     </div>
   );

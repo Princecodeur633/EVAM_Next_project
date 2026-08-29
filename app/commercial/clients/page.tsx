@@ -1,36 +1,26 @@
 "use client";
 
-import { PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { TYPE_CLIENT_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { formatDa, num } from "@/lib/utils";
 
-export default function ClientsOpsPage() {
+export default function ClientsPage() {
   const { state } = useStore();
   return (
-    <div>
-      <PageHeader eyebrow="Commercial" title="Clients" description="Le type client (comptant / à terme) détermine les moyens d'encaissement autorisés en caisse." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Ventes" title="Clients" description="Particuliers, sociétés et clients sous contrat. Un client bloqué ne peut plus commander." />
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Code</th>
-              <th className="text-left px-3 py-2">Nom</th>
-              <th className="text-left px-3 py-2">Type</th>
-              <th className="text-left px-3 py-2">Encaissement</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.customers.map((c) => (
-              <tr key={c.id} className="border-b border-line">
-                <td className="px-3 py-2 num">{c.code}</td>
-                <td className="px-3 py-2">{c.name}</td>
-                <td className="px-3 py-2">
-                  <StatusBadge tone={c.type === "comptant" ? "teal" : "info"}>{c.type}</StatusBadge>
-                </td>
-                <td className="px-3 py-2">{c.paymentMethods.join(" · ")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "c", label: "Code" }, { key: "n", label: "Nom" }, { key: "t", label: "Type" }, { key: "e", label: "Encours" }, { key: "b", label: "Bloqué" }]}
+          rows={state.clients.map((c) => ({
+            c: c.code,
+            n: c.nom,
+            t: TYPE_CLIENT_LABEL[c.type_client] ?? c.type_client,
+            e: formatDa(num(c.encours_autorise)),
+            b: c.bloque ? <StatusBadge tone="danger">Oui</StatusBadge> : <StatusBadge tone="success">Non</StatusBadge>,
+          }))}
+        />
       </Panel>
     </div>
   );

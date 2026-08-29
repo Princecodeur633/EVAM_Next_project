@@ -1,43 +1,39 @@
 "use client";
 
-import Link from "next/link";
-import { PageHeader, Panel } from "@/components/ui";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDa, formatQty } from "@/lib/utils";
+import type { UniteMesure } from "@/lib/types";
 
 export default function MatieresPage() {
-  const { state } = useStore();
-  const items = state.materials.filter((m) => m.kind !== "emballage");
+  const { state, dispatch, canEditParam } = useStore();
+  const writable = canEditParam("/parametrage/articles") || canEditParam("/parametrage/matieres");
+  const [code, setCode] = useState("");
+  const [designation, setDesignation] = useState("");
+  const [unite, setUnite] = useState<UniteMesure>("KG");
+  const rows = state.articles.filter((a) => a.type_article === "MATIERE_PREMIERE");
+
   return (
-    <div>
-      <PageHeader eyebrow="Paramétrage" title="Matières" description="CMUP courant en lecture seule — jamais saisi à la main." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Référentiel" title="Matières premières" description="Ingrédients et emballages utilisés en production." />
+      {writable && (
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
+          <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
+          <Field label="Désignation"><input className={inputClass} value={designation} onChange={(e) => setDesignation(e.target.value)} /></Field>
+          <Field label="Unité">
+            <select className={inputClass} value={unite} onChange={(e) => setUnite(e.target.value as UniteMesure)}>
+              {(Object.keys(UNITE_LABEL) as UniteMesure[]).map((k) => <option key={k} value={k}>{UNITE_LABEL[k]}</option>)}
+            </select>
+          </Field>
+          <Button disabled={!code} onClick={() => void dispatch({ type: "CREATE_ARTICLE", code, designation, type_article: "MATIERE_PREMIERE", unite_mesure: unite })}>Créer</Button>
+        </Panel>
+      )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Code</th>
-              <th className="text-left px-3 py-2">Libellé</th>
-              <th className="text-left px-3 py-2">Type</th>
-              <th className="text-right px-3 py-2">Seuil</th>
-              <th className="text-right px-3 py-2">CMUP</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((m) => (
-              <tr key={m.id} className="border-b border-line">
-                <td className="px-3 py-2">
-                  <Link className="text-primary num" href={`/parametrage/matieres/${m.id}`}>
-                    {m.code}
-                  </Link>
-                </td>
-                <td className="px-3 py-2">{m.name}</td>
-                <td className="px-3 py-2">{m.kind}</td>
-                <td className="px-3 py-2 text-right num">{formatQty(m.minStock, 1)}</td>
-                <td className="px-3 py-2 text-right num">{formatDa(m.cmup)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "c", label: "Code" }, { key: "d", label: "Désignation" }, { key: "u", label: "Unité" }]}
+          rows={rows.map((a) => ({ c: a.code, d: a.designation, u: UNITE_LABEL[a.unite_mesure] ?? a.unite_mesure }))}
+        />
       </Panel>
     </div>
   );

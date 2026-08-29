@@ -1,46 +1,33 @@
 "use client";
 
-import Link from "next/link";
-import { OfBadge } from "@/components/badges";
-import { PageHeader, Panel } from "@/components/ui";
+import { DataTable, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
+import { formatDa, num } from "@/lib/utils";
 
 export default function CoutsPage() {
-  const { state, productName } = useStore();
-  const closed = state.ofList.filter((o) => o.cost);
+  const { state, dispatch, ofNumero, can } = useStore();
+  const total = (c: (typeof state.coutsReels)[number]) =>
+    num(c.cout_matiere_total) + num(c.cout_main_oeuvre_total) + num(c.cout_energie_total) + num(c.cout_amortissement_total);
+
   return (
-    <div>
-      <PageHeader eyebrow="Coûts" title="Coût des OF" description="CMUP × consommation réelle. Le coût se lit dans le flux, pas dans un export isolé." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Coûts" title="Coûts réels" description="Matières, main-d’œuvre, énergie et amortissement par ordre de fabrication." />
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">OF</th>
-              <th className="text-left px-3 py-2">Produit</th>
-              <th className="text-right px-3 py-2">Coût</th>
-              <th className="text-left px-3 py-2">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.ofList.map((o) => (
-              <tr key={o.id} className="border-b border-line">
-                <td className="px-3 py-2">
-                  <Link className="text-primary num" href={`/production/of/${o.id}`}>
-                    {o.id}
-                  </Link>
-                </td>
-                <td className="px-3 py-2">{productName(o.productId)}</td>
-                <td className="px-3 py-2 text-right num">{o.cost ? formatDa(o.cost) : "À la clôture"}</td>
-                <td className="px-3 py-2">
-                  <OfBadge status={o.status} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "of", label: "OF" }, { key: "m", label: "Matières" }, { key: "mo", label: "MO" }, { key: "e", label: "Énergie" }, { key: "a", label: "Amort." }, { key: "t", label: "Total" }, { key: "act", label: "" }]}
+          rows={state.coutsReels.map((c) => ({
+            of: ofNumero(c.ordre_fabrication),
+            m: formatDa(num(c.cout_matiere_total)),
+            mo: formatDa(num(c.cout_main_oeuvre_total)),
+            e: formatDa(num(c.cout_energie_total)),
+            a: formatDa(num(c.cout_amortissement_total)),
+            t: formatDa(total(c)),
+            act: can("RECALCULER_COUT") ? (
+              <button className="text-primary text-[12px]" onClick={() => void dispatch({ type: "RECALCULER_COUT", id: c.id })}>Recalculer</button>
+            ) : "—",
+          }))}
+        />
       </Panel>
-      {closed.length === 0 && <p className="text-[13px] text-muted mt-3">Aucun OF clôturé avec coût calculé pour le moment.</p>}
     </div>
   );
 }

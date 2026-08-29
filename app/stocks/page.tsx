@@ -1,56 +1,44 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { DataTable, PageHeader, Panel } from "@/components/ui";
+import { stockDisponible } from "@/lib/engine";
 import { useStore } from "@/lib/store";
-import { availableQty, formatDa, formatQty } from "@/lib/utils";
-import { PageHeader, Panel, StatusBadge } from "@/components/ui";
+import { formatQty } from "@/lib/utils";
 
 export default function StocksPage() {
-  const { state, productName, materialName } = useStore();
+  const { state, articleName } = useStore();
+  const router = useRouter();
+  const depotName = (id: number) => state.depots.find((d) => d.id === id)?.nom ?? `#${id}`;
+
   return (
-    <div>
-      <PageHeader eyebrow="Stocks" title="Situation" description="Disponible = physique − réservé. CMUP en lecture seule. Deux origines d'entrée : clôture OF (PF) ou réception fournisseur (matières)." />
+    <div className="space-y-4">
+      <PageHeader
+        eyebrow="Stocks"
+        title="Situation de stock"
+        description="Disponible = quantité physique − bloquée − réservée, par dépôt."
+      />
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2 font-medium">Article</th>
-              <th className="text-left px-3 py-2 font-medium">Type</th>
-              <th className="text-left px-3 py-2 font-medium">Dépôt</th>
-              <th className="text-left px-3 py-2 font-medium">Lot</th>
-              <th className="text-right px-3 py-2 font-medium">Physique</th>
-              <th className="text-right px-3 py-2 font-medium">Réservé</th>
-              <th className="text-right px-3 py-2 font-medium">Disponible</th>
-              <th className="text-right px-3 py-2 font-medium">CMUP</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.stock.map((s) => {
-              const name = s.articleType === "produit" ? productName(s.articleId) : materialName(s.articleId);
-              const depot = state.depots.find((d) => d.id === s.depotId);
-              return (
-                <tr key={s.id} className="border-b border-line">
-                  <td className="px-3 py-2">
-                    <Link className="text-primary" href={`/stocks/article/${s.articleId}`}>
-                      {name}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2">
-                    <StatusBadge tone={s.articleType === "produit" ? "teal" : "neutral"}>
-                      {s.articleType === "produit" ? "PF" : "Matière"}
-                    </StatusBadge>
-                  </td>
-                  <td className="px-3 py-2">{depot?.name}</td>
-                  <td className="px-3 py-2 num">{s.lot ?? "—"}</td>
-                  <td className="px-3 py-2 text-right num">{formatQty(s.qty, 1)}</td>
-                  <td className="px-3 py-2 text-right num">{formatQty(s.reserved, 1)}</td>
-                  <td className="px-3 py-2 text-right num font-medium">{formatQty(availableQty(s.qty, s.reserved), 1)}</td>
-                  <td className="px-3 py-2 text-right num">{formatDa(s.cmup)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[
+            { key: "a", label: "Article" },
+            { key: "d", label: "Dépôt" },
+            { key: "p", label: "Physique" },
+            { key: "b", label: "Bloquée" },
+            { key: "r", label: "Réservée" },
+            { key: "v", label: "Disponible" },
+          ]}
+          rows={state.stock.map((s) => ({
+            a: articleName(s.article),
+            d: depotName(s.depot),
+            p: formatQty(Number(s.quantite_physique), 2),
+            b: formatQty(Number(s.quantite_bloquee), 2),
+            r: formatQty(Number(s.quantite_reservee), 2),
+            v: formatQty(stockDisponible(s), 2),
+            href: `/stocks/article/${s.article}`,
+          }))}
+          onRowClick={(row) => router.push(String(row.href))}
+        />
       </Panel>
     </div>
   );

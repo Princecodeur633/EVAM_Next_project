@@ -1,90 +1,74 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { PRIORITE_LABEL, STATUT_PLAN_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { FAMILY_LABEL } from "@/lib/seed";
-import { Button, Field, inputClass, PageHeader, Panel } from "@/components/ui";
+import { formatDate, formatQty, num } from "@/lib/utils";
 
 export default function PlanningPage() {
-  const { state, dispatch, productName } = useStore();
-  const router = useRouter();
-  const [productId, setProductId] = useState(state.products[0]?.id ?? "");
-  const [date, setDate] = useState("2026-08-20");
-  const [qty, setQty] = useState(4000);
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    dispatch({ type: "CREATE_PLAN", productId, date, qty });
-    router.push("/production/of");
-  }
+  const { state, dispatch, articleName, produitsFinis, can, userName } = useStore();
+  const [article, setArticle] = useState<number>(produitsFinis[0]?.id ?? 0);
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [qty, setQty] = useState(1000);
+  const [priorite, setPriorite] = useState("NORMALE");
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         eyebrow="Production"
-        title="Planning"
-        description="1 plan = 1 produit, une date, une quantité. L'OF est généré automatiquement. Aucune commande client ne déclenche la production."
+        title="Plans de production"
+        description="Planifiez les volumes par article et par jour. Les ordres de fabrication se créent ensuite à partir de ces plans."
       />
-      <div className="grid lg:grid-cols-[340px_1fr] gap-4">
-        <Panel className="p-4">
-          <h2 className="text-[13px] font-semibold mb-3">Nouveau plan</h2>
-          <form onSubmit={onSubmit} className="space-y-3">
-            <Field label="Produit fini">
-              <select className={inputClass} value={productId} onChange={(e) => setProductId(e.target.value)}>
-                {state.products.filter((p) => p.active).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code} — {p.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Date">
-              <input type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} />
-            </Field>
-            <Field label="Quantité planifiée">
-              <input type="number" className={inputClass + " num"} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
-            </Field>
-            <Button type="submit" className="w-full justify-center">
-              Générer l'OF
-            </Button>
-          </form>
+      {can("CREATE_PLAN") && (
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
+          <Field label="Article">
+            <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
+              <option value={0}>—</option>
+              {produitsFinis.map((a) => (
+                <option key={a.id} value={a.id}>{a.code} · {a.designation}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Date prévue">
+            <input type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          <Field label="Quantité">
+            <input type="number" className={inputClass} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+          </Field>
+          <Field label="Priorité">
+            <select className={inputClass} value={priorite} onChange={(e) => setPriorite(e.target.value)}>
+              {Object.entries(PRIORITE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </Field>
+          <Button
+            disabled={!article}
+            onClick={() => void dispatch({ type: "CREATE_PLAN", article, date_prevue: date, quantite_prevue: qty, priorite })}
+          >
+            Créer le plan
+          </Button>
         </Panel>
-        <Panel>
-          <div className="px-4 py-3 border-b border-line">
-            <h2 className="text-[13px] font-semibold">Plans existants</h2>
-          </div>
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-line bg-[#f8fafb] text-[11px] uppercase tracking-wide text-muted">
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Produit</th>
-                <th className="px-3 py-2 font-medium">Famille</th>
-                <th className="px-3 py-2 font-medium">Qté</th>
-                <th className="px-3 py-2 font-medium">OF généré</th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.plans.map((pl) => {
-                const p = state.products.find((x) => x.id === pl.productId);
-                return (
-                  <tr key={pl.id} className="border-b border-line">
-                    <td className="px-3 py-2 num">{pl.date}</td>
-                    <td className="px-3 py-2">{productName(pl.productId)}</td>
-                    <td className="px-3 py-2">{p ? FAMILY_LABEL[p.family] : "—"}</td>
-                    <td className="px-3 py-2 num">{pl.qty}</td>
-                    <td className="px-3 py-2">
-                      <a className="text-primary num" href={`/production/of/${pl.ofId}`}>
-                        {pl.ofId}
-                      </a>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Panel>
-      </div>
+      )}
+      <Panel>
+        <DataTable
+          columns={[
+            { key: "a", label: "Article" },
+            { key: "d", label: "Date" },
+            { key: "q", label: "Qté" },
+            { key: "p", label: "Priorité" },
+            { key: "s", label: "Statut" },
+            { key: "c", label: "Créé par" },
+          ]}
+          rows={state.plans.map((p) => ({
+            a: articleName(p.article),
+            d: formatDate(p.date_prevue),
+            q: formatQty(num(p.quantite_prevue), 2),
+            p: PRIORITE_LABEL[p.priorite],
+            s: STATUT_PLAN_LABEL[p.statut],
+            c: userName(p.cree_par),
+          }))}
+        />
+      </Panel>
     </div>
   );
 }

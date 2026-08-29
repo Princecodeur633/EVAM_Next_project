@@ -1,36 +1,36 @@
 "use client";
 
-import { PageHeader, Panel } from "@/components/ui";
+import { useState } from "react";
+import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
-import { formatDa } from "@/lib/utils";
 
 export default function ConditionnementsPage() {
-  const { state } = useStore();
-  const items = state.materials.filter((m) => m.kind === "emballage");
+  const { state, dispatch, articleName, produitsFinis, canEditParam } = useStore();
+  const writable = canEditParam("/parametrage/conditionnements") || canEditParam("/parametrage/fiches-techniques");
+  const [article, setArticle] = useState(produitsFinis[0]?.id ?? 0);
+  const [n, setN] = useState(6);
+  const [type, setType] = useState("carton");
+
   return (
-    <div>
-      <PageHeader eyebrow="Paramétrage" title="Conditionnements" description="Bouteilles, pots, bouchons, étiquettes — traités comme des matières spécifiques." />
+    <div className="space-y-4">
+      <PageHeader eyebrow="Référentiel" title="Fiches de conditionnement" description="Unités par carton, type d’emballage, poids et palettisation." />
+      {writable && (
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
+          <Field label="Article">
+            <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
+              {produitsFinis.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
+            </select>
+          </Field>
+          <Field label="Unités / carton"><input type="number" className={inputClass} value={n} onChange={(e) => setN(Number(e.target.value))} /></Field>
+          <Field label="Emballage"><input className={inputClass} value={type} onChange={(e) => setType(e.target.value)} /></Field>
+          <Button disabled={!article} onClick={() => void dispatch({ type: "CREATE_CONDITIONNEMENT", article, nombre_unites_par_carton: n, type_emballage: type })}>Créer</Button>
+        </Panel>
+      )}
       <Panel>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-[11px] uppercase text-muted border-b border-line bg-[#f8fafb]">
-              <th className="text-left px-3 py-2">Code</th>
-              <th className="text-left px-3 py-2">Libellé</th>
-              <th className="text-right px-3 py-2">CMUP</th>
-              <th className="text-right px-3 py-2">Seuil</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((m) => (
-              <tr key={m.id} className="border-b border-line">
-                <td className="px-3 py-2 num">{m.code}</td>
-                <td className="px-3 py-2">{m.name}</td>
-                <td className="px-3 py-2 text-right num">{formatDa(m.cmup)}</td>
-                <td className="px-3 py-2 text-right num">{m.minStock}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[{ key: "a", label: "Article" }, { key: "n", label: "U / carton" }, { key: "t", label: "Emballage" }]}
+          rows={state.fichesConditionnement.map((f) => ({ a: articleName(f.article), n: f.nombre_unites_par_carton, t: f.type_emballage }))}
+        />
       </Panel>
     </div>
   );
