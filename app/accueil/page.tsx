@@ -26,27 +26,27 @@ export default function AccueilPage() {
     <div className="space-y-6 anim-in max-w-[1100px]">
       <section className="evam-card overflow-hidden">
         <div className={cn("h-1", ACCENT_CLASS[profile.accent])} />
-        <div className="p-6 flex items-start gap-4">
+        <div className="p-4 sm:p-6 flex items-start gap-3 sm:gap-4">
           <span className={cn("h-11 w-11 rounded-[9px] text-white flex items-center justify-center shrink-0", ACCENT_CLASS[profile.accent])}>
             <Icon size={20} strokeWidth={1.6} />
           </span>
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{profile.station}</p>
-            <h1 className="text-[24px] font-semibold tracking-tight mt-0.5">Bonjour{currentUser.name ? `, ${currentUser.name.split(" ")[0]}` : ""}</h1>
+            <h1 className="text-[20px] sm:text-[24px] font-semibold tracking-tight mt-0.5 break-words">Bonjour{currentUser.name ? `, ${currentUser.name.split(" ")[0]}` : ""}</h1>
             <p className="text-[13px] text-muted mt-1">{profile.label} · {profile.mission}</p>
           </div>
         </div>
       </section>
 
       {tasks.metrics.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3">
           {tasks.metrics.map((m) => (
             <KpiCard key={m.label} label={m.label} value={m.value} hint={m.hint} tone={m.tone ?? "default"} />
           ))}
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-4">
+      <div className="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-4">
         <Panel>
           <div className="px-5 py-3.5 border-b border-line bg-surface-2">
             <h2 className="text-[13px] font-semibold">À traiter aujourd’hui</h2>
@@ -57,10 +57,10 @@ export default function AccueilPage() {
             <ul>
               {visibleTasks.map((t) => (
                 <li key={t.href + t.title} className="border-b border-line last:border-0">
-                  <Link href={t.href} className="flex items-center justify-between gap-3 px-5 py-3.5 hover:bg-primary-soft/70 transition-colors">
-                    <div>
+                  <Link href={t.href} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 hover:bg-primary-soft/70 transition-colors">
+                    <div className="min-w-0">
                       <p className="text-[13px] font-medium">{t.title}</p>
-                      <p className="text-[12px] text-muted mt-0.5">{t.detail}</p>
+                      <p className="text-[12px] text-muted mt-0.5 break-words">{t.detail}</p>
                     </div>
                     <ArrowRight size={14} className="text-muted shrink-0" />
                   </Link>
@@ -76,8 +76,8 @@ export default function AccueilPage() {
             {shortcuts.map((s) => (
               <li key={s.href}>
                 <Link href={s.href} className="flex items-center justify-between gap-2 rounded-[7px] px-2.5 py-2 -mx-1 hover:bg-primary-soft">
-                  <span className="text-[13px] font-medium">{s.label}</span>
-                  <span className="text-[11px] text-muted truncate">{s.hint}</span>
+                  <span className="text-[13px] font-medium shrink-0">{s.label}</span>
+                  <span className="text-[11px] text-muted truncate min-w-0 text-right">{s.hint}</span>
                 </Link>
               </li>
             ))}

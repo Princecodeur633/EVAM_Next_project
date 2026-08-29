@@ -18,7 +18,7 @@ export default function UtilisateursPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Administration" title="Utilisateurs" description="Créez les comptes de l’usine et activez ou désactivez un accès." />
       {can("ADMIN_USERS") && (
-        <Panel className="p-4 grid sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
           <Field label="Prénom"><input className={inputClass} value={first} onChange={(e) => setFirst(e.target.value)} /></Field>
           <Field label="Nom"><input className={inputClass} value={last} onChange={(e) => setLast(e.target.value)} /></Field>
           <Field label="Identifiant"><input className={inputClass} value={username} onChange={(e) => setUsername(e.target.value)} /></Field>

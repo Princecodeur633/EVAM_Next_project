@@ -16,7 +16,7 @@ export default function PreparationsPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Distribution" title="Préparations" description="Préparez les commandes, puis confirmez la sortie magasin." />
       {can("CREATE_PREP") && (
-        <Panel className="p-4 grid sm:grid-cols-2 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <Field label="Commande">
             <select className={inputClass} value={commande} onChange={(e) => setCommande(Number(e.target.value))}>
               {state.commandes.map((c) => <option key={c.id} value={c.id}>{c.numero}</option>)}

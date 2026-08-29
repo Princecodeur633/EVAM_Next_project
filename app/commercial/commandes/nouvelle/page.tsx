@@ -16,7 +16,7 @@ export default function NouvelleCommandePage() {
   return (
     <div className="space-y-4">
       <PageHeader eyebrow="Ventes" title="Nouvelle commande" description="Choisissez le client, puis ajoutez les lignes sur la fiche commande." />
-      <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end max-w-3xl">
+      <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end max-w-3xl">
         <Field label="Client">
           <select className={inputClass} value={client} onChange={(e) => setClient(Number(e.target.value))}>
             {state.clients.map((c) => (

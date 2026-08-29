@@ -35,7 +35,7 @@ export default function OfListPage() {
         title="Ordres de fabrication"
         description="Suivez chaque OF, de la planification à la clôture. Le lancement calcule les besoins matières."
       />
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <KpiCard label="OF non clôturés" value={open} tone="warning" />
         <KpiCard label="Attente qualité" value={waitQ} tone={waitQ ? "warning" : "success"} />
         <KpiCard label="Volume à produire" value={formatQty(plannedQty)} tone="teal" />
@@ -44,7 +44,7 @@ export default function OfListPage() {
         <BarChart data={pipeline} height={160} />
       </WidgetCard>
       {can("CREATE_OF") && (
-        <Panel className="p-4 grid sm:grid-cols-5 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
           <Field label="Article">
             <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
               {produitsFinis.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}

@@ -21,7 +21,7 @@ export default function PlanningPage() {
         description="Planifiez les volumes par article et par jour. Les ordres de fabrication se créent ensuite à partir de ces plans."
       />
       {can("CREATE_PLAN") && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Article">
             <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
               <option value={0}>—</option>

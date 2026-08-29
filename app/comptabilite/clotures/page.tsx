@@ -21,7 +21,7 @@ export default function CloturesPage() {
         description="Verrouillez une période mensuelle (AAAA-MM) ou annuelle (AAAA). Après clôture, les documents de la période ne se modifient plus."
       />
       {can("CREATE_CLOTURE") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Période">
             <input className={inputClass} value={periode} onChange={(e) => setPeriode(e.target.value)} placeholder="2026-08" />
           </Field>

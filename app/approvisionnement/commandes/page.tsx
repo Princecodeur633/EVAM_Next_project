@@ -19,7 +19,7 @@ export default function CommandesFournisseurPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Achats" title="Commandes fournisseurs" description="Envoyez les commandes, puis suivez les réceptions partielles ou complètes." />
       {can("CREATE_CF") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Fournisseur">
             <select className={inputClass} value={fournisseur} onChange={(e) => setFournisseur(Number(e.target.value))}>
               {state.fournisseurs.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
@@ -37,7 +37,7 @@ export default function CommandesFournisseurPage() {
         </Panel>
       )}
       {can("CREATE_CF") && (
-        <Panel className="p-4 grid sm:grid-cols-5 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
           <Field label="Commande">
             <select className={inputClass} value={cmd} onChange={(e) => setCmd(Number(e.target.value))}>
               {state.commandesFournisseur.map((c) => <option key={c.id} value={c.id}>{c.numero}</option>)}

@@ -12,7 +12,7 @@ export default function FournisseursPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Référentiel" title="Fournisseurs" description="Fournisseurs de matières premières et d’emballages." />
       {can("CREATE_CF") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
           <Field label="Nom"><input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
           <Button disabled={!code} onClick={() => void dispatch({ type: "CREATE_FOURNISSEUR", code, nom })}>Créer</Button>

@@ -12,7 +12,7 @@ export default function DepotsPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Référentiel" title="Dépôts" description="Magasins de stockage des matières et des produits finis." />
       {can("CREATE_DEPOT") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Nom"><input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
           <Field label="Adresse"><input className={inputClass} value={adresse} onChange={(e) => setAdresse(e.target.value)} /></Field>
           <Button disabled={!nom} onClick={() => void dispatch({ type: "CREATE_DEPOT", nom, adresse })}>Créer</Button>

@@ -16,7 +16,7 @@ export default function ParamClientsPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Référentiel" title="Clients" description="Répertoire des particuliers, sociétés et clients sous contrat." />
       {writable && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
           <Field label="Nom"><input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
           <Field label="Type">

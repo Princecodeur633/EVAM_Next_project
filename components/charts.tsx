@@ -22,7 +22,7 @@ export function WidgetCard({
 }) {
   return (
     <div className={cn("evam-card overflow-hidden flex flex-col", className)}>
-      <div className="px-4 py-3 border-b border-line flex items-start justify-between gap-3">
+      <div className="px-4 py-3 border-b border-line flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
         <div>
           <h2 className="text-[13px] font-semibold tracking-tight text-ink">{title}</h2>
           {subtitle && <p className="text-[11.5px] text-muted mt-0.5 leading-snug">{subtitle}</p>}
@@ -77,7 +77,7 @@ export function KpiCard({
           <p className="text-[11px] uppercase tracking-[0.08em] text-muted font-medium">{label}</p>
           {icon && <span className="text-muted opacity-70">{icon}</span>}
         </div>
-        <p className={cn("text-[26px] font-semibold mt-1.5 num tracking-tight leading-none", color)}>{value}</p>
+        <p className={cn("text-[22px] sm:text-[26px] font-semibold mt-1.5 num tracking-tight leading-none break-words", color)}>{value}</p>
         <div className="flex items-center gap-2 mt-2 min-h-[16px]">
           {delta && (
             <span
@@ -106,13 +106,15 @@ export function BarChart({
   format?: (n: number) => string;
 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
+  const many = data.length > 6;
   return (
-    <div className="w-full" style={{ height }}>
-      <div className="flex items-end gap-2 h-[calc(100%-28px)]">
+    <div className={cn("w-full", many && "overflow-x-auto overscroll-x-contain -mx-1 px-1")} style={{ height }}>
+      <div className={cn("flex items-end gap-2 h-[calc(100%-28px)]", many && "min-w-[28rem]")}
+      >
         {data.map((d, i) => {
           const pct = (d.value / max) * 100;
           return (
-            <div key={d.label} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+            <div key={d.label} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group min-w-[2rem]">
               <span className="text-[10px] num text-muted opacity-0 group-hover:opacity-100 transition-opacity">
                 {format(d.value)}
               </span>
@@ -128,9 +130,9 @@ export function BarChart({
           );
         })}
       </div>
-      <div className="flex gap-2 mt-2">
+      <div className={cn("flex gap-2 mt-2", many && "min-w-[28rem]")}>
         {data.map((d) => (
-          <p key={d.label} className="flex-1 text-center text-[10px] text-muted truncate">
+          <p key={d.label} className="flex-1 text-center text-[10px] text-muted truncate min-w-[2rem]">
             {d.label}
           </p>
         ))}
@@ -192,9 +194,9 @@ export function LineChart({
           </circle>
         ))}
       </svg>
-      <div className="flex justify-between px-0.5">
+      <div className="flex justify-between px-0.5 gap-1 overflow-hidden">
         {data.map((d) => (
-          <span key={d.label} className="text-[10px] text-muted">
+          <span key={d.label} className="text-[10px] text-muted truncate min-w-0">
             {d.label}
           </span>
         ))}
@@ -219,8 +221,8 @@ export function DonutChart({
   const c = 2 * Math.PI * r;
   let offset = 0;
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div className="flex flex-col items-center sm:flex-row sm:items-center gap-4 min-w-0">
+      <div className="relative shrink-0 mx-auto sm:mx-0" style={{ width: size, height: size }}>
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
           <circle cx="50" cy="50" r={r} fill="none" stroke="var(--line)" strokeWidth="10" />
           {data.map((d, i) => {

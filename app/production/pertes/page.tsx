@@ -17,7 +17,7 @@ export default function PertesPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Production" title="Pertes de production" description="Déclarez les pertes : casse, non-conformité, panne, erreur de manipulation." />
       {can("CREATE_PERTE") && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="OF">
             <select className={inputClass} value={ofId} onChange={(e) => setOfId(Number(e.target.value))}>
               {state.ofList.map((o) => <option key={o.id} value={o.id}>{o.numero}</option>)}

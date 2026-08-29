@@ -24,7 +24,7 @@ export default function QualitePage() {
         description="Enregistrez un lot produit, contrôlez-le, puis libérez-le. Seuls les lots libérés peuvent être vendus."
       />
       {can("CREATE_LOT") && (
-        <Panel className="p-4 grid sm:grid-cols-5 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
           <Field label="Article">
             <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
               {produitsFinis.map((a) => (

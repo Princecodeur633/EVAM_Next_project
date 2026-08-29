@@ -16,7 +16,7 @@ export default function DemandesAchatPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Achats" title="Demandes d'achat" description="Créez une demande, puis faites-la approuver par le responsable achats." />
       {can("CREATE_DA") && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Article">
             <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
               {state.articles.map((a) => <option key={a.id} value={a.id}>{a.code} · {a.designation}</option>)}

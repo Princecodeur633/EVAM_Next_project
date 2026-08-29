@@ -17,7 +17,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4">
       <PageHeader eyebrow="Pilotage" title="Tableau de bord" description="Vue d’ensemble de l’usine : stocks, encaissements, production et qualité." />
-      <div className="grid sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Stock disponible" value={formatQty(stock, 0)} />
         <KpiCard label="Encaissements" value={formatDa(ca)} tone="success" />
         <KpiCard label="OF ouverts" value={ofOpen} tone="warning" />

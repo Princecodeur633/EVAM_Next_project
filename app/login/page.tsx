@@ -2,7 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Droplets, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ROLE_HOME } from "@/lib/nav";
 import { loadSession } from "@/lib/api";
 import { useStore } from "@/lib/store";
@@ -28,19 +29,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex">
-      <div className="hidden lg:flex w-[42%] bg-sidebar text-white flex-col justify-between p-12 relative overflow-hidden">
+    <div className="min-h-dvh bg-bg flex">
+      <div className="hidden lg:flex w-[min(42%,520px)] bg-sidebar text-white flex-col justify-between p-8 xl:p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-25 evam-grid-bg pointer-events-none" />
         <div className="relative">
-          <div className="flex items-center gap-3">
-            <span className="h-11 w-11 rounded-[10px] bg-white/10 border border-white/15 flex items-center justify-center">
-              <Droplets size={20} />
-            </span>
-            <span>
-              <span className="block text-[11px] uppercase tracking-[0.2em] text-white/45">Unité de production</span>
-              <span className="block text-[28px] font-bold tracking-[0.18em] leading-none mt-1">EVAM</span>
-            </span>
-          </div>
+          <BrandLogo size="lg" priority className="max-h-14" />
+          <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-white/45">Unité de production</p>
           <p className="mt-10 text-white/75 max-w-sm leading-relaxed text-[15px]">
             Eau, jus et yaourts. Un seul outil pour planifier, fabriquer, contrôler, stocker, vendre et livrer.
           </p>
@@ -51,7 +45,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 relative">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 relative">
         <button
           onClick={toggle}
           title={theme === "dark" ? "Mode clair" : "Mode sombre"}
@@ -61,7 +55,10 @@ export default function LoginPage() {
         </button>
 
         <div className="w-full max-w-[400px]">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted font-medium lg:hidden">Unité de production · EVAM</p>
+          <div className="lg:hidden mb-6">
+            <BrandLogo size="md" priority className="max-h-10" />
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted font-medium mt-2">Unité de production</p>
+          </div>
           <h1 className="text-[26px] font-semibold tracking-tight mt-1">Bienvenue</h1>
           <p className="text-muted text-[13px] mt-1 mb-7">Connectez-vous pour ouvrir votre espace de travail.</p>
 

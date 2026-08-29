@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
@@ -18,6 +18,12 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "EVAM — Gestion intégrée",
   description: "EVAM — eau, jus et yaourts. Production, stocks, ventes et distribution.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 const themeBoot = `(function(){try{var t=localStorage.getItem('evam-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t);if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})();`;

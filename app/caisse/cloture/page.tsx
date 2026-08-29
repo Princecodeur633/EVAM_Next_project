@@ -25,10 +25,10 @@ export default function SessionsCaissePage() {
             s: <StatusBadge tone={s.statut === "OUVERTE" ? "warning" : "success"}>{STATUT_SESSION_LABEL[s.statut]}</StatusBadge>,
             o: formatDateTime(s.date_ouverture),
             act: s.statut === "OUVERTE" && can("CLOTURER_CAISSE") ? (
-              <span className="flex gap-2 items-end">
-                <input className="h-8 w-24 border border-line rounded px-2 text-[12px]" placeholder="Théorique" value={theo} onChange={(e) => setTheo(e.target.value)} />
-                <input className="h-8 w-24 border border-line rounded px-2 text-[12px]" placeholder="Compté" value={compte} onChange={(e) => setCompte(e.target.value)} />
-                <button className="text-primary text-[12px]" onClick={() => void dispatch({ type: "CLOTURER_CAISSE", id: s.id, solde_theorique: theo, solde_compte: compte })}>Clôturer</button>
+              <span className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+                <input className="h-8 w-full sm:w-24 border border-line rounded px-2 text-[12px]" placeholder="Théorique" value={theo} onChange={(e) => setTheo(e.target.value)} />
+                <input className="h-8 w-full sm:w-24 border border-line rounded px-2 text-[12px]" placeholder="Compté" value={compte} onChange={(e) => setCompte(e.target.value)} />
+                <button className="text-primary text-[12px] whitespace-nowrap" onClick={() => void dispatch({ type: "CLOTURER_CAISSE", id: s.id, solde_theorique: theo, solde_compte: compte })}>Clôturer</button>
               </span>
             ) : formatDa(num(s.solde_compte_cloture)),
           }))}

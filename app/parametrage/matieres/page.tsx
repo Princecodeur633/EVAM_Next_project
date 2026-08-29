@@ -18,7 +18,7 @@ export default function MatieresPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Référentiel" title="Matières premières" description="Ingrédients et emballages utilisés en production." />
       {writable && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
           <Field label="Désignation"><input className={inputClass} value={designation} onChange={(e) => setDesignation(e.target.value)} /></Field>
           <Field label="Unité">

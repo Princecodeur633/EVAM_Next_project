@@ -92,8 +92,8 @@ export default function OfDetailPage() {
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <p className="flex justify-between gap-3 text-[13px]">
-      <span className="text-muted">{k}</span>
-      <span className="text-right">{v}</span>
+      <span className="text-muted shrink-0">{k}</span>
+      <span className="text-right min-w-0 break-words">{v}</span>
     </p>
   );
 }

@@ -17,7 +17,7 @@ export default function ExportsPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Comptabilité" title="Exports comptables" description="Générez les fichiers de période : ventes, encaissements, achats ou journal." />
       {can("CREATE_EXPORT") && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Type">
             <select className={inputClass} value={type} onChange={(e) => setType(e.target.value as TypeExport)}>
               {(Object.keys(TYPE_EXPORT_LABEL) as TypeExport[]).map((k) => (

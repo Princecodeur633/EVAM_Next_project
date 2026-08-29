@@ -19,7 +19,7 @@ export default function MouvementsPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Stocks" title="Mouvements de stock" description="Chaque entrée, sortie, transfert ou ajustement met à jour le stock du dépôt." />
       {can("CREATE_MVT") && (
-        <Panel className="p-4 grid sm:grid-cols-5 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
           <Field label="Article">
             <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
               {state.articles.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}

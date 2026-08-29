@@ -29,8 +29,8 @@ export default function TourneesPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Distribution" title="Tournées" description="Enregistrez d’abord véhicules et chauffeurs, puis créez la tournée. Chaque chauffeur ne voit que les siennes." />
       {can("CREATE_VEHICULE") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
-          <h2 className="sm:col-span-3 text-[13px] font-semibold">Véhicule</h2>
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
+          <h2 className="col-span-full text-[13px] font-semibold">Véhicule</h2>
           <Field label="Immatriculation">
             <input className={inputClass} value={immat} onChange={(e) => setImmat(e.target.value)} />
           </Field>
@@ -43,8 +43,8 @@ export default function TourneesPage() {
         </Panel>
       )}
       {can("CREATE_CHAUFFEUR") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
-          <h2 className="sm:col-span-3 text-[13px] font-semibold">Chauffeur</h2>
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
+          <h2 className="col-span-full text-[13px] font-semibold">Chauffeur</h2>
           {agents.length > 0 ? (
             <Field label="Utilisateur">
               <select className={inputClass} value={userId} onChange={(e) => setUserId(Number(e.target.value))}>
@@ -68,7 +68,7 @@ export default function TourneesPage() {
         </Panel>
       )}
       {can("CREATE_TOURNEE") && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Chauffeur">
             <select className={inputClass} value={chauffeur} onChange={(e) => setChauffeur(Number(e.target.value))}>
               {state.chauffeurs.map((c) => <option key={c.id} value={c.id}>{chNom(c.id)}</option>)}

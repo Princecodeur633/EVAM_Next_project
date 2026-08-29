@@ -29,7 +29,7 @@ export default function ReceptionDetailPage() {
         description={rec.observations || `Réceptionnée par ${userName(rec.receptionne_par)}`}
       />
       {can("CREATE_RECEPTION") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Ligne commande">
             <select className={inputClass} value={ligne} onChange={(e) => setLigne(Number(e.target.value))}>
               {cfLines.map((l) => <option key={l.id} value={l.id}>{articleName(l.article)} · cmd {formatQty(num(l.quantite_commandee), 2)}</option>)}

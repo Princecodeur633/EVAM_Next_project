@@ -22,7 +22,7 @@ export default function CaissePage() {
         description="Ouvrez une session, puis encaissez les factures en espèces, mobile money, virement ou chèque."
       />
       {!session && can("ENCAISSER") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Caisse">
             <select className={inputClass} value={caisse} onChange={(e) => setCaisse(Number(e.target.value))}>
               {state.caisses.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
@@ -44,11 +44,11 @@ export default function CaissePage() {
             m: formatDa(num(f.montant_total)),
             s: <StatusBadge tone={f.statut === "PAYEE" ? "success" : "warning"}>{STATUT_FACTURE_LABEL[f.statut]}</StatusBadge>,
             act: session && f.statut === "EMISE" && can("ENCAISSER") ? (
-              <span className="flex gap-2 items-center">
+              <span className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                 <select className="h-8 border border-line rounded px-1 text-[12px]" value={mode} onChange={(e) => setMode(e.target.value as ModePaiement)}>
                   {(Object.keys(MODE_PAIEMENT_LABEL) as ModePaiement[]).map((k) => <option key={k} value={k}>{MODE_PAIEMENT_LABEL[k]}</option>)}
                 </select>
-                <button className="text-primary text-[12px]" onClick={() => void dispatch({ type: "ENCAISSER", session_caisse: session.id, facture: f.id, montant: num(f.montant_total), mode_paiement: mode })}>
+                <button className="text-primary text-[12px] whitespace-nowrap" onClick={() => void dispatch({ type: "ENCAISSER", session_caisse: session.id, facture: f.id, montant: num(f.montant_total), mode_paiement: mode })}>
                   Encaisser
                 </button>
               </span>

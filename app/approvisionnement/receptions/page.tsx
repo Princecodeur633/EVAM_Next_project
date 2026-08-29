@@ -16,7 +16,7 @@ export default function ReceptionsPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Magasin" title="Réceptions achat" description="Enregistrez les quantités reçues. Le statut de la commande fournisseur se met à jour automatiquement." />
       {can("CREATE_RECEPTION") && (
-        <Panel className="p-4 grid sm:grid-cols-2 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <Field label="Commande fournisseur">
             <select className={inputClass} value={commande} onChange={(e) => setCommande(Number(e.target.value))}>
               {state.commandesFournisseur.map((c) => <option key={c.id} value={c.id}>{c.numero}</option>)}

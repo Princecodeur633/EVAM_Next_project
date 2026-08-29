@@ -18,7 +18,7 @@ export default function InventairesPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Stocks" title="Inventaires" description="Comptage physique par dépôt. Clôturez l’inventaire une fois le contrôle terminé." />
       {can("CREATE_INVENTAIRE") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Dépôt">
             <select className={inputClass} value={depot} onChange={(e) => setDepot(Number(e.target.value))}>
               {state.depots.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}

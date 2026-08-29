@@ -33,7 +33,7 @@ export default function InventaireDetailPage() {
         }
       />
       {ouvert && can("CREATE_INVENTAIRE") && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Article">
             <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))}>
               {state.articles.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}

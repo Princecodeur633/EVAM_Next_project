@@ -17,7 +17,7 @@ export default function BlListPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Distribution" title="Bons de livraison" description="Confirmez la livraison et enregistrez la signature du client." />
       {can("CREATE_BL") && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Commande">
             <select className={inputClass} value={commande} onChange={(e) => setCommande(Number(e.target.value))}>
               {state.commandes.map((c) => <option key={c.id} value={c.id}>{c.numero}</option>)}

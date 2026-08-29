@@ -39,7 +39,7 @@ export default function SortiesPage() {
         description="Déclarez les sorties vers l’atelier et les retours non utilisés. Une sortie complémentaire exige un motif."
       />
       {can("CREATE_SORTIE") && (
-        <Panel className="p-4 grid sm:grid-cols-5 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
           <Field label="OF">
             <select className={inputClass} value={ofId} onChange={(e) => setOfId(Number(e.target.value))}>
               {ofOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
@@ -83,8 +83,8 @@ export default function SortiesPage() {
         />
       </Panel>
       {can("CREATE_RETOUR_MAT") && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
-          <h2 className="sm:col-span-4 text-[13px] font-semibold">Retour matière</h2>
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
+          <h2 className="col-span-full text-[13px] font-semibold">Retour matière</h2>
           <Field label="OF">
             <select className={inputClass} value={retourOf} onChange={(e) => setRetourOf(Number(e.target.value))}>
               {ofOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}

@@ -17,7 +17,7 @@ export default function SuiviPage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Atelier" title="Étapes de production" description="Saisissez captage, traitement, soufflage, embouteillage, étiquetage et conditionnement." />
       {can("CREATE_ETAPE") && (
-        <Panel className="p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="OF">
             <select className={inputClass} value={ofId} onChange={(e) => setOfId(Number(e.target.value))}>
               {state.ofList.map((o) => <option key={o.id} value={o.id}>{o.numero}</option>)}

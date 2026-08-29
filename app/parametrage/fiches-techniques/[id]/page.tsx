@@ -28,7 +28,7 @@ export default function FicheTechniqueDetailPage() {
         ) : null}
       />
       {writable && ft.statut === "BROUILLON" && (
-        <Panel className="p-4 grid sm:grid-cols-3 gap-3 items-end">
+        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Matière">
             <select className={inputClass} value={matiere} onChange={(e) => setMatiere(Number(e.target.value))}>
               {matieres.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
