@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ApiError, actions, api, catalog, detail, endpoints, loadSession, login as apiLogin, logout as apiLogout, type AuthSession } from "./api";
+import { ApiError, actions, api, catalog, catalogKeysForRole, detail, endpoints, loadSession, login as apiLogin, logout as apiLogout, rememberProfil, resolveProfil, saveSession, type AuthSession } from "./api";
 import { canAct, stockArticleTotal, type ActionName } from "./engine";
 import { displayName } from "./labels";
 import { canEditParam as roleCanEditParam } from "./roles";
@@ -163,9 +163,10 @@ function emptyState(): AppState {
   };
 }
 
-async function loadCatalogs(base: AppState): Promise<AppState> {
+async function loadCatalogs(base: AppState, profil: Profil): Promise<AppState> {
+  const keys = catalogKeysForRole(profil);
   const entries = await Promise.all(
-    (Object.keys(catalog) as (keyof typeof catalog)[]).map(async (key) => {
+    keys.map(async (key) => {
       try {
         const value = await catalog[key]();
         return [key, value] as const;
@@ -240,9 +241,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     setState((s) => ({ ...s, loading: true, lastError: null, currentUserId: auth.userId }));
     try {
-      const loaded = await loadCatalogs({ ...emptyState(), currentUserId: auth.userId, loading: false });
-      const user = toUser(auth, loaded.utilisateurs);
-      setSession({ ...auth, name: user.name, email: user.email, profil: user.role, userId: user.id });
+      const profil = await resolveProfil(auth.username, auth.userId, auth.profil);
+      const resolved = { ...auth, profil };
+      saveSession(resolved);
+      const loaded = await loadCatalogs({ ...emptyState(), currentUserId: resolved.userId, loading: false }, profil);
+      const user = toUser(resolved, loaded.utilisateurs);
+      const nextSession = { ...resolved, name: user.name, email: user.email, profil: user.role, userId: user.id };
+      rememberProfil(nextSession.username, nextSession.profil);
+      saveSession(nextSession);
+      setSession(nextSession);
       setState({ ...loaded, currentUserId: user.id });
     } catch (err) {
       setState((s) => ({
@@ -622,6 +629,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               email: action.email ?? "",
               actif: true,
             });
+            rememberProfil(action.username, action.profil);
             break;
           case "TOGGLE_USER":
             await api.patch(detail(endpoints.utilisateurs, action.id), { actif: action.actif });

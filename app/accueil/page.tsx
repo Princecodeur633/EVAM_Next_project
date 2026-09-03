@@ -11,7 +11,7 @@ import { cn, formatQty, num } from "@/lib/utils";
 import { ACCENT_CLASS, ROLE_ICONS } from "@/components/icons";
 import { Panel } from "@/components/ui";
 import { stockDisponible } from "@/lib/engine";
-import { STATUT_OF_LABEL, STATUT_PREP_LABEL, TYPE_ANOMALIE_LABEL } from "@/lib/labels";
+import { displayName, STATUT_BL_LABEL, STATUT_OF_LABEL, STATUT_PREP_LABEL, TYPE_ANOMALIE_LABEL } from "@/lib/labels";
 
 export default function AccueilPage() {
   const { state, currentUser, articleName } = useStore();
@@ -95,12 +95,26 @@ function tasksForRole(role: Profil, state: AppState, articleName: (id: number) =
   const factEmise = state.factures.filter((f) => f.statut === "EMISE");
   const prep = state.preparations.filter((p) => p.statut === "A_PREPARER" || p.statut === "EN_PREPARATION");
   const stockSum = state.stock.reduce((a, s) => a + stockDisponible(s), 0);
+  const tournees = state.tournees;
+  const bl = state.bonsLivraison.filter((b) => b.statut !== "LIVREE");
 
   const metrics: { label: string; value: string | number; hint?: string; tone?: "default" | "warning" | "success" | "danger" }[] = [];
   const items: { href: string; title: string; detail: string }[] = [];
 
-  if (["RESPONSABLE_PRODUCTION", "AGENT_PRODUCTION", "DIRECTION", "ADMIN_SI"].includes(role)) {
-    metrics.push({ label: "OF ouverts", value: ofOpen.length });
+  if (role === "ADMIN_SI") {
+    const inactifs = state.utilisateurs.filter((u) => !u.actif);
+    metrics.push({ label: "Comptes", value: state.utilisateurs.length });
+    metrics.push({ label: "Comptes inactifs", value: inactifs.length, tone: inactifs.length ? "warning" : "success" });
+    metrics.push({ label: "Journal", value: state.journal.length });
+    inactifs.slice(0, 5).forEach((u) =>
+      items.push({ href: "/admin/utilisateurs", title: displayName(u), detail: "Compte inactif" }),
+    );
+    state.journal.slice(0, 4).forEach((j) =>
+      items.push({ href: "/admin/audit", title: j.action || "Action", detail: j.document_id || j.module || "" }),
+    );
+  }
+  if (["RESPONSABLE_PRODUCTION", "AGENT_PRODUCTION"].includes(role)) {
+    metrics.push({ label: "OF ouverts", value: ofOpen.length, tone: ofOpen.length ? "warning" : "default" });
     ofOpen.slice(0, 5).forEach((o) =>
       items.push({ href: `/production/of/${o.id}`, title: o.numero, detail: `${articleName(o.article)} · ${STATUT_OF_LABEL[o.statut]}` }),
     );
@@ -117,9 +131,16 @@ function tasksForRole(role: Profil, state: AppState, articleName: (id: number) =
     metrics.push({ label: "Factures à encaisser", value: factEmise.length });
     factEmise.slice(0, 5).forEach((f) => items.push({ href: "/caisse", title: f.numero, detail: `Montant ${f.montant_total}` }));
   }
-  if (["MAGASINIER", "RESPONSABLE_DISTRIBUTION", "CHAUFFEUR"].includes(role)) {
+  if (["MAGASINIER", "RESPONSABLE_DISTRIBUTION"].includes(role)) {
     metrics.push({ label: "Préparations", value: prep.length });
     prep.forEach((p) => items.push({ href: `/distribution/preparations/${p.id}`, title: `Préparation n°${p.id}`, detail: STATUT_PREP_LABEL[p.statut] }));
+  }
+  if (role === "CHAUFFEUR") {
+    metrics.push({ label: "Tournées", value: tournees.length });
+    metrics.push({ label: "BL à livrer", value: bl.length, tone: bl.length ? "warning" : "success" });
+    bl.slice(0, 6).forEach((b) =>
+      items.push({ href: `/distribution/bl/${b.id}`, title: b.numero, detail: STATUT_BL_LABEL[b.statut] ?? b.statut }),
+    );
   }
   if (["DIRECTION", "MAGASINIER", "RESPONSABLE_ACHATS"].includes(role)) {
     metrics.push({ label: "Stock disponible", value: formatQty(stockSum, 1) });
@@ -127,6 +148,9 @@ function tasksForRole(role: Profil, state: AppState, articleName: (id: number) =
   if (role === "COMPTABILITE_DAF") {
     metrics.push({ label: "Anomalies", value: state.anomalies.filter((a) => a.statut === "DETECTEE").length, tone: "warning" });
     state.anomalies.slice(0, 5).forEach((a) => items.push({ href: "/comptabilite/brouillards", title: TYPE_ANOMALIE_LABEL[a.type_anomalie] ?? a.type_anomalie, detail: a.description }));
+  }
+  if (role === "DIRECTION") {
+    metrics.push({ label: "Coûts OF", value: state.coutsReels.length });
   }
 
   return { metrics, items };
