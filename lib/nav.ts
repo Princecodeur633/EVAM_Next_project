@@ -1,5 +1,5 @@
 import type { Profil } from "./types";
-import { ROLE_PROFILES } from "./roles";
+import { canEditParam, canReadParam, ROLE_PROFILES } from "./roles";
 
 export const ROLE_HOME: Record<Profil, string> = {
   ADMIN_SI: "/accueil",
@@ -43,13 +43,14 @@ const I = {
   mvt: { href: "/stocks/mouvements", label: "Mouvements", hint: "Entrées et sorties" },
   inv: { href: "/stocks/inventaires", label: "Inventaires", hint: "Comptage physique" },
   apBesoins: { href: "/approvisionnement/besoins", label: "Besoins d'achat", hint: "Besoins à couvrir" },
-  da: { href: "/approvisionnement/demandes", label: "Demandes d'achat", hint: "Validation des DA" },
+  da: { href: "/approvisionnement/demandes", label: "Demandes d'achat", hint: "Demandes et validation" },
   cf: { href: "/approvisionnement/commandes", label: "Commandes fournisseurs", hint: "Commandes d’achat" },
   rec: { href: "/approvisionnement/receptions", label: "Réceptions", hint: "Réceptions magasin" },
   cmd: { href: "/commercial/commandes", label: "Commandes", hint: "Commandes clients" },
   cmdNew: { href: "/commercial/commandes/nouvelle", label: "Nouvelle commande", hint: "Créer une commande" },
   clients: { href: "/commercial/clients", label: "Clients", hint: "Fiches clients" },
-  factures: { href: "/caisse", label: "Encaissements", hint: "Factures à encaisser" },
+  factures: { href: "/caisse", label: "Factures", hint: "Suivi des factures" },
+  encaissements: { href: "/caisse", label: "Encaissements", hint: "Factures à encaisser" },
   sessions: { href: "/caisse/cloture", label: "Sessions de caisse", hint: "Ouverture et clôture" },
   prep: { href: "/distribution/preparations", label: "Préparations", hint: "Préparer les commandes" },
   bl: { href: "/distribution/bl", label: "Bons de livraison", hint: "Livraisons" },
@@ -60,6 +61,7 @@ const I = {
   exports: { href: "/comptabilite/export-sage", label: "Exports comptables", hint: "Exports de période" },
   clotures: { href: "/comptabilite/clotures", label: "Clôtures", hint: "Périodes comptables" },
   param: { href: "/parametrage", label: "Référentiel", hint: "Articles et tiers" },
+  ft: { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Consultation recettes" },
   users: { href: "/admin/utilisateurs", label: "Utilisateurs" },
   profils: { href: "/admin/profils", label: "Profils" },
   droits: { href: "/admin/droits", label: "Droits d'accès" },
@@ -82,7 +84,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   RESPONSABLE_PRODUCTION: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("prod", "Production", "factory", [I.planning, I.of, I.besoinsOf, I.sorties]),
+    g("prod", "Production", "factory", [I.planning, I.of, I.besoinsOf, I.da]),
     g("stock", "Stocks", "boxes", [I.stock]),
     g("ref", "Référentiel", "sliders", [I.param]),
   ],
@@ -92,11 +94,11 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   RESPONSABLE_QUALITE: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("qualite", "Qualité", "check", [I.qualite, I.of]),
+    g("qualite", "Qualité", "check", [I.qualite, I.ft]),
   ],
   MAGASINIER: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("magasin", "Magasin", "boxes", [I.sorties, I.stock, I.mvt, I.inv]),
+    g("magasin", "Magasin", "boxes", [I.sorties, I.stock, I.mvt, I.inv, I.da]),
     g("rec", "Réceptions & quai", "cart", [I.rec, I.prep]),
   ],
   RESPONSABLE_ACHATS: [
@@ -112,7 +114,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   CAISSIER: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("caisse", "Caisse", "banknote", [I.factures, I.sessions]),
+    g("caisse", "Caisse", "banknote", [I.encaissements, I.sessions]),
   ],
   RESPONSABLE_DISTRIBUTION: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -139,13 +141,38 @@ export function flattenNav(role: Profil) {
   return navForRole(role).flatMap((group) => group.items.map((i) => ({ ...i, group: group.label })));
 }
 
+/** Correspondance menu → route, sans ouvrir les écrans « frères » du même préfixe. */
 function matchesItem(href: string, itemHref: string) {
-  return href === itemHref || href.startsWith(itemHref + "/");
+  if (href === itemHref) return true;
+  if (itemHref === "/parametrage") return false;
+  if (itemHref === "/caisse") {
+    return (
+      href.startsWith("/caisse/encaissement/") ||
+      href.startsWith("/caisse/suspendues")
+    );
+  }
+  if (itemHref === "/stocks") {
+    return href.startsWith("/stocks/article/");
+  }
+  if (itemHref === "/commercial/commandes") {
+    if (href.startsWith("/commercial/commandes/nouvelle")) return false;
+    return href.startsWith("/commercial/commandes/");
+  }
+  if (itemHref === "/caisse/cloture") {
+    return href === "/caisse/cloture" || href.startsWith("/caisse/cloture/");
+  }
+  return href.startsWith(itemHref + "/");
 }
 
 function matchesExtra(href: string, extra: string) {
   if (href === extra) return true;
   if (extra === "/stocks") return href.startsWith("/stocks/article/");
+  if (extra === "/caisse") {
+    return href.startsWith("/caisse/encaissement/") || href.startsWith("/caisse/suspendues");
+  }
+  if (extra === "/commercial/commandes") {
+    return href.startsWith("/commercial/commandes/") && !href.startsWith("/commercial/commandes/nouvelle");
+  }
   return href.startsWith(extra + "/");
 }
 
@@ -155,7 +182,6 @@ const EXTRA_ACCESS: Partial<Record<Profil, string[]>> = {
   COMMERCIAL: ["/stocks"],
   RESPONSABLE_DISTRIBUTION: ["/commercial/commandes"],
   CAISSIER: ["/commercial/commandes"],
-  COMPTABILITE_DAF: ["/caisse"],
   RESPONSABLE_PRODUCTION: ["/production/qualite"],
 };
 
@@ -165,10 +191,11 @@ export function canAccess(role: Profil, href: string) {
   const extra = EXTRA_ACCESS[role] ?? [];
   if (extra.some((p) => matchesExtra(href, p))) return true;
   if (href.startsWith("/parametrage")) {
-    const allow = ROLE_PROFILES[role].paramAllow;
-    if (allow.includes("*")) return true;
-    if (href === "/parametrage") return allow.length > 0;
-    return allow.some((p) => matchesItem(href, p));
+    if (ROLE_PROFILES[role].paramAllow.includes("*")) return true;
+    if (href === "/parametrage") {
+      return ROLE_PROFILES[role].paramAllow.length > 0 || (ROLE_PROFILES[role].paramRead?.length ?? 0) > 0;
+    }
+    return canReadParam(role, href) || canEditParam(role, href);
   }
   return false;
 }

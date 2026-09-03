@@ -310,6 +310,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (busy.current) return;
       busy.current = true;
       setState((s) => ({ ...s, lastError: null }));
+      const currentRole = session?.profil ?? null;
       try {
         const userId = session?.userId;
         switch (action.type) {
@@ -679,20 +680,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const currentUser = useMemo(() => (session ? toUser(session, state.utilisateurs) : null), [session, state.utilisateurs]);
   const role = currentUser?.role ?? null;
 
+  /** Filtre les données sensibles selon le profil (agent → ses OF, chauffeur → ses tournées/BL). */
+  const filteredState = useMemo(() => {
+    if (!role || !currentUser) return state;
+    const uid = currentUser.id;
+    const s = { ...state };
+    if (role === "AGENT_PRODUCTION") {
+      s.ofList = s.ofList.filter((o) => o.agents_affectes?.includes(uid));
+      s.etapes = s.etapes.filter((e) => s.ofList.some((o) => o.id === e.ordre_fabrication));
+      s.pertes = s.pertes.filter((p) => s.ofList.some((o) => o.id === p.ordre_fabrication));
+    }
+    if (role === "CHAUFFEUR") {
+      const myChIds = state.chauffeurs.filter((c) => c.utilisateur === uid).map((c) => c.id);
+      s.tournees = s.tournees.filter((t) => myChIds.includes(t.chauffeur));
+      const myTourneeIds = s.tournees.map((t) => t.id);
+      s.bonsLivraison = s.bonsLivraison.filter((b) => b.tournee && myTourneeIds.includes(b.tournee));
+    }
+    return s;
+  }, [state, role, currentUser]);
+
   const value = useMemo<StoreValue>(() => {
+    const s = filteredState;
     const articleName = (id: number | null | undefined) => {
       if (id == null) return "—";
-      const a = state.articles.find((x) => x.id === id);
+      const a = s.articles.find((x) => x.id === id);
       return a ? `${a.code} · ${a.designation}` : `#${id}`;
     };
     const clientName = (id: number | null | undefined) => {
       if (id == null) return "—";
-      const c = state.clients.find((x) => x.id === id);
+      const c = s.clients.find((x) => x.id === id);
       return c ? `${c.code} · ${c.nom}` : `#${id}`;
     };
     const fournisseurName = (id: number | null | undefined) => {
       if (id == null) return "—";
-      const f = state.fournisseurs.find((x) => x.id === id);
+      const f = s.fournisseurs.find((x) => x.id === id);
       return f ? `${f.code} · ${f.nom}` : `#${id}`;
     };
     const ofNumero = (id: number | null | undefined) => {
@@ -707,7 +728,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return `#${id}`;
     };
     return {
-      state,
+      state: s,
       currentUser,
       role,
       dispatch,
@@ -718,19 +739,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       fournisseurName,
       ofNumero,
       userName,
-      stockOf: (articleId) => stockArticleTotal(state, articleId),
+      stockOf: (articleId) => stockArticleTotal(s, articleId),
       tarifFor: (articleId, clientId) => {
         const specific = clientId
-          ? state.tarifs.find((t) => t.article === articleId && t.client === clientId)
+          ? s.tarifs.find((t) => t.article === articleId && t.client === clientId)
           : undefined;
-        const pub = state.tarifs.find((t) => t.article === articleId && t.client == null);
+        const pub = s.tarifs.find((t) => t.article === articleId && t.client == null);
         return num((specific ?? pub)?.prix_unitaire);
       },
-      produitsFinis: state.articles.filter((a) => a.type_article === "PRODUIT_FINI" && a.actif),
-      matieres: state.articles.filter((a) => a.type_article === "MATIERE_PREMIERE" && a.actif),
+      produitsFinis: s.articles.filter((a) => a.type_article === "PRODUIT_FINI" && a.actif),
+      matieres: s.articles.filter((a) => a.type_article === "MATIERE_PREMIERE" && a.actif),
       ready,
     };
-  }, [currentUser, dispatch, ready, role, session, state]);
+  }, [currentUser, dispatch, filteredState, ready, role, session, state]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
