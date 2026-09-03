@@ -27,7 +27,10 @@ export type RoleProfile = {
   accent: "navy" | "teal" | "amber" | "green" | "red" | "slate";
   icon: "shield" | "bar" | "factory" | "wrench" | "check" | "boxes" | "cart" | "handshake" | "banknote" | "package" | "truck" | "ledger";
   homeHint: string;
+  /** Chemins référentiel en écriture (création / modification). */
   paramAllow: string[];
+  /** Chemins référentiel en lecture seule (optionnel). */
+  paramRead?: string[];
 };
 
 export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
@@ -104,7 +107,8 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     accent: "green",
     icon: "check",
     homeHint: "Traiter les lots en attente puis libérer les conformes.",
-    paramAllow: ["/parametrage/fiches-techniques"],
+    paramAllow: [],
+    paramRead: ["/parametrage/fiches-techniques"],
   },
   MAGASINIER: {
     role: "MAGASINIER",
@@ -222,4 +226,12 @@ export function canEditParam(role: Profil | null, href: string) {
   const allow = ROLE_PROFILES[role].paramAllow;
   if (allow.includes("*")) return true;
   return allow.some((p) => href === p || href.startsWith(p + "/"));
+}
+
+export function canReadParam(role: Profil | null, href: string) {
+  if (!role) return false;
+  if (canEditParam(role, href)) return true;
+  const read = ROLE_PROFILES[role].paramRead ?? [];
+  if (read.includes("*")) return true;
+  return read.some((p) => href === p || href.startsWith(p + "/"));
 }
