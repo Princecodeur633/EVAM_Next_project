@@ -261,7 +261,33 @@ export function displayName(user: { first_name?: string; last_name?: string; use
   return full || user.username;
 }
 
+const PROFIL_ALIASES: Record<string, Profil> = {
+  ADMIN: "ADMIN_SI",
+  ADMINSI: "ADMIN_SI",
+  ADMINISTRATEUR: "ADMIN_SI",
+  PDG: "DIRECTION",
+  DIRECTION: "DIRECTION",
+  PRODUCTION: "RESPONSABLE_PRODUCTION",
+  RESP_PROD: "RESPONSABLE_PRODUCTION",
+  AGENT: "AGENT_PRODUCTION",
+  QUALITE: "RESPONSABLE_QUALITE",
+  MAGASIN: "MAGASINIER",
+  ACHATS: "RESPONSABLE_ACHATS",
+  ACHAT: "RESPONSABLE_ACHATS",
+  VENTE: "COMMERCIAL",
+  CAISSE: "CAISSIER",
+  DISTRIBUTION: "RESPONSABLE_DISTRIBUTION",
+  LIVREUR: "CHAUFFEUR",
+  DAF: "COMPTABILITE_DAF",
+  COMPTABILITE: "COMPTABILITE_DAF",
+};
+
+export function isProfil(value: string): value is Profil {
+  return (Object.keys(PROFIL_LABEL) as string[]).includes(value);
+}
+
 export function profilFromUsername(username: string): Profil | null {
-  const key = username.trim().toUpperCase().replace(/-/g, "_");
-  return (Object.keys(PROFIL_LABEL) as Profil[]).includes(key as Profil) ? (key as Profil) : null;
+  const key = username.trim().toUpperCase().replace(/-/g, "_").replace(/\s+/g, "_");
+  if (isProfil(key)) return key;
+  return PROFIL_ALIASES[key] ?? PROFIL_ALIASES[key.replace(/_/g, "")] ?? null;
 }
