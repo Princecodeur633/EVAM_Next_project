@@ -1,7 +1,7 @@
 "use client";
 
 import type { Paginated, Profil } from "../types";
-import { isProfil, profilFromUsername } from "../labels";
+import { isProfil } from "../labels";
 
 const SESSION_KEY = "evam-erp-session-v1";
 
@@ -49,84 +49,28 @@ function decodeJwt(token: string): { user_id?: number; userId?: number; username
   return JSON.parse(json) as { user_id?: number; userId?: number; username?: string; exp?: number };
 }
 
-const PROFIL_DIR_KEY = "evam-profil-by-username";
+export type Moi = { id: number; username: string; name: string; email: string; profil: Profil };
 
-function readProfilDirectory(): Record<string, Profil> {
-  if (typeof window === "undefined") return {};
+/**
+ * GET /api/comptes/moi/ - la fiche du compte actuellement connecté, telle que
+ * renvoyée par le backend (accessible à tout utilisateur authentifié, quel que
+ * soit son profil). Seule source de vérité pour "qui est connecté, avec quel
+ * profil" : on ne devine jamais côté frontend.
+ *
+ * `access` permet de forcer le jeton à utiliser : juste après un login, la
+ * session n'est pas encore persistée, donc rien n'est disponible côté stockage
+ * local pour authentifier cet appel.
+ */
+export async function fetchMoi(access?: string): Promise<Moi | null> {
   try {
-    const raw = localStorage.getItem(PROFIL_DIR_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, Profil>) : {};
-  } catch {
-    return {};
-  }
-}
-
-export function rememberProfil(username: string, profil: Profil) {
-  if (typeof window === "undefined" || !username) return;
-  const dir = readProfilDirectory();
-  dir[username.trim().toLowerCase()] = profil;
-  localStorage.setItem(PROFIL_DIR_KEY, JSON.stringify(dir));
-}
-
-function storedProfil(username: string): Profil | null {
-  const value = readProfilDirectory()[username.trim().toLowerCase()];
-  return value && isProfil(value) ? value : null;
-}
-
-async function canRead(path: string): Promise<boolean> {
-  try {
-    await api.get<unknown>(`${path}${path.includes("?") ? "&" : "?"}page=1`);
-    return true;
-  } catch (err) {
-    if (err instanceof ApiError && (err.status === 403 || err.status === 401 || err.status === 404)) return false;
-    return false;
-  }
-}
-
-/** Déduit le profil métier à partir des modules réellement accessibles (le JWT ne contient pas `profil`). */
-export async function inferProfilFromApi(): Promise<Profil | null> {
-  const [articles, users, plans, ofList, controles, achats, vehicules, exportsC, couts, clients, sessions, mouvements, prep] =
-    await Promise.all([
-      canRead("/referentiel/articles/"),
-      canRead("/comptes/utilisateurs/"),
-      canRead("/production/plans/"),
-      canRead("/production/ordres-fabrication/"),
-      canRead("/qualite/controles/"),
-      canRead("/achats/commandes/"),
-      canRead("/distribution/vehicules/"),
-      canRead("/comptabilite/exports/"),
-      canRead("/couts/couts-reels/"),
-      canRead("/commercial/clients/"),
-      canRead("/caisse/sessions/"),
-      canRead("/stocks/mouvements/"),
-      canRead("/distribution/preparations/"),
-    ]);
-  if (users) return "ADMIN_SI";
-  if (plans) return "RESPONSABLE_PRODUCTION";
-  if (ofList) return "AGENT_PRODUCTION";
-  if (controles) return "RESPONSABLE_QUALITE";
-  if (achats) return "RESPONSABLE_ACHATS";
-  if (vehicules) return "RESPONSABLE_DISTRIBUTION";
-  if (exportsC) return "COMPTABILITE_DAF";
-  if (couts) return "DIRECTION";
-  if (clients) return "COMMERCIAL";
-  if (sessions) return "CAISSIER";
-  if (mouvements || prep) return "MAGASINIER";
-  if (articles) return "CHAUFFEUR";
-  return null;
-}
-
-async function fetchSelf(userId: number): Promise<{ profil: Profil; name: string; email: string; username: string; id: number } | null> {
-  if (!userId) return null;
-  try {
-    const me = await api.get<{
+    const me = await apiRequest<{
       id: number;
       username: string;
       first_name?: string;
       last_name?: string;
       email?: string;
       profil: Profil;
-    }>(`/comptes/utilisateurs/${userId}/`);
+    }>("/comptes/moi/", { method: "GET" }, true, access);
     if (!isProfil(me.profil)) return null;
     return {
       id: me.id,
@@ -138,20 +82,6 @@ async function fetchSelf(userId: number): Promise<{ profil: Profil; name: string
   } catch {
     return null;
   }
-}
-
-export async function resolveProfil(username: string, userId: number, hinted?: Profil | null): Promise<Profil> {
-  const me = await fetchSelf(userId);
-  if (me) {
-    rememberProfil(me.username, me.profil);
-    return me.profil;
-  }
-  const inferred = await inferProfilFromApi();
-  if (inferred) {
-    rememberProfil(username, inferred);
-    return inferred;
-  }
-  return storedProfil(username) ?? profilFromUsername(username) ?? hinted ?? "CHAUFFEUR";
 }
 
 export function parseApiError(body: unknown, fallback: string) {
@@ -200,12 +130,13 @@ async function tryRefresh(): Promise<boolean> {
   return refreshPromise;
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+export async function apiRequest<T>(path: string, init: RequestInit = {}, retry = true, accessOverride?: string): Promise<T> {
   const session = loadSession();
-  const res = await rawFetch(path, init, session?.access);
+  const access = accessOverride ?? session?.access;
+  const res = await rawFetch(path, init, access);
   if (res.status === 401 && retry && session?.refresh) {
     const ok = await tryRefresh();
-    if (ok) return apiRequest<T>(path, init, false);
+    if (ok) return apiRequest<T>(path, init, false, accessOverride);
   }
   const text = await res.text();
   let body: unknown = null;
@@ -267,28 +198,24 @@ export async function login(username: string, password: string): Promise<AuthSes
   const decoded = decodeJwt(tokens.access);
   const userId = decoded.user_id ?? decoded.userId ?? 0;
   const loginName = decoded.username || username;
-  saveSession({
-    access: tokens.access,
-    refresh: tokens.refresh,
-    username: loginName,
-    userId,
-    profil: storedProfil(loginName) ?? profilFromUsername(loginName) ?? "CHAUFFEUR",
-    name: loginName,
-    email: "",
-  });
 
-  const self = await fetchSelf(userId);
-  const profil = self?.profil ?? (await inferProfilFromApi()) ?? storedProfil(loginName) ?? profilFromUsername(loginName) ?? "CHAUFFEUR";
+  const moi = await fetchMoi(tokens.access);
+  if (!moi) {
+    throw new ApiError(
+      "Ce compte est valide mais son profil métier n’a pas pu être vérifié. Contactez l’Administrateur SI.",
+      403,
+      null,
+    );
+  }
   const session: AuthSession = {
     access: tokens.access,
     refresh: tokens.refresh,
-    username: self?.username || loginName,
-    userId: self?.id || userId,
-    profil,
-    name: self?.name || loginName,
-    email: self?.email ?? "",
+    username: moi.username || loginName,
+    userId: moi.id || userId,
+    profil: moi.profil,
+    name: moi.name || loginName,
+    email: moi.email,
   };
-  rememberProfil(session.username, session.profil);
   saveSession(session);
   return session;
 }

@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ApiError, actions, api, catalog, catalogKeysForRole, detail, endpoints, loadSession, login as apiLogin, logout as apiLogout, rememberProfil, resolveProfil, saveSession, type AuthSession } from "./api";
+import { ApiError, actions, api, catalog, catalogKeysForRole, detail, endpoints, fetchMoi, loadSession, login as apiLogin, logout as apiLogout, saveSession, type AuthSession, type CatalogKey } from "./api";
 import { canAct, stockArticleTotal, type ActionName } from "./engine";
 import { displayName } from "./labels";
 import { canEditParam as roleCanEditParam } from "./roles";
@@ -163,8 +163,7 @@ function emptyState(): AppState {
   };
 }
 
-async function loadCatalogs(base: AppState, profil: Profil): Promise<AppState> {
-  const keys = catalogKeysForRole(profil);
+async function fetchCatalogs(keys: CatalogKey[]): Promise<Partial<AppState>> {
   const entries = await Promise.all(
     keys.map(async (key) => {
       try {
@@ -175,26 +174,33 @@ async function loadCatalogs(base: AppState, profil: Profil): Promise<AppState> {
       }
     }),
   );
-  const next: AppState = { ...base, loading: false, lastError: null };
-  for (const [key, value] of entries) {
-    (next as unknown as Record<string, unknown>)[key] = value;
-  }
-  if (!next.depotId && next.depots[0]) next.depotId = next.depots[0].id;
-  return next;
+  const partial: Record<string, unknown> = {};
+  for (const [key, value] of entries) partial[key] = value;
+  return partial as Partial<AppState>;
 }
 
-function toUser(session: AuthSession, utilisateurs: AppState["utilisateurs"]): SessionUser {
-  const found = utilisateurs.find((u) => u.id === session.userId || u.username === session.username);
-  if (found) {
-    return {
-      id: found.id,
-      username: found.username,
-      name: displayName(found),
-      email: found.email,
-      role: found.profil,
-      active: found.actif && found.is_active,
-    };
-  }
+function withDepotId(state: AppState): AppState {
+  if (!state.depotId && state.depots[0]) return { ...state, depotId: state.depots[0].id };
+  return state;
+}
+
+/**
+ * L'Administrateur SI a accès à tous les modules, mais /accueil et /admin/* n'ont
+ * besoin que de ceci pour s'afficher. Le reste (référentiel, stocks, production...)
+ * continue de charger en arrière-plan juste après, sans bloquer l'écran : avec un
+ * backend aussi lent, mieux vaut afficher l'accueil vite et remplir le reste ensuite
+ * plutôt que de faire attendre ~65 requêtes avant le premier affichage.
+ */
+const ADMIN_CORE_KEYS: CatalogKey[] = ["utilisateurs", "droits", "journal"];
+
+async function loadCatalogs(base: AppState, profil: Profil): Promise<AppState> {
+  const keys = profil === "ADMIN_SI" ? ADMIN_CORE_KEYS : catalogKeysForRole(profil);
+  const fetched = await fetchCatalogs(keys);
+  return withDepotId({ ...base, ...fetched, loading: false, lastError: null });
+}
+
+/** GET /comptes/moi/ fait toujours autorité sur l'identité du compte connecté. */
+function toUser(session: AuthSession): SessionUser {
   return {
     id: session.userId,
     username: session.username,
@@ -232,7 +238,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const busy = useRef(false);
 
-  const hydrate = useCallback(async (auth: AuthSession | null) => {
+  const hydrate = useCallback(async (auth: AuthSession | null, trustProfil = false) => {
     if (!auth) {
       setState(emptyState());
       setSession(null);
@@ -241,16 +247,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     setState((s) => ({ ...s, loading: true, lastError: null, currentUserId: auth.userId }));
     try {
-      const profil = await resolveProfil(auth.username, auth.userId, auth.profil);
-      const resolved = { ...auth, profil };
-      saveSession(resolved);
-      const loaded = await loadCatalogs({ ...emptyState(), currentUserId: resolved.userId, loading: false }, profil);
-      const user = toUser(resolved, loaded.utilisateurs);
-      const nextSession = { ...resolved, name: user.name, email: user.email, profil: user.role, userId: user.id };
-      rememberProfil(nextSession.username, nextSession.profil);
+      // Après un LOGIN, apiLogin() a déjà appelé /comptes/moi/ : pas besoin de le
+      // refaire une seconde fois ici.
+      const moi = trustProfil
+        ? { id: auth.userId, username: auth.username, name: auth.name, email: auth.email, profil: auth.profil }
+        : await fetchMoi();
+      if (!moi) {
+        saveSession(null);
+        setSession(null);
+        setState({ ...emptyState(), lastError: "Votre profil n’a pas pu être vérifié. Reconnectez-vous." });
+        return;
+      }
+      const nextSession: AuthSession = { ...auth, profil: moi.profil, username: moi.username, userId: moi.id, name: moi.name, email: moi.email };
+      const loaded = await loadCatalogs({ ...emptyState(), currentUserId: nextSession.userId, loading: false }, moi.profil);
       saveSession(nextSession);
       setSession(nextSession);
-      setState({ ...loaded, currentUserId: user.id });
+      setState({ ...loaded, currentUserId: nextSession.userId });
+
+      if (moi.profil === "ADMIN_SI") {
+        const remaining = catalogKeysForRole(moi.profil).filter((k) => !ADMIN_CORE_KEYS.includes(k));
+        void fetchCatalogs(remaining).then((rest) => {
+          setState((s) => withDepotId({ ...s, ...rest }));
+        });
+      }
     } catch (err) {
       setState((s) => ({
         ...s,
@@ -296,7 +315,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         try {
           const auth = await apiLogin(action.username, action.password);
           setSession(auth);
-          await hydrate(auth);
+          await hydrate(auth, true);
         } catch (err) {
           fail(friendlyAuthError(err));
         }
@@ -628,12 +647,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               first_name: action.first_name ?? "",
               last_name: action.last_name ?? "",
               email: action.email ?? "",
-              actif: true,
             });
-            rememberProfil(action.username, action.profil);
             break;
           case "TOGGLE_USER":
-            await api.patch(detail(endpoints.utilisateurs, action.id), { actif: action.actif });
+            await api.post(`${detail(endpoints.utilisateurs, action.id)}${action.actif ? "activer" : "desactiver"}/`);
             break;
           case "RECALCULER_COUT":
             await actions.recalculerCout(action.id);
@@ -677,7 +694,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [fail, hydrate, session?.userId],
   );
 
-  const currentUser = useMemo(() => (session ? toUser(session, state.utilisateurs) : null), [session, state.utilisateurs]);
+  const currentUser = useMemo(() => (session ? toUser(session) : null), [session]);
   const role = currentUser?.role ?? null;
 
   /** Filtre les données sensibles selon le profil (agent → ses OF, chauffeur → ses tournées/BL). */
