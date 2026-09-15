@@ -89,15 +89,14 @@ export interface Utilisateur {
   first_name: string;
   last_name: string;
   email: string;
-  is_staff: boolean;
-  is_superuser: boolean;
-  is_active: boolean;
-  last_login: string | null;
-  date_joined: string;
   profil: Profil;
   telephone: string;
+  /** Lecture seule : dérivé de is_active côté backend. Pour changer l'état, utiliser
+   * les actions POST .../activer/ et .../desactiver/, pas un PATCH sur ce champ. */
   actif: boolean;
   date_creation: string;
+  desactive_par: number | null;
+  date_desactivation: string | null;
 }
 
 export interface MatriceDroit {
