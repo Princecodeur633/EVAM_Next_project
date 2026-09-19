@@ -12,6 +12,7 @@ export default function PertesPage() {
   const [ofId, setOfId] = useState(state.ofList[0]?.id ?? 0);
   const [qty, setQty] = useState(0);
   const [motif, setMotif] = useState<MotifPerte>("CASSE");
+  const [taux, setTaux] = useState("");
 
   return (
     <div className="space-y-4">
@@ -31,13 +32,27 @@ export default function PertesPage() {
           <Field label="Quantité">
             <input type="number" className={inputClass} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
           </Field>
-          <Button disabled={!ofId} onClick={() => void dispatch({ type: "CREATE_PERTE", ordre_fabrication: ofId, quantite_perte: qty, motif })}>Enregistrer</Button>
+          <Field label="Taux de perte % (optionnel)">
+            <input type="number" className={inputClass} value={taux} onChange={(e) => setTaux(e.target.value)} />
+          </Field>
+          <Button
+            disabled={!ofId}
+            onClick={() => void dispatch({ type: "CREATE_PERTE", ordre_fabrication: ofId, quantite_perte: qty, motif, taux_perte: taux ? Number(taux) : undefined })}
+          >
+            Enregistrer
+          </Button>
         </Panel>
       )}
       <Panel>
         <DataTable
-          columns={[{ key: "of", label: "OF" }, { key: "m", label: "Motif" }, { key: "q", label: "Qté" }, { key: "o", label: "Observations" }]}
-          rows={state.pertes.map((p) => ({ of: ofNumero(p.ordre_fabrication), m: MOTIF_PERTE_LABEL[p.motif], q: formatQty(num(p.quantite_perte), 2), o: p.observations || "—" }))}
+          columns={[{ key: "of", label: "OF" }, { key: "m", label: "Motif" }, { key: "q", label: "Qté" }, { key: "t", label: "Taux" }, { key: "o", label: "Observations" }]}
+          rows={state.pertes.map((p) => ({
+            of: ofNumero(p.ordre_fabrication),
+            m: MOTIF_PERTE_LABEL[p.motif],
+            q: formatQty(num(p.quantite_perte), 2),
+            t: p.taux_perte != null ? `${num(p.taux_perte)} %` : "—",
+            o: p.observations || "—",
+          }))}
         />
       </Panel>
     </div>

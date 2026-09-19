@@ -29,17 +29,35 @@ export default function OfDetailPage() {
         status={<OfBadge status={of.statut} />}
         description={`${articleName(of.article)} · ${formatQty(num(of.quantite_a_produire), 2)}`}
         actions={
-          can("AVANCER_OF") && next ? (
-            <Button onClick={() => void dispatch({ type: "AVANCER_OF", id: of.id })}>
-              Avancer → {STATUT_OF_LABEL[next]}
-            </Button>
-          ) : null
+          <div className="flex flex-wrap gap-2">
+            {can("AVANCER_OF") && next ? (
+              <Button onClick={() => void dispatch({ type: "AVANCER_OF", id: of.id })}>
+                Avancer → {STATUT_OF_LABEL[next]}
+              </Button>
+            ) : null}
+            {can("ANNULER_OF") && of.statut !== "CLOTURE" && of.statut !== "ANNULE" ? (
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const motif = window.prompt("Motif d’annulation (obligatoire) :");
+                  if (motif?.trim()) void dispatch({ type: "ANNULER_OF", id: of.id, motif: motif.trim() });
+                }}
+              >
+                Annuler l’OF
+              </Button>
+            ) : null}
+          </div>
         }
       />
       <StatusStepper steps={OF_STEPS} current={of.statut} />
-      {of.statut === "TERMINE" && (
-        <Guard variant="warn" title="Production terminée — lot pas encore libéré">
-          Le stock vendable n’existe qu’après le contrôle qualité, puis la libération du lot.
+      {of.statut === "PRODUCTION_TERMINEE" && (
+        <Guard variant="warn" title="Production terminée — contrôle qualité en attente">
+          Le stock vendable n’existe qu’après le contrôle et la libération du lot.
+        </Guard>
+      )}
+      {of.statut === "ANNULE" && (
+        <Guard variant="block" title="OF annulé">
+          {of.motif_annulation || "Motif non renseigné."}
         </Guard>
       )}
       <div className="grid lg:grid-cols-3 gap-4">
@@ -47,7 +65,8 @@ export default function OfDetailPage() {
           <h2 className="text-[13px] font-semibold">Synthèse</h2>
           <Row k="Article" v={articleName(of.article)} />
           <Row k="Responsable" v={userName(of.responsable)} />
-          <Row k="Lancement" v={of.date_lancement ? formatDateTime(of.date_lancement) : "—"} />
+          <Row k="Équipe" v={of.equipe || "—"} />
+          <Row k="Début prod." v={of.date_debut_production ? formatDateTime(of.date_debut_production) : "—"} />
           <Row k="Fin" v={of.date_fin ? formatDateTime(of.date_fin) : "—"} />
           <Row k="Agents" v={of.agents_affectes.length ? of.agents_affectes.map((id) => userName(id)).join(", ") : "Aucun"} />
         </Panel>

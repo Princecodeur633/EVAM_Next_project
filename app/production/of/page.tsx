@@ -25,7 +25,7 @@ export default function OfListPage() {
     value: counts(s),
   }));
   const open = state.ofList.filter((o) => o.statut !== "CLOTURE").length;
-  const waitQ = counts("CONTROLE_QUALITE") + counts("TERMINE");
+  const waitQ = counts("EN_CONTROLE") + counts("PRODUCTION_TERMINEE");
   const plannedQty = state.ofList.reduce((a, o) => a + num(o.quantite_a_produire), 0);
 
   return (
@@ -33,7 +33,7 @@ export default function OfListPage() {
       <PageHeader
         eyebrow="Production"
         title="Ordres de fabrication"
-        description="Suivez chaque OF, de la planification à la clôture. Le lancement calcule les besoins matières."
+        description="Suivez chaque OF du brouillon à la clôture. Les besoins matières sont calculés dès la création de l’OF."
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <KpiCard label="OF non clôturés" value={open} tone="warning" />

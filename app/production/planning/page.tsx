@@ -12,13 +12,14 @@ export default function PlanningPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [qty, setQty] = useState(1000);
   const [priorite, setPriorite] = useState("NORMALE");
+  const [commentaire, setCommentaire] = useState("");
 
   return (
     <div className="space-y-4">
       <PageHeader
         eyebrow="Production"
         title="Plans de production"
-        description="Planifiez les volumes par article et par jour. Les ordres de fabrication se créent ensuite à partir de ces plans."
+        description="Prévisions de volumes. Convertissez une prévision en OF pour déclencher le calcul des besoins matières."
       />
       {can("CREATE_PLAN") && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
@@ -41,11 +42,14 @@ export default function PlanningPage() {
               {Object.entries(PRIORITE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </Field>
+          <Field label="Commentaire">
+            <input className={inputClass} value={commentaire} onChange={(e) => setCommentaire(e.target.value)} />
+          </Field>
           <Button
             disabled={!article}
-            onClick={() => void dispatch({ type: "CREATE_PLAN", article, date_prevue: date, quantite_prevue: qty, priorite })}
+            onClick={() => void dispatch({ type: "CREATE_PLAN", article, date_prevue: date, quantite_prevue: qty, priorite, commentaire })}
           >
-            Créer le plan
+            Créer la prévision
           </Button>
         </Panel>
       )}
@@ -58,14 +62,25 @@ export default function PlanningPage() {
             { key: "p", label: "Priorité" },
             { key: "s", label: "Statut" },
             { key: "c", label: "Créé par" },
+            { key: "com", label: "Commentaire" },
+            { key: "x", label: "" },
           ]}
           rows={state.plans.map((p) => ({
             a: articleName(p.article),
             d: formatDate(p.date_prevue),
             q: formatQty(num(p.quantite_prevue), 2),
             p: PRIORITE_LABEL[p.priorite],
-            s: STATUT_PLAN_LABEL[p.statut],
+            s: STATUT_PLAN_LABEL[p.statut] ?? p.statut,
             c: userName(p.cree_par),
+            com: p.commentaire || "—",
+            x:
+              can("CONVERTIR_PLAN") && p.statut !== "CONVERTIE" && p.statut !== "ANNULEE" ? (
+                <Button className="h-8 px-2.5 text-[12px]" onClick={() => void dispatch({ type: "CONVERTIR_PLAN", id: p.id })}>
+                  Convertir en OF
+                </Button>
+              ) : (
+                "—"
+              ),
           }))}
         />
       </Panel>

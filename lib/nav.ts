@@ -35,6 +35,7 @@ const I = {
   planning: { href: "/production/planning", label: "Plans", hint: "Planifier la production" },
   of: { href: "/production/of", label: "Ordres de fabrication", hint: "Suivi des OF" },
   suivi: { href: "/production/suivi", label: "Étapes atelier", hint: "Saisie des étapes" },
+  suiviEau: { href: "/production/suivi-eau", label: "Suivi eau", hint: "Captage et embouteillage" },
   pertes: { href: "/production/pertes", label: "Pertes", hint: "Pertes et rebuts" },
   qualite: { href: "/production/qualite", label: "Lots qualité", hint: "Contrôle et libération" },
   besoinsOf: { href: "/production/besoins", label: "Besoins matières", hint: "Besoins théoriques" },
@@ -52,6 +53,7 @@ const I = {
   factures: { href: "/caisse", label: "Factures", hint: "Suivi des factures" },
   encaissements: { href: "/caisse", label: "Encaissements", hint: "Factures à encaisser" },
   sessions: { href: "/caisse/cloture", label: "Sessions de caisse", hint: "Ouverture et clôture" },
+  decaissements: { href: "/caisse/decaissements", label: "Décaissements", hint: "Sorties de caisse" },
   prep: { href: "/distribution/preparations", label: "Préparations", hint: "Préparer les commandes" },
   bl: { href: "/distribution/bl", label: "Bons de livraison", hint: "Livraisons" },
   tournees: { href: "/distribution/tournees", label: "Tournées", hint: "Tournées du jour" },
@@ -64,8 +66,12 @@ const I = {
   ft: { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Consultation recettes" },
   users: { href: "/admin/utilisateurs", label: "Utilisateurs" },
   profils: { href: "/admin/profils", label: "Profils" },
-  droits: { href: "/admin/droits", label: "Droits d'accès" },
+  droits: { href: "/admin/droits", label: "Profils & accès" },
   audit: { href: "/admin/audit", label: "Journal d'audit" },
+  reclamations: { href: "/reclamations", label: "Réclamations", hint: "Retours clients" },
+  fiscalite: { href: "/parametrage/fiscalite", label: "Codes fiscaux", hint: "Matrice fiscale" },
+  avoirs: { href: "/commercial/avoirs", label: "Avoirs", hint: "Crédits clients" },
+  impayes: { href: "/commercial/impayes", label: "Impayés", hint: "Factures en retard" },
 };
 
 function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup {
@@ -75,7 +81,7 @@ function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup 
 export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ADMIN_SI: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("ref", "Référentiel", "sliders", [I.param]),
+    g("ref", "Référentiel", "sliders", [I.param, I.fiscalite]),
     g("admin", "Administration", "shield", [I.users, I.profils, I.droits, I.audit]),
   ],
   DIRECTION: [
@@ -84,22 +90,22 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   RESPONSABLE_PRODUCTION: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("prod", "Production", "factory", [I.planning, I.of, I.besoinsOf, I.da]),
+    g("prod", "Production", "factory", [I.planning, I.of, I.besoinsOf, I.sorties, I.suiviEau, I.da]),
     g("stock", "Stocks", "boxes", [I.stock]),
     g("ref", "Référentiel", "sliders", [I.param]),
   ],
   AGENT_PRODUCTION: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("atelier", "Atelier", "factory", [I.suivi, I.pertes, I.of]),
+    g("atelier", "Atelier", "factory", [I.suivi, I.suiviEau, I.pertes, I.of]),
   ],
   RESPONSABLE_QUALITE: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("qualite", "Qualité", "check", [I.qualite, I.ft]),
+    g("qualite", "Qualité", "check", [I.qualite, I.ft, I.reclamations]),
   ],
   MAGASINIER: [
     g("poste", "Menu", "home", [I.accueil]),
     g("magasin", "Magasin", "boxes", [I.sorties, I.stock, I.mvt, I.inv, I.da]),
-    g("rec", "Réceptions & quai", "cart", [I.rec, I.prep]),
+    g("rec", "Réceptions & quai", "cart", [I.rec, I.prep, I.reclamations]),
   ],
   RESPONSABLE_ACHATS: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -109,16 +115,16 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   COMMERCIAL: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("vente", "Commercial", "handshake", [I.cmd, I.cmdNew, I.clients, I.factures]),
+    g("vente", "Commercial", "handshake", [I.cmd, I.cmdNew, I.clients, I.factures, I.avoirs, I.impayes, I.reclamations]),
     g("ref", "Référentiel", "sliders", [I.param]),
   ],
   CAISSIER: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("caisse", "Caisse", "banknote", [I.encaissements, I.sessions]),
+    g("caisse", "Caisse", "banknote", [I.encaissements, I.sessions, I.decaissements]),
   ],
   RESPONSABLE_DISTRIBUTION: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("liv", "Distribution", "truck", [I.prep, I.bl, I.tournees]),
+    g("liv", "Distribution", "truck", [I.prep, I.bl, I.tournees, I.reclamations]),
     g("vente", "Commandes", "handshake", [I.cmd]),
   ],
   CHAUFFEUR: [
@@ -127,9 +133,10 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   COMPTABILITE_DAF: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("fin", "Comptabilité", "ledger", [I.anomalies, I.exports, I.clotures, I.audit]),
+    g("fin", "Comptabilité", "ledger", [I.anomalies, I.exports, I.clotures, I.audit, I.impayes]),
     g("couts", "Coûts", "coins", [I.couts, I.marges]),
-    g("caisse", "Caisse", "banknote", [I.sessions]),
+    g("caisse", "Caisse", "banknote", [I.sessions, I.decaissements]),
+    g("ref", "Fiscalité", "sliders", [I.fiscalite]),
   ],
 };
 
@@ -197,6 +204,9 @@ export function canAccess(role: Profil, href: string) {
     }
     return canReadParam(role, href) || canEditParam(role, href);
   }
+  if (href.startsWith("/reclamations") || href.startsWith("/commercial/avoirs")) {
+    return flattenNav(role).some((i) => matchesItem(href, i.href) || i.href === "/reclamations" || i.href === "/commercial/avoirs");
+  }
   return false;
 }
 
@@ -218,7 +228,7 @@ export function breadcrumbs(pathname: string) {
     planning: "Plans",
     of: "Ordres de fabrication",
     suivi: "Étapes",
-    "suivi-eau": "Étapes",
+    "suivi-eau": "Suivi eau",
     pertes: "Pertes",
     qualite: "Lots qualité",
     besoins: "Besoins matières",
@@ -238,6 +248,8 @@ export function breadcrumbs(pathname: string) {
     caisse: "Caisse",
     suspendues: "Factures",
     cloture: "Sessions",
+    decaissements: "Décaissements",
+    impayes: "Impayés",
     distribution: "Distribution",
     preparations: "Préparations",
     bl: "Bons de livraison",

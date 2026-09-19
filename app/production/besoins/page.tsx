@@ -11,15 +11,25 @@ export default function BesoinsPage() {
       <PageHeader
         eyebrow="Production"
         title="Besoins matières"
-        description="Quantités théoriques calculées au lancement de l’OF, à partir de la fiche technique validée."
+        description="Quantités théoriques calculées à la création de l’OF, avec stock disponible et manquant (§5.5)."
       />
       <Panel>
         <DataTable
-          columns={[{ key: "of", label: "OF" }, { key: "m", label: "Matière" }, { key: "q", label: "Qté théorique" }]}
+          columns={[
+            { key: "of", label: "OF" },
+            { key: "m", label: "Matière" },
+            { key: "q", label: "Théorique" },
+            { key: "d", label: "Dispo" },
+            { key: "manq", label: "Manquant" },
+            { key: "sit", label: "Situation" },
+          ]}
           rows={state.besoinsMatieres.map((b) => ({
             of: ofNumero(b.ordre_fabrication),
             m: articleName(b.matiere),
             q: formatQty(num(b.quantite_theorique), 3),
+            d: b.stock_disponible != null ? formatQty(num(b.stock_disponible), 3) : "—",
+            manq: b.manquant != null ? formatQty(num(b.manquant), 3) : "—",
+            sit: b.situation ?? "—",
           }))}
         />
       </Panel>

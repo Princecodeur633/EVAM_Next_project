@@ -12,6 +12,11 @@ export function formatDa(value: number) {
   }).format(value) + " DA";
 }
 
+/** Alias montant (même formatage que formatDa). */
+export function formatMoney(value: number) {
+  return formatDa(value);
+}
+
 export function formatQty(value: number, digits = 0) {
   return new Intl.NumberFormat("fr-FR", {
     minimumFractionDigits: digits,

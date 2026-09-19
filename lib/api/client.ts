@@ -49,7 +49,7 @@ function decodeJwt(token: string): { user_id?: number; userId?: number; username
   return JSON.parse(json) as { user_id?: number; userId?: number; username?: string; exp?: number };
 }
 
-export type Moi = { id: number; username: string; name: string; email: string; profil: Profil };
+export type Moi = { id: number; username: string; name: string; email: string; profil: Profil; active?: boolean };
 
 /**
  * GET /api/comptes/moi/ - la fiche du compte actuellement connecté, telle que
@@ -70,6 +70,7 @@ export async function fetchMoi(access?: string): Promise<Moi | null> {
       last_name?: string;
       email?: string;
       profil: Profil;
+      is_active?: boolean;
     }>("/comptes/moi/", { method: "GET" }, true, access);
     if (!isProfil(me.profil)) return null;
     return {
@@ -78,10 +79,83 @@ export async function fetchMoi(access?: string): Promise<Moi | null> {
       profil: me.profil,
       name: `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() || me.username,
       email: me.email ?? "",
+      active: me.is_active,
     };
   } catch {
     return null;
   }
+}
+
+export type FactureImpayee = {
+  facture: string;
+  client: string;
+  echeance: string | null;
+  montant: string | number;
+  paye: string | number;
+  restant: string | number;
+  jours_retard: number;
+};
+
+/**
+ * GET /api/commercial/impayes/ - vue agrégée (§8.5), pas un endpoint
+ * CRUD paginé : ne passe donc pas par le système `catalog`/`AppState`,
+ * se récupère à la demande depuis l'écran qui en a besoin.
+ */
+export async function fetchImpayes(clientId?: number): Promise<FactureImpayee[]> {
+  const query = clientId ? `?client=${clientId}` : "";
+  return apiRequest<FactureImpayee[]>(`/commercial/impayes/${query}`, { method: "GET" });
+}
+
+export type BlocProduction = {
+  aujourd_hui: { production_conforme: number; rendement_pourcentage: number | null; pertes_pourcentage: number | null };
+  mois: { production_conforme: number; rendement_pourcentage: number | null; pertes_pourcentage: number | null };
+};
+export type BlocStock = {
+  valeur_stock_matieres: number;
+  valeur_stock_produits_finis: number;
+  articles_en_rupture: number;
+  articles_sous_minimum: number;
+};
+export type BlocCommercial = {
+  chiffre_affaires_jour: string | number;
+  chiffre_affaires_mois: string | number;
+  produit_le_plus_vendu: string | null;
+  client_principal: string | null;
+};
+export type BlocCaisse = { encaissements_jour: string | number; solde_theorique: number; ecart_caisse: string | number };
+export type BlocDistribution = {
+  livraisons_prevues: number;
+  livraisons_terminees: number;
+  livraisons_en_cours: number;
+  livraisons_en_retard: number;
+};
+export type ProduitRentable = {
+  produit: string;
+  cout_de_revient: number;
+  prix_de_vente: number;
+  marge: number;
+  taux_marge_pourcentage: number | null;
+};
+export type BlocRentabilite = { produits_les_plus_rentables: ProduitRentable[]; marge_moyenne_pourcentage: number | null };
+export type BlocAlertes = {
+  matieres_manquantes: { of: string; matiere: string; manquant: string | number }[];
+  ruptures_stock: { article: string; depot: string }[];
+  ecarts_caisse_non_justifies: { session_id: number; caisse: string; ecart: string | number }[];
+  anomalies_comptables: { id: number; type_anomalie: string; module_source: string; description: string }[];
+};
+export type TableauDeBordDirection = {
+  production: BlocProduction;
+  stock: BlocStock;
+  commercial: BlocCommercial;
+  caisse: BlocCaisse;
+  distribution: BlocDistribution;
+  rentabilite: BlocRentabilite;
+  alertes: BlocAlertes;
+};
+
+/** GET /api/reporting/tableau-de-bord-direction/ - agrégat en lecture, hors système `catalog`. */
+export async function fetchTableauDeBordDirection(): Promise<TableauDeBordDirection> {
+  return apiRequest<TableauDeBordDirection>("/reporting/tableau-de-bord-direction/", { method: "GET" });
 }
 
 export function parseApiError(body: unknown, fallback: string) {

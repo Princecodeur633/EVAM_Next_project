@@ -1,32 +1,42 @@
 "use client";
 
 import { DataTable, PageHeader, Panel } from "@/components/ui";
-import { PROFIL_LABEL } from "@/lib/labels";
-import { useStore } from "@/lib/store";
+import { ROLE_PROFILES } from "@/lib/roles";
+import type { Profil } from "@/lib/types";
+
+const PROFILS = Object.keys(ROLE_PROFILES) as Profil[];
 
 export default function DroitsPage() {
-  const { state } = useStore();
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Administration" title="Droits d'accès" description="Consultez les droits associés à chaque profil métier." />
+      <PageHeader
+        eyebrow="Administration"
+        title="Profils & accès"
+        description="La matrice MatriceDroit a été retirée du backend. Les droits sont désormais fixés par profil dans le code (ViewSets Django + menus frontend)."
+      />
       <Panel>
         <DataTable
           columns={[
             { key: "p", label: "Profil" },
-            { key: "m", label: "Module" },
-            { key: "c", label: "Consulter" },
-            { key: "cr", label: "Créer" },
-            { key: "mo", label: "Modifier" },
-            { key: "v", label: "Valider" },
+            { key: "s", label: "Poste" },
+            { key: "o", label: "Possède" },
+            { key: "n", label: "Ne fait pas" },
+            { key: "param", label: "Référentiel" },
           ]}
-          rows={state.droits.map((d) => ({
-            p: PROFIL_LABEL[d.profil] ?? d.profil,
-            m: d.module,
-            c: d.peut_consulter ? "Oui" : "Non",
-            cr: d.peut_creer ? "Oui" : "Non",
-            mo: d.peut_modifier ? "Oui" : "Non",
-            v: d.peut_valider ? "Oui" : "Non",
-          }))}
+          rows={PROFILS.map((profil) => {
+            const r = ROLE_PROFILES[profil];
+            return {
+              p: r.label,
+              s: r.station,
+              o: r.owns.join(" · "),
+              n: r.never.join(" · "),
+              param: r.paramAllow.includes("*")
+                ? "Tout"
+                : r.paramAllow.length || r.paramRead?.length
+                  ? [...r.paramAllow, ...(r.paramRead ?? [])].join(", ")
+                  : "—",
+            };
+          })}
         />
       </Panel>
     </div>

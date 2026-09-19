@@ -12,7 +12,7 @@ import {
 } from "react";
 import { ApiError, actions, api, catalog, catalogKeysForRole, detail, endpoints, fetchMoi, loadSession, login as apiLogin, logout as apiLogout, saveSession, type AuthSession, type CatalogKey } from "./api";
 import { canAct, stockArticleTotal, type ActionName } from "./engine";
-import { displayName } from "./labels";
+import { displayName, ORDRE_STATUTS_OF } from "./labels";
 import { canEditParam as roleCanEditParam } from "./roles";
 import type {
   AppState,
@@ -34,38 +34,118 @@ function friendlyAuthError(err: unknown) {
   return raw;
 }
 
+/** Listes déroulantes de paramétrage (une valeur = un `nom`, sauf le format qui utilise `valeur`). */
+export type ListeValeurs = "famille_article" | "format" | "parfum" | "unite_vente" | "famille_fiscale";
+
+const LISTE_CONFIG: Record<ListeValeurs, { endpoint: string; champ: "nom" | "valeur" }> = {
+  famille_article: { endpoint: endpoints.famillesArticle, champ: "nom" },
+  format: { endpoint: endpoints.formatsArticle, champ: "valeur" },
+  parfum: { endpoint: endpoints.parfums, champ: "nom" },
+  unite_vente: { endpoint: endpoints.unitesVente, champ: "nom" },
+  famille_fiscale: { endpoint: endpoints.famillesFiscales, champ: "nom" },
+};
+
 export type Action =
   | { type: "LOGIN"; username: string; password: string }
   | { type: "LOGOUT" }
   | { type: "REFRESH" }
   | { type: "SET_DEPOT"; depotId: number }
   | { type: "CLEAR_ERROR" }
-  | { type: "CREATE_PLAN"; article: number; date_prevue: string; quantite_prevue: number; priorite?: string }
+  | { type: "CREATE_PLAN"; article: number; date_prevue: string; quantite_prevue: number; priorite?: string; commentaire?: string }
   | { type: "CREATE_OF"; article: number; quantite_a_produire: number; plan_production?: number; agents_affectes?: number[] }
   | { type: "AVANCER_OF"; id: number }
+  | { type: "ANNULER_OF"; id: number; motif: string }
+  | { type: "CONVERTIR_PLAN"; id: number }
+  | { type: "CREATE_DEMANDE_MATIERE"; ordre_fabrication: number; matiere: number; quantite_demandee: number }
+  | { type: "LIVRER_DEMANDE_MATIERE"; id: number; quantite_livree?: number }
+  | { type: "CREATE_COMPLEMENT"; ordre_fabrication: number; matiere: number; quantite: number; motif: string }
+  | { type: "APPROUVER_COMPLEMENT"; id: number }
+  | { type: "REJETER_COMPLEMENT"; id: number }
+  | { type: "CREATE_SUIVI_PROD"; ordre_fabrication: number; date: string; heure_debut: string; quantite_entree: number; quantite_produite?: number; quantite_conforme?: number; quantite_rejetee?: number; equipe?: string; arrets?: string; incidents?: string; observations?: string }
+  | { type: "CREATE_SUIVI_EAU"; ordre_fabrication: number; volume_capte_l: number; volume_obtenu_traitement_l: number; volume_envoye_embouteillage_l: number; bouteilles_produites: number; bouteilles_conformes: number; bouteilles_rejetees?: number; volume_envoye_traitement_l?: number; nombre_packs?: number }
   | { type: "CREATE_ETAPE"; ordre_fabrication: number; etape: string; quantite_produite?: number; observations?: string }
-  | { type: "CREATE_PERTE"; ordre_fabrication: number; quantite_perte: number; motif: string; observations?: string; etape?: number }
+  | { type: "CREATE_PERTE"; ordre_fabrication: number; quantite_perte: number; motif: string; observations?: string; etape?: number; taux_perte?: number }
   | { type: "CREATE_SORTIE"; ordre_fabrication: number; matiere: number; quantite_sortie: number; type_sortie?: string; motif?: string }
   | { type: "CREATE_RETOUR_MAT"; ordre_fabrication: number; matiere: number; quantite_retournee: number }
   | { type: "VALIDER_FT"; id: number }
   | { type: "CREATE_FT"; article: number; version?: number }
   | { type: "CREATE_COMPOSITION"; fiche_technique: number; matiere: number; quantite_necessaire: number }
-  | { type: "CREATE_ARTICLE"; code: string; designation: string; type_article: string; unite_mesure: string; famille?: string }
+  | {
+      type: "CREATE_ARTICLE";
+      code: string;
+      /** Optionnelle : générée côté backend (famille + parfum + format - unité de vente) si vide. */
+      designation?: string;
+      type_article: string;
+      unite_mesure: string;
+      famille?: number | null;
+      sous_famille?: string;
+      marque?: string;
+      format?: number | null;
+      parfum?: number | null;
+      unite_vente?: number | null;
+      code_fiscal?: number | null;
+      suivi_par_lot?: boolean;
+      duree_conservation_jours?: number | null;
+      stock_minimum?: number;
+      stock_alerte?: number;
+      emplacement_stockage?: string;
+      compte_vente?: string;
+      activite_analytique?: string;
+      centre_cout?: string;
+    }
+  | {
+      type: "PATCH_ARTICLE";
+      id: number;
+      designation?: string;
+      famille?: number | null;
+      sous_famille?: string;
+      marque?: string;
+      format?: number | null;
+      parfum?: number | null;
+      unite_vente?: number | null;
+      code_fiscal?: number | null;
+      suivi_par_lot?: boolean;
+      duree_conservation_jours?: number | null;
+      stock_minimum?: number;
+      stock_alerte?: number;
+      emplacement_stockage?: string;
+      compte_vente?: string;
+      activite_analytique?: string;
+      centre_cout?: string;
+      actif?: boolean;
+    }
+  | {
+      type: "CREATE_CONTROLE_QUALITE_REQUIS";
+      article: number;
+      type_controle: string;
+      norme_ou_seuil: string;
+      moment: string;
+      obligatoire?: boolean;
+    }
   | { type: "CREATE_CONDITIONNEMENT"; article: number; nombre_unites_par_carton: number; type_emballage: string; poids_carton_kg?: number; nombre_cartons_par_palette?: number }
   | { type: "CREATE_DEPOT"; nom: string; adresse?: string }
   | { type: "CREATE_LOT"; article: number; quantite: number; date_production: string; ordre_fabrication?: number; date_peremption?: string }
   | { type: "CREATE_CONTROLE"; lot: number; resultat: "CONFORME" | "NON_CONFORME"; observations?: string }
   | { type: "LIBERER_LOT"; id: number }
   | { type: "BLOQUER_LOT"; id: number; motif?: string }
-  | { type: "CREATE_CLIENT"; code: string; nom: string; type_client: string; adresse?: string; telephone?: string; encours_autorise?: number }
+  | { type: "CREATE_CLIENT"; code: string; nom: string; type_client: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number }
   | { type: "CREATE_COMMANDE"; client: number; type_commande: string }
   | { type: "ADD_LIGNE_COMMANDE"; commande: number; article: number; quantite: number; prix_unitaire: number }
   | { type: "PATCH_COMMANDE"; id: number; statut: string }
-  | { type: "CREATE_FACTURE"; commande: number; client: number; montant_total: number }
+  | { type: "CREATE_FACTURE"; commande: number; client: number; montant_total?: number }
+  | { type: "GENERER_LIGNES_FACTURE"; id: number }
+  | { type: "CREATE_AVOIR"; client: number; montant: number; motif: string; facture_origine?: number }
+  | { type: "UTILISER_AVOIR"; id: number; facture: number }
+  | { type: "CREATE_DECAISSEMENT"; session_caisse: number; montant: number; motif: string; autorise_par: number; beneficiaire?: string }
+  | { type: "CREATE_RECLAMATION"; client: number; article: number; quantite: number; type_probleme: string; description: string; bon_livraison?: number; facture?: number; produit_retourne?: boolean; prix_unitaire?: number }
+  | { type: "CREATE_RETOUR_PHYSIQUE"; reclamation: number; quantite_retournee: number; lot?: number }
+  | { type: "CREATE_CONTROLE_RETOUR"; retour_physique: number; resultat: string; observations?: string }
+  | { type: "TERMINER_RECONDITIONNEMENT"; id: number; quantite_reconditionnee: number; cout?: number }
+  | { type: "CREATE_SOLUTION"; reclamation: number; type_solution: string; montant_avoir?: number; montant_rembourse?: number; nouvelle_commande?: number }
   | { type: "CREATE_TARIF"; article: number; prix_unitaire: number; date_debut_validite: string; client?: number | null; date_fin_validite?: string }
   | { type: "CREATE_SESSION"; caisse: number; solde_ouverture: number }
   | { type: "ENCAISSER"; session_caisse: number; facture: number; montant: number; mode_paiement: ModePaiement }
-  | { type: "CLOTURER_CAISSE"; id: number; solde_theorique: string; solde_compte: string }
+  | { type: "CLOTURER_CAISSE"; id: number; solde_theorique?: string; solde_compte: string }
   | { type: "JUSTIFIER_ECART"; session_caisse: number; montant_ecart: number; justification: string }
   | { type: "CREATE_DA"; article: number; quantite_demandee: number; motif?: string; besoin?: number }
   | { type: "APPROUVER_DA"; id: number }
@@ -94,16 +174,26 @@ export type Action =
   | { type: "CREATE_EXPORT"; type_export: string; periode_debut: string; periode_fin: string }
   | { type: "CREATE_ANOMALIE"; type_anomalie: string; module_source: string; description: string }
   | { type: "TRAITER_ANOMALIE"; id: number; statut: "TRAITEE" | "IGNOREE" | "EN_TRAITEMENT" }
-  | { type: "CREATE_CLOTURE"; periode: string; type_cloture: string };
+  | { type: "CREATE_CLOTURE"; periode: string; type_cloture: string }
+  | { type: "GENERER_RAPPORT"; periode: "JOURNALIER" | "MENSUEL" }
+  | { type: "CREATE_VALEUR_LISTE"; liste: ListeValeurs; valeur: string }
+  | { type: "TOGGLE_VALEUR_LISTE"; liste: ListeValeurs; id: number; actif: boolean }
+  | { type: "VALORISER_COUT_RETOUR"; id: number; cout_produit_detruit: number };
 
 function emptyState(): AppState {
   return {
     currentUserId: null,
     depotId: null,
     utilisateurs: [],
-    droits: [],
     journal: [],
     articles: [],
+    controlesQualiteRequis: [],
+    codesFiscaux: [],
+    famillesFiscales: [],
+    famillesArticle: [],
+    formatsArticle: [],
+    parfums: [],
+    unitesVente: [],
     fichesTechniques: [],
     compositions: [],
     fichesConditionnement: [],
@@ -125,8 +215,12 @@ function emptyState(): AppState {
     plans: [],
     ofList: [],
     besoinsMatieres: [],
+    demandesMatieres: [],
+    demandesComplementaires: [],
     sortiesMatieres: [],
     retoursMatieres: [],
+    suivisProduction: [],
+    suivisEau: [],
     etapes: [],
     pertes: [],
     lots: [],
@@ -138,9 +232,12 @@ function emptyState(): AppState {
     commandes: [],
     lignesCommande: [],
     factures: [],
+    lignesFacture: [],
+    avoirs: [],
     caisses: [],
     sessionsCaisse: [],
     encaissements: [],
+    decaissements: [],
     ecartsCaisse: [],
     vehicules: [],
     chauffeurs: [],
@@ -149,6 +246,12 @@ function emptyState(): AppState {
     preparations: [],
     bonsLivraison: [],
     transferts: [],
+    reclamations: [],
+    retoursPhysiques: [],
+    controlesRetour: [],
+    reconditionnements: [],
+    coutsRetours: [],
+    solutionsReclamation: [],
     coutsMatieres: [],
     coutsEnergie: [],
     coutsMainOeuvre: [],
@@ -158,6 +261,7 @@ function emptyState(): AppState {
     anomalies: [],
     exportsComptables: [],
     clotures: [],
+    rapports: [],
     lastError: null,
     loading: false,
   };
@@ -191,7 +295,7 @@ function withDepotId(state: AppState): AppState {
  * backend aussi lent, mieux vaut afficher l'accueil vite et remplir le reste ensuite
  * plutôt que de faire attendre ~65 requêtes avant le premier affichage.
  */
-const ADMIN_CORE_KEYS: CatalogKey[] = ["utilisateurs", "droits", "journal"];
+const ADMIN_CORE_KEYS: CatalogKey[] = ["utilisateurs", "journal"];
 
 async function loadCatalogs(base: AppState, profil: Profil): Promise<AppState> {
   const keys = profil === "ADMIN_SI" ? ADMIN_CORE_KEYS : catalogKeysForRole(profil);
@@ -219,6 +323,8 @@ type StoreValue = {
   can: (action: ActionName) => boolean;
   canEditParam: (href: string) => boolean;
   articleName: (id: number | null | undefined) => string;
+  familleName: (id: number | null | undefined) => string;
+  familleFiscaleName: (id: number | null | undefined) => string;
   clientName: (id: number | null | undefined) => string;
   fournisseurName: (id: number | null | undefined) => string;
   ofNumero: (id: number | null | undefined) => string;
@@ -329,7 +435,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (busy.current) return;
       busy.current = true;
       setState((s) => ({ ...s, lastError: null }));
-      const currentRole = session?.profil ?? null;
       try {
         const userId = session?.userId;
         switch (action.type) {
@@ -339,6 +444,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               date_prevue: action.date_prevue,
               quantite_prevue: action.quantite_prevue,
               priorite: action.priorite ?? "NORMALE",
+              commentaire: action.commentaire ?? "",
             });
             break;
           case "CREATE_OF":
@@ -351,6 +457,64 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             break;
           case "AVANCER_OF":
             await actions.avancerOf(action.id);
+            break;
+          case "ANNULER_OF":
+            await actions.annulerOf(action.id, action.motif);
+            break;
+          case "CONVERTIR_PLAN":
+            await actions.convertirPlanEnOf(action.id);
+            break;
+          case "CREATE_DEMANDE_MATIERE":
+            await api.post(endpoints.demandesMatieres, {
+              ordre_fabrication: action.ordre_fabrication,
+              matiere: action.matiere,
+              quantite_demandee: action.quantite_demandee,
+            });
+            break;
+          case "LIVRER_DEMANDE_MATIERE":
+            await actions.livrerDemandeMatiere(action.id, action.quantite_livree);
+            break;
+          case "CREATE_COMPLEMENT":
+            await api.post(endpoints.demandesComplementaires, {
+              ordre_fabrication: action.ordre_fabrication,
+              matiere: action.matiere,
+              quantite: action.quantite,
+              motif: action.motif,
+            });
+            break;
+          case "APPROUVER_COMPLEMENT":
+            await actions.approuverComplement(action.id);
+            break;
+          case "REJETER_COMPLEMENT":
+            await actions.rejeterComplement(action.id);
+            break;
+          case "CREATE_SUIVI_PROD":
+            await api.post(endpoints.suivisProduction, {
+              ordre_fabrication: action.ordre_fabrication,
+              date: action.date,
+              heure_debut: action.heure_debut,
+              quantite_entree: action.quantite_entree,
+              quantite_produite: action.quantite_produite ?? null,
+              quantite_conforme: action.quantite_conforme ?? null,
+              quantite_rejetee: action.quantite_rejetee ?? null,
+              equipe: action.equipe ?? "",
+              arrets: action.arrets ?? "",
+              incidents: action.incidents ?? "",
+              observations: action.observations ?? "",
+            });
+            break;
+          case "CREATE_SUIVI_EAU":
+            await api.post(endpoints.suivisEau, {
+              ordre_fabrication: action.ordre_fabrication,
+              volume_capte_l: action.volume_capte_l,
+              volume_envoye_traitement_l: action.volume_envoye_traitement_l ?? null,
+              volume_obtenu_traitement_l: action.volume_obtenu_traitement_l,
+              volume_envoye_embouteillage_l: action.volume_envoye_embouteillage_l,
+              bouteilles_produites: action.bouteilles_produites,
+              bouteilles_conformes: action.bouteilles_conformes,
+              bouteilles_rejetees: action.bouteilles_rejetees ?? 0,
+              nombre_packs: action.nombre_packs ?? null,
+            });
             break;
           case "CREATE_ETAPE":
             await api.post(endpoints.etapes, {
@@ -368,6 +532,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               motif: action.motif,
               observations: action.observations ?? "",
               etape: action.etape ?? null,
+              taux_perte: action.taux_perte ?? null,
             });
             break;
           case "CREATE_SORTIE":
@@ -407,11 +572,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           case "CREATE_ARTICLE":
             await api.post(endpoints.articles, {
               code: action.code,
-              designation: action.designation,
+              designation: action.designation ?? "",
               type_article: action.type_article,
               unite_mesure: action.unite_mesure,
-              famille: action.famille ?? "",
+              famille: action.famille ?? null,
+              sous_famille: action.sous_famille ?? "",
+              marque: action.marque ?? "",
+              format: action.format ?? null,
+              parfum: action.parfum ?? null,
+              unite_vente: action.unite_vente ?? null,
+              code_fiscal: action.code_fiscal ?? null,
+              suivi_par_lot: action.suivi_par_lot ?? true,
+              duree_conservation_jours: action.duree_conservation_jours ?? null,
+              stock_minimum: action.stock_minimum ?? 0,
+              stock_alerte: action.stock_alerte ?? 0,
+              emplacement_stockage: action.emplacement_stockage ?? "",
+              compte_vente: action.compte_vente ?? "",
+              activite_analytique: action.activite_analytique ?? "",
+              centre_cout: action.centre_cout ?? "",
               actif: true,
+            });
+            break;
+          case "PATCH_ARTICLE": {
+            const champs: Record<string, unknown> = {};
+            if (action.designation !== undefined) champs.designation = action.designation;
+            if (action.famille !== undefined) champs.famille = action.famille;
+            if (action.sous_famille !== undefined) champs.sous_famille = action.sous_famille;
+            if (action.marque !== undefined) champs.marque = action.marque;
+            if (action.format !== undefined) champs.format = action.format;
+            if (action.parfum !== undefined) champs.parfum = action.parfum;
+            if (action.unite_vente !== undefined) champs.unite_vente = action.unite_vente;
+            if (action.code_fiscal !== undefined) champs.code_fiscal = action.code_fiscal;
+            if (action.suivi_par_lot !== undefined) champs.suivi_par_lot = action.suivi_par_lot;
+            if (action.duree_conservation_jours !== undefined) champs.duree_conservation_jours = action.duree_conservation_jours;
+            if (action.stock_minimum !== undefined) champs.stock_minimum = action.stock_minimum;
+            if (action.stock_alerte !== undefined) champs.stock_alerte = action.stock_alerte;
+            if (action.emplacement_stockage !== undefined) champs.emplacement_stockage = action.emplacement_stockage;
+            if (action.compte_vente !== undefined) champs.compte_vente = action.compte_vente;
+            if (action.activite_analytique !== undefined) champs.activite_analytique = action.activite_analytique;
+            if (action.centre_cout !== undefined) champs.centre_cout = action.centre_cout;
+            if (action.actif !== undefined) champs.actif = action.actif;
+            await api.patch(detail(endpoints.articles, action.id), champs);
+            break;
+          }
+          case "CREATE_CONTROLE_QUALITE_REQUIS":
+            await api.post(endpoints.controlesQualiteRequis, {
+              article: action.article,
+              type_controle: action.type_controle,
+              norme_ou_seuil: action.norme_ou_seuil,
+              moment: action.moment,
+              obligatoire: action.obligatoire ?? true,
             });
             break;
           case "CREATE_CONDITIONNEMENT":
@@ -456,6 +666,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               adresse: action.adresse ?? "",
               telephone: action.telephone ?? "",
               encours_autorise: action.encours_autorise ?? 0,
+              delai_paiement_jours: action.delai_paiement_jours ?? 0,
               bloque: false,
             });
             break;
@@ -476,11 +687,79 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           case "PATCH_COMMANDE":
             await api.patch(detail(endpoints.commandes, action.id), { statut: action.statut });
             break;
-          case "CREATE_FACTURE":
-            await api.post(endpoints.factures, {
+          case "CREATE_FACTURE": {
+            const facture = await api.post<{ id: number }>(endpoints.factures, {
               commande: action.commande,
               client: action.client,
-              montant_total: action.montant_total,
+              ...(action.montant_total != null ? { montant_total: action.montant_total } : {}),
+            });
+            try {
+              await actions.genererLignesFacture(facture.id);
+            } catch {
+              /* lignes générées plus tard si code fiscal manquant */
+            }
+            break;
+          }
+          case "GENERER_LIGNES_FACTURE":
+            await actions.genererLignesFacture(action.id);
+            break;
+          case "CREATE_AVOIR":
+            await api.post(endpoints.avoirs, {
+              client: action.client,
+              montant: action.montant,
+              motif: action.motif,
+              facture_origine: action.facture_origine ?? null,
+            });
+            break;
+          case "UTILISER_AVOIR":
+            await actions.utiliserAvoir(action.id, action.facture);
+            break;
+          case "CREATE_DECAISSEMENT":
+            await api.post(endpoints.decaissements, {
+              session_caisse: action.session_caisse,
+              montant: action.montant,
+              motif: action.motif,
+              beneficiaire: action.beneficiaire ?? "",
+              autorise_par: action.autorise_par,
+            });
+            break;
+          case "CREATE_RECLAMATION":
+            await api.post(endpoints.reclamations, {
+              client: action.client,
+              article: action.article,
+              quantite: action.quantite,
+              type_probleme: action.type_probleme,
+              description: action.description,
+              bon_livraison: action.bon_livraison ?? null,
+              facture: action.facture ?? null,
+              produit_retourne: action.produit_retourne ?? false,
+              prix_unitaire: action.prix_unitaire ?? null,
+            });
+            break;
+          case "CREATE_RETOUR_PHYSIQUE":
+            await api.post(endpoints.retoursPhysiques, {
+              reclamation: action.reclamation,
+              quantite_retournee: action.quantite_retournee,
+              lot: action.lot ?? null,
+            });
+            break;
+          case "CREATE_CONTROLE_RETOUR":
+            await api.post(endpoints.controlesRetour, {
+              retour_physique: action.retour_physique,
+              resultat: action.resultat,
+              observations: action.observations ?? "",
+            });
+            break;
+          case "TERMINER_RECONDITIONNEMENT":
+            await actions.terminerReconditionnement(action.id, action.quantite_reconditionnee, action.cout);
+            break;
+          case "CREATE_SOLUTION":
+            await api.post(endpoints.solutionsReclamation, {
+              reclamation: action.reclamation,
+              type_solution: action.type_solution,
+              montant_avoir: action.montant_avoir ?? null,
+              montant_rembourse: action.montant_rembourse ?? null,
+              nouvelle_commande: action.nouvelle_commande ?? null,
             });
             break;
           case "CREATE_TARIF":
@@ -682,6 +961,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               type_cloture: action.type_cloture,
             });
             break;
+          case "CREATE_VALEUR_LISTE": {
+            const cfg = LISTE_CONFIG[action.liste];
+            await api.post(cfg.endpoint, { [cfg.champ]: action.valeur.trim(), actif: true });
+            break;
+          }
+          case "TOGGLE_VALEUR_LISTE": {
+            const cfg = LISTE_CONFIG[action.liste];
+            await api.patch(detail(cfg.endpoint, action.id), { actif: action.actif });
+            break;
+          }
+          case "GENERER_RAPPORT":
+            await actions.genererRapport(action.periode);
+            break;
+          case "VALORISER_COUT_RETOUR":
+            await api.patch(detail(endpoints.coutsRetours, action.id), {
+              cout_produit_detruit: action.cout_produit_detruit,
+            });
+            break;
         }
         const auth = loadSession();
         await hydrate(auth);
@@ -723,6 +1020,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const a = s.articles.find((x) => x.id === id);
       return a ? `${a.code} · ${a.designation}` : `#${id}`;
     };
+    const familleName = (id: number | null | undefined) => {
+      if (id == null) return "—";
+      return s.famillesArticle.find((x) => x.id === id)?.nom ?? `#${id}`;
+    };
+    const familleFiscaleName = (id: number | null | undefined) => {
+      if (id == null) return "—";
+      return s.famillesFiscales.find((x) => x.id === id)?.nom ?? `#${id}`;
+    };
     const clientName = (id: number | null | undefined) => {
       if (id == null) return "—";
       const c = s.clients.find((x) => x.id === id);
@@ -752,6 +1057,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       can: (action) => canAct(role, action),
       canEditParam: (href) => roleCanEditParam(role, href),
       articleName,
+      familleName,
+      familleFiscaleName,
       clientName,
       fournisseurName,
       ofNumero,
@@ -780,18 +1087,9 @@ export function useStore() {
 }
 
 export function nextOfStatut(current: StatutOF): StatutOF | null {
-  const order: StatutOF[] = [
-    "BROUILLON",
-    "PLANIFIE",
-    "LANCE",
-    "EN_PRODUCTION",
-    "TERMINE",
-    "CONTROLE_QUALITE",
-    "LIBERE",
-    "CLOTURE",
-  ];
-  const i = order.indexOf(current);
-  return i >= 0 && i < order.length - 1 ? order[i + 1] : null;
+  if (current === "ANNULE" || current === "CLOTURE") return null;
+  const i = ORDRE_STATUTS_OF.indexOf(current);
+  return i >= 0 && i < ORDRE_STATUTS_OF.length - 1 ? ORDRE_STATUTS_OF[i + 1] : null;
 }
 
 export type { Client };

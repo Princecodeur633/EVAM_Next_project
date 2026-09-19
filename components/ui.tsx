@@ -359,12 +359,12 @@ export function DataTable({
 
 export const OF_STEPS = [
   { id: "BROUILLON", label: "Brouillon" },
-  { id: "PLANIFIE", label: "Planifié" },
-  { id: "LANCE", label: "Lancé" },
+  { id: "A_PREPARER", label: "À préparer" },
+  { id: "MATIERES_EN_PREPARATION", label: "Matières en préparation" },
+  { id: "PRET", label: "Prêt" },
   { id: "EN_PRODUCTION", label: "En production" },
-  { id: "TERMINE", label: "Terminé" },
-  { id: "CONTROLE_QUALITE", label: "Contrôle qualité" },
-  { id: "LIBERE", label: "Libéré" },
+  { id: "PRODUCTION_TERMINEE", label: "Production terminée" },
+  { id: "EN_CONTROLE", label: "En contrôle" },
   { id: "CLOTURE", label: "Clôturé" },
 ];
 

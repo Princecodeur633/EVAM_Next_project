@@ -108,7 +108,7 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     icon: "check",
     homeHint: "Traiter les lots en attente puis libérer les conformes.",
     paramAllow: [],
-    paramRead: ["/parametrage/fiches-techniques"],
+    paramRead: ["/parametrage/fiches-techniques", "/parametrage/produits"],
   },
   MAGASINIER: {
     role: "MAGASINIER",
@@ -154,6 +154,7 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     icon: "handshake",
     homeHint: "Créer une commande client puis ses lignes.",
     paramAllow: ["/parametrage/clients", "/parametrage/tarifs"],
+    paramRead: ["/parametrage/produits"],
   },
   CAISSIER: {
     role: "CAISSIER",
@@ -213,7 +214,7 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     accent: "slate",
     icon: "ledger",
     homeHint: "Contrôler les anomalies puis générer un export.",
-    paramAllow: [],
+    paramAllow: ["/parametrage/fiscalite"],
   },
 };
 
