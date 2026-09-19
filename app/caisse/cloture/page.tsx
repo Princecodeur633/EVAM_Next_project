@@ -18,17 +18,24 @@ export default function SessionsCaissePage() {
       <PageHeader eyebrow="Caisse" title="Sessions de caisse" description="Clôturez en indiquant le solde théorique et le solde compté. Tout écart doit être justifié." />
       <Panel>
         <DataTable
-          columns={[{ key: "c", label: "Caisse" }, { key: "caissier", label: "Caissier" }, { key: "s", label: "Statut" }, { key: "o", label: "Ouverture" }, { key: "act", label: "" }]}
+          columns={[{ key: "c", label: "Caisse" }, { key: "caissier", label: "Caissier" }, { key: "s", label: "Statut" }, { key: "o", label: "Ouverture" }, { key: "dec", label: "Décaissements" }, { key: "act", label: "" }]}
           rows={state.sessionsCaisse.map((s) => ({
             c: caisseNom(s.caisse),
             caissier: userName(s.caissier),
             s: <StatusBadge tone={s.statut === "OUVERTE" ? "warning" : "success"}>{STATUT_SESSION_LABEL[s.statut]}</StatusBadge>,
             o: formatDateTime(s.date_ouverture),
+            dec: formatDa(state.decaissements.filter((d) => d.session_caisse === s.id).reduce((a, d) => a + num(d.montant), 0)),
             act: s.statut === "OUVERTE" && can("CLOTURER_CAISSE") ? (
               <span className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
-                <input className="h-8 w-full sm:w-24 border border-line rounded px-2 text-[12px]" placeholder="Théorique" value={theo} onChange={(e) => setTheo(e.target.value)} />
+                <input className="h-8 w-full sm:w-24 border border-line rounded px-2 text-[12px]" placeholder="Théorique (auto si vide)" value={theo} onChange={(e) => setTheo(e.target.value)} />
                 <input className="h-8 w-full sm:w-24 border border-line rounded px-2 text-[12px]" placeholder="Compté" value={compte} onChange={(e) => setCompte(e.target.value)} />
-                <button className="text-primary text-[12px] whitespace-nowrap" onClick={() => void dispatch({ type: "CLOTURER_CAISSE", id: s.id, solde_theorique: theo, solde_compte: compte })}>Clôturer</button>
+                <button
+                  className="text-primary text-[12px] whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={!compte.trim()}
+                  onClick={() => void dispatch({ type: "CLOTURER_CAISSE", id: s.id, solde_theorique: theo.trim() || undefined, solde_compte: compte })}
+                >
+                  Clôturer
+                </button>
               </span>
             ) : formatDa(num(s.solde_compte_cloture)),
           }))}

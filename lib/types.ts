@@ -35,16 +35,17 @@ export type TypeArticle = "MATIERE_PREMIERE" | "PRODUIT_INTERMEDIAIRE" | "PRODUI
 export type UniteMesure = "KG" | "L" | "UNITE" | "CARTON" | "PALETTE" | "M";
 export type StatutFicheTechnique = "BROUILLON" | "VALIDEE" | "ARCHIVEE";
 export type Priorite = "BASSE" | "NORMALE" | "HAUTE" | "URGENTE";
-export type StatutPlan = "PREVU" | "EN_COURS" | "REALISE" | "ANNULE";
+export type StatutPlan = "PREVISION" | "A_CONVERTIR_EN_OF" | "CONVERTIE" | "ANNULEE";
 export type StatutOF =
   | "BROUILLON"
-  | "PLANIFIE"
-  | "LANCE"
+  | "A_PREPARER"
+  | "MATIERES_EN_PREPARATION"
+  | "PRET"
   | "EN_PRODUCTION"
-  | "TERMINE"
-  | "CONTROLE_QUALITE"
-  | "LIBERE"
-  | "CLOTURE";
+  | "PRODUCTION_TERMINEE"
+  | "EN_CONTROLE"
+  | "CLOTURE"
+  | "ANNULE";
 export type TypeSortie = "NORMALE" | "COMPLEMENTAIRE";
 export type Etape =
   | "CAPTAGE"
@@ -53,7 +54,17 @@ export type Etape =
   | "EMBOUTEILLAGE"
   | "ETIQUETAGE"
   | "CONDITIONNEMENT";
-export type MotifPerte = "CASSE" | "NON_CONFORMITE" | "PANNE_MACHINE" | "ERREUR_MANIPULATION" | "AUTRE";
+export type MotifPerte =
+  | "CASSE"
+  | "MAUVAIS_REGLAGE"
+  | "FUITE"
+  | "DEFAUT_MATIERE"
+  | "DEFAUT_BOUTEILLE"
+  | "CONTROLE_QUALITE"
+  | "ARRET_MACHINE"
+  | "NETTOYAGE"
+  | "ERREUR_OPERATEUR"
+  | "AUTRE";
 export type StatutLot = "EN_ATTENTE" | "CONFORME" | "NON_CONFORME" | "BLOQUE" | "LIBERE";
 export type ResultatControle = "CONFORME" | "NON_CONFORME";
 export type TypeMouvement = "ENTREE" | "SORTIE" | "TRANSFERT" | "AJUSTEMENT" | "RETOUR";
@@ -83,6 +94,32 @@ export type TypeExport = "VENTES" | "ENCAISSEMENTS" | "ACHATS" | "JOURNAL";
 export type TypeCloture = "MENSUELLE" | "ANNUELLE";
 export type TypeEnergie = "ELECTRICITE" | "EAU_CAPTAGE";
 
+export type StatutDemandeMatiere =
+  | "A_PREPARER"
+  | "PARTIELLEMENT_PREPAREE"
+  | "PREPAREE"
+  | "LIVREE_A_LA_PRODUCTION"
+  | "ANNULEE";
+export type StatutDemandeComplementaire = "EN_ATTENTE" | "APPROUVEE_ET_LIVREE" | "REJETEE";
+export type MomentControle = "APRES_TRAITEMENT" | "AVANT_LIBERATION" | "FIN_DE_LIGNE" | "RECEPTION" | "AUTRE";
+export type StatutAvoir = "EMIS" | "UTILISE" | "ANNULE";
+export type TypeProbleme =
+  | "PRODUIT_DEFECTUEUX"
+  | "PRODUIT_MANQUANT"
+  | "ERREUR_REFERENCE"
+  | "EMBALLAGE_ENDOMMAGE"
+  | "PRODUIT_PERIME"
+  | "AUTRE";
+export type StatutReclamation = "OUVERTE" | "EN_COURS" | "CLOTUREE";
+export type StatutRetourPhysique = "EN_QUARANTAINE" | "CONTROLE_EFFECTUE";
+export type ResultatControleRetour =
+  | "RECUPERABLE_DIRECT"
+  | "RECUPERABLE_AVEC_INTERVENTION"
+  | "NON_RECUPERABLE";
+export type StatutReconditionnement = "EN_ATTENTE" | "TERMINE";
+export type TypeSolution = "REMPLACEMENT" | "AVOIR" | "REMBOURSEMENT";
+export type PeriodeRapport = "JOURNALIER" | "MENSUEL";
+
 export interface Utilisateur {
   id: number;
   username: string;
@@ -97,19 +134,6 @@ export interface Utilisateur {
   date_creation: string;
   desactive_par: number | null;
   date_desactivation: string | null;
-}
-
-export interface MatriceDroit {
-  id: number;
-  profil: Profil;
-  module: ModuleMetier;
-  peut_consulter: boolean;
-  peut_creer: boolean;
-  peut_modifier: boolean;
-  peut_valider: boolean;
-  peut_annuler: boolean;
-  peut_exporter: boolean;
-  peut_parametrer: boolean;
 }
 
 export interface JournalAction {
@@ -131,7 +155,79 @@ export interface Article {
   designation: string;
   type_article: TypeArticle;
   unite_mesure: UniteMesure;
-  famille: string;
+  /** FK vers FamilleArticle (liste déroulante). */
+  famille: number | null;
+  sous_famille?: string;
+  marque?: string;
+  /** FK vers FormatArticle. */
+  format?: number | null;
+  /** FK vers Parfum. */
+  parfum?: number | null;
+  /** FK vers UniteVenteArticle. */
+  unite_vente?: number | null;
+  code_fiscal?: number | null;
+  suivi_par_lot?: boolean;
+  duree_conservation_jours?: number | null;
+  stock_minimum?: string;
+  stock_alerte?: string;
+  emplacement_stockage?: string;
+  compte_vente?: string;
+  activite_analytique?: string;
+  centre_cout?: string;
+  actif: boolean;
+  date_creation: string;
+}
+
+export interface FamilleArticle {
+  id: number;
+  nom: string;
+  actif: boolean;
+}
+
+export interface FormatArticle {
+  id: number;
+  valeur: string;
+  actif: boolean;
+}
+
+export interface Parfum {
+  id: number;
+  nom: string;
+  actif: boolean;
+}
+
+export interface UniteVenteArticle {
+  id: number;
+  nom: string;
+  actif: boolean;
+}
+
+export interface FamilleFiscale {
+  id: number;
+  nom: string;
+  actif: boolean;
+}
+
+export interface ControleQualiteRequis {
+  id: number;
+  article: number;
+  type_controle: string;
+  norme_ou_seuil: string;
+  moment: MomentControle;
+  obligatoire: boolean;
+}
+
+export interface CodeFiscal {
+  id: number;
+  code: string;
+  /** FK vers FamilleFiscale (liste déroulante). */
+  famille_fiscale: number;
+  exonere: boolean;
+  taux_tva: string;
+  taux_centimes_additionnels: string;
+  taux_accise: string;
+  sfec_actif: boolean;
+  situation: string;
   actif: boolean;
   date_creation: string;
 }
@@ -317,6 +413,7 @@ export interface PlanProduction {
   date_prevue: string;
   quantite_prevue: string;
   priorite: Priorite;
+  commentaire: string;
   statut: StatutPlan;
   cree_par: number;
   date_creation: string;
@@ -328,10 +425,12 @@ export interface OrdreFabrication {
   plan_production: number | null;
   article: number;
   quantite_a_produire: string;
+  equipe: string;
   statut: StatutOF;
+  motif_annulation: string;
   responsable: number;
   agents_affectes: number[];
-  date_lancement: string | null;
+  date_debut_production: string | null;
   date_fin: string | null;
   date_creation: string;
 }
@@ -341,6 +440,33 @@ export interface BesoinMatierePrevu {
   ordre_fabrication: number;
   matiere: number;
   quantite_theorique: string;
+  /** Enrichissement API list (§5.5), non stocké en base. */
+  stock_disponible?: string | number;
+  manquant?: string | number;
+  situation?: string;
+}
+
+export interface DemandeMatiere {
+  id: number;
+  numero: string;
+  ordre_fabrication: number;
+  matiere: number;
+  quantite_demandee: string;
+  demandeur: number;
+  statut: StatutDemandeMatiere;
+  date_creation: string;
+}
+
+export interface DemandeComplementaire {
+  id: number;
+  numero: string;
+  ordre_fabrication: number;
+  matiere: number;
+  quantite: string;
+  motif: string;
+  demandeur: number;
+  statut: StatutDemandeComplementaire;
+  date_creation: string;
 }
 
 export interface SortieMatiere {
@@ -359,7 +485,37 @@ export interface RetourMatiere {
   ordre_fabrication: number;
   matiere: number;
   quantite_retournee: string;
+  motif?: string;
   date_retour: string;
+}
+
+export interface SuiviProduction {
+  id: number;
+  ordre_fabrication: number;
+  date: string;
+  heure_debut: string;
+  heure_fin: string | null;
+  equipe: string;
+  quantite_entree: string;
+  quantite_produite: string | null;
+  quantite_conforme: string | null;
+  quantite_rejetee: string | null;
+  arrets: string;
+  incidents: string;
+  observations: string;
+}
+
+export interface SuiviEau {
+  id: number;
+  ordre_fabrication: number;
+  volume_capte_l: string;
+  volume_envoye_traitement_l: string | null;
+  volume_obtenu_traitement_l: string;
+  volume_envoye_embouteillage_l: string;
+  bouteilles_produites: number;
+  bouteilles_conformes: number;
+  bouteilles_rejetees: number;
+  nombre_packs: number | null;
 }
 
 export interface EtapeProduction {
@@ -378,6 +534,7 @@ export interface PerteProduction {
   ordre_fabrication: number;
   etape: number | null;
   quantite_perte: string;
+  taux_perte?: string | null;
   motif: MotifPerte;
   observations: string;
   date_constat: string;
@@ -412,6 +569,7 @@ export interface Client {
   adresse: string;
   telephone: string;
   encours_autorise: string;
+  delai_paiement_jours: number;
   bloque: boolean;
 }
 
@@ -463,9 +621,43 @@ export interface Facture {
   numero: string;
   commande: number;
   client: number;
+  montant_ht_total: string;
+  montant_taxes_total: string;
   montant_total: string;
   statut: StatutFacture;
   date_emission: string;
+  date_echeance: string | null;
+}
+
+export interface LigneFacture {
+  id: number;
+  facture: number;
+  article: number;
+  quantite: string;
+  prix_unitaire_ht: string;
+  code_fiscal: number;
+  taux_tva_applique: string;
+  taux_accise_applique: string;
+  taux_centimes_applique: string;
+  montant_ht: string;
+  montant_accise: string;
+  montant_tva: string;
+  montant_centimes: string;
+  montant_ttc: string;
+}
+
+export interface Avoir {
+  id: number;
+  numero: string;
+  client: number;
+  facture_origine: number | null;
+  montant: string;
+  motif: string;
+  statut: StatutAvoir;
+  facture_utilisation: number | null;
+  cree_par: number;
+  date_creation: string;
+  date_utilisation: string | null;
 }
 
 export interface Caisse {
@@ -495,6 +687,18 @@ export interface Encaissement {
   montant: string;
   mode_paiement: ModePaiement;
   date_encaissement: string;
+}
+
+export interface Decaissement {
+  id: number;
+  numero: string;
+  session_caisse: number;
+  montant: string;
+  motif: string;
+  beneficiaire: string;
+  autorise_par: number;
+  effectue_par: number;
+  date_decaissement: string;
 }
 
 export interface EcartCaisse {
@@ -560,6 +764,75 @@ export interface TransfertDepot {
   depot_destination: number;
   date_transfert: string;
   statut: string;
+}
+
+export interface ReclamationClient {
+  id: number;
+  numero: string;
+  bon_livraison: number | null;
+  client: number;
+  facture: number | null;
+  article: number;
+  quantite: string;
+  prix_unitaire: string | null;
+  type_probleme: TypeProbleme;
+  description: string;
+  produit_retourne: boolean;
+  statut: StatutReclamation;
+  cree_par: number;
+  date_creation: string;
+  date_cloture: string | null;
+}
+
+export interface RetourPhysique {
+  id: number;
+  reclamation: number;
+  lot: number | null;
+  quantite_retournee: string;
+  statut: StatutRetourPhysique;
+  receptionne_par: number;
+  date_reception: string;
+}
+
+export interface ControleRetour {
+  id: number;
+  retour_physique: number;
+  resultat: ResultatControleRetour;
+  observations: string;
+  controle_par: number;
+  date_controle: string;
+}
+
+export interface Reconditionnement {
+  id: number;
+  controle_retour: number;
+  description: string;
+  quantite_reconditionnee: string | null;
+  statut: StatutReconditionnement;
+  traite_par: number | null;
+  date_creation: string;
+  date_traitement: string | null;
+}
+
+export interface CoutRetourPerte {
+  id: number;
+  reclamation: number;
+  quantite_detruite: string | null;
+  cout_produit_detruit: string | null;
+  cout_reconditionnement: string | null;
+  date_enregistrement: string;
+}
+
+export interface SolutionClient {
+  id: number;
+  reclamation: number;
+  type_solution: TypeSolution;
+  nouvelle_commande: number | null;
+  montant_avoir: string | null;
+  montant_rembourse: string | null;
+  reference_sortie_caisse: string;
+  autorise_par: number;
+  date_creation: string;
 }
 
 export interface CoutMatiere {
@@ -638,6 +911,15 @@ export interface Cloture {
   date_cloture: string;
 }
 
+export interface RapportGenere {
+  id: number;
+  periode: PeriodeRapport;
+  date_rapport: string;
+  contenu: Record<string, unknown>;
+  genere_par: number;
+  date_generation: string;
+}
+
 export interface SessionUser {
   id: number;
   username: string;
@@ -651,9 +933,15 @@ export interface AppState {
   currentUserId: number | null;
   depotId: number | null;
   utilisateurs: Utilisateur[];
-  droits: MatriceDroit[];
   journal: JournalAction[];
   articles: Article[];
+  controlesQualiteRequis: ControleQualiteRequis[];
+  codesFiscaux: CodeFiscal[];
+  famillesFiscales: FamilleFiscale[];
+  famillesArticle: FamilleArticle[];
+  formatsArticle: FormatArticle[];
+  parfums: Parfum[];
+  unitesVente: UniteVenteArticle[];
   fichesTechniques: FicheTechnique[];
   compositions: CompositionFicheTechnique[];
   fichesConditionnement: FicheConditionnement[];
@@ -675,8 +963,12 @@ export interface AppState {
   plans: PlanProduction[];
   ofList: OrdreFabrication[];
   besoinsMatieres: BesoinMatierePrevu[];
+  demandesMatieres: DemandeMatiere[];
+  demandesComplementaires: DemandeComplementaire[];
   sortiesMatieres: SortieMatiere[];
   retoursMatieres: RetourMatiere[];
+  suivisProduction: SuiviProduction[];
+  suivisEau: SuiviEau[];
   etapes: EtapeProduction[];
   pertes: PerteProduction[];
   lots: Lot[];
@@ -688,9 +980,12 @@ export interface AppState {
   commandes: Commande[];
   lignesCommande: LigneCommande[];
   factures: Facture[];
+  lignesFacture: LigneFacture[];
+  avoirs: Avoir[];
   caisses: Caisse[];
   sessionsCaisse: SessionCaisse[];
   encaissements: Encaissement[];
+  decaissements: Decaissement[];
   ecartsCaisse: EcartCaisse[];
   vehicules: Vehicule[];
   chauffeurs: Chauffeur[];
@@ -699,6 +994,12 @@ export interface AppState {
   preparations: PreparationLivraison[];
   bonsLivraison: BonLivraison[];
   transferts: TransfertDepot[];
+  reclamations: ReclamationClient[];
+  retoursPhysiques: RetourPhysique[];
+  controlesRetour: ControleRetour[];
+  reconditionnements: Reconditionnement[];
+  coutsRetours: CoutRetourPerte[];
+  solutionsReclamation: SolutionClient[];
   coutsMatieres: CoutMatiere[];
   coutsEnergie: CoutEnergie[];
   coutsMainOeuvre: CoutMainOeuvre[];
@@ -708,6 +1009,7 @@ export interface AppState {
   anomalies: AnomalieDetectee[];
   exportsComptables: ExportComptable[];
   clotures: Cloture[];
+  rapports: RapportGenere[];
   lastError: string | null;
   loading: boolean;
 }

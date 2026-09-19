@@ -26,16 +26,25 @@ const GROUPS = [
       ["Fournisseurs", "/parametrage/fournisseurs", "Fournisseurs matières"],
     ],
   },
+  {
+    title: "Fiscalité",
+    items: [
+      ["Codes fiscaux", "/parametrage/fiscalite", "TVA, accises, centimes"],
+    ],
+  },
 ];
 
 export default function ParametrageHubPage() {
-  const { currentUser } = useStore();
+  const { currentUser, canEditParam } = useStore();
   const allow = currentUser ? ROLE_PROFILES[currentUser.role].paramAllow : [];
+  const read = currentUser ? ROLE_PROFILES[currentUser.role].paramRead ?? [] : [];
   const all = currentUser?.role === "ADMIN_SI" || allow.includes("*");
 
   function visible(href: string) {
     if (all) return true;
-    return allow.some((p) => href === p || href.startsWith(p + "/"));
+    if (allow.some((p) => href === p || href.startsWith(p + "/"))) return true;
+    if (read.some((p) => href === p || href.startsWith(p + "/"))) return true;
+    return canEditParam(href);
   }
 
   const groups = GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => visible(i[1])) })).filter((g) => g.items.length > 0);

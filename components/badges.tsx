@@ -22,13 +22,14 @@ type Tone = (typeof TONE)[keyof typeof TONE];
 export function OfBadge({ status }: { status: StatutOF }) {
   const tones: Record<StatutOF, Tone> = {
     BROUILLON: "neutral",
-    PLANIFIE: "info",
-    LANCE: "teal",
+    A_PREPARER: "info",
+    MATIERES_EN_PREPARATION: "teal",
+    PRET: "teal",
     EN_PRODUCTION: "warning",
-    TERMINE: "teal",
-    CONTROLE_QUALITE: "teal",
-    LIBERE: "success",
+    PRODUCTION_TERMINEE: "teal",
+    EN_CONTROLE: "info",
     CLOTURE: "success",
+    ANNULE: "danger",
   };
   return <StatusBadge tone={tones[status]}>{STATUT_OF_LABEL[status]}</StatusBadge>;
 }

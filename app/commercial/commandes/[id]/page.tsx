@@ -3,10 +3,10 @@
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { OrderBadge } from "@/components/badges";
-import { Button, Field, ORDER_STEPS, PageHeader, Panel, StatusStepper, inputClass } from "@/components/ui";
+import { Button, Field, Guard, ORDER_STEPS, PageHeader, Panel, StatusStepper, inputClass } from "@/components/ui";
 import { STATUT_FACTURE_LABEL, TYPE_COMMANDE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatDa, formatQty, num } from "@/lib/utils";
+import { formatDa, formatDate, formatQty, num } from "@/lib/utils";
 
 export default function CommandeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +14,7 @@ export default function CommandeDetailPage() {
   const cmd = state.commandes.find((c) => c.id === Number(id));
   const lignes = state.lignesCommande.filter((l) => l.commande === Number(id));
   const facture = state.factures.find((f) => f.commande === Number(id));
+  const lignesFacture = state.lignesFacture.filter((l) => l.facture === facture?.id);
   const [article, setArticle] = useState(produitsFinis[0]?.id ?? 0);
   const [qty, setQty] = useState(1);
   if (!cmd) return <p className="text-[13px] text-muted">Commande introuvable.</p>;
@@ -58,8 +59,41 @@ export default function CommandeDetailPage() {
         {lignes.map((l) => (
           <p key={l.id} className="text-[13px]">{articleName(l.article)} · {formatQty(num(l.quantite), 2)} × {formatDa(num(l.prix_unitaire))}</p>
         ))}
-        {facture && <p className="text-[13px] mt-3">Facture {facture.numero} · {STATUT_FACTURE_LABEL[facture.statut] ?? facture.statut} · {formatDa(num(facture.montant_total))}</p>}
       </Panel>
+
+      {facture && (
+        <Panel className="p-4 space-y-2">
+          <h2 className="text-[13px] font-semibold">
+            Facture {facture.numero} · {STATUT_FACTURE_LABEL[facture.statut] ?? facture.statut}
+          </h2>
+          <p className="text-[13px]">Montant HT : {formatDa(num(facture.montant_ht_total))}</p>
+          <p className="text-[13px]">Taxes (TVA + accise + centimes) : {formatDa(num(facture.montant_taxes_total))}</p>
+          <p className="text-[13px] font-medium">Total TTC : {formatDa(num(facture.montant_total))}</p>
+          <p className="text-[13px]">Échéance : {facture.date_echeance ? formatDate(facture.date_echeance) : "—"}</p>
+
+          {lignesFacture.length === 0 ? (
+            <>
+              <Guard variant="warn" title="Aucune ligne de facture générée">
+                Un article sans code fiscal actif ne peut pas être facturé (voir la fiche article, bloc Fiscalité).
+              </Guard>
+              {can("GENERER_LIGNES_FACTURE") && (
+                <Button onClick={() => void dispatch({ type: "GENERER_LIGNES_FACTURE", id: facture.id })}>
+                  Générer les lignes
+                </Button>
+              )}
+            </>
+          ) : (
+            <div className="space-y-1 pt-2">
+              {lignesFacture.map((l) => (
+                <p key={l.id} className="text-[13px]">
+                  {articleName(l.article)} · {formatQty(num(l.quantite), 2)} × {formatDa(num(l.prix_unitaire_ht))} HT
+                  {" "}· TVA {num(l.taux_tva_applique)}% ({formatDa(num(l.montant_tva))}) · TTC {formatDa(num(l.montant_ttc))}
+                </p>
+              ))}
+            </div>
+          )}
+        </Panel>
+      )}
     </div>
   );
 }
