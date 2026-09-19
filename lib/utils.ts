@@ -5,11 +5,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDa(value: number) {
-  return new Intl.NumberFormat("fr-DZ", {
+  return new Intl.NumberFormat("fr-FR", {
     style: "decimal",
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value) + " DA";
+    maximumFractionDigits: 0,
+  }).format(value) + " FCFA";
 }
 
 /** Alias montant (même formatage que formatDa). */
