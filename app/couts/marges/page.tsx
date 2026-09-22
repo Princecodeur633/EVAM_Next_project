@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, DataTable, PageHeader, Panel, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import { tarifEnVigueur } from "@/lib/tarifs";
 import { formatDa, num } from "@/lib/utils";
 
 export default function MargesPage() {
@@ -15,7 +16,7 @@ export default function MargesPage() {
         <DataTable
           columns={[{ key: "a", label: "Article" }, { key: "cs", label: "Coût standard" }, { key: "pv", label: "Tarif public" }]}
           rows={state.coutsStandards.map((c) => {
-            const tarif = state.tarifs.find((t) => t.article === c.article && t.client == null);
+            const tarif = tarifEnVigueur(state.tarifs, c.article, null);
             return {
               a: articleName(c.article),
               cs: formatDa(num(c.cout_standard_unitaire)),

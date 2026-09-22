@@ -14,6 +14,7 @@ import { ApiError, actions, api, catalog, catalogKeysForRole, detail, endpoints,
 import { canAct, stockArticleTotal, type ActionName } from "./engine";
 import { displayName, ORDRE_STATUTS_OF } from "./labels";
 import { canEditParam as roleCanEditParam } from "./roles";
+import { tarifEnVigueur } from "./tarifs";
 import type {
   AppState,
   Article,
@@ -128,6 +129,9 @@ export type Action =
   | { type: "CREATE_CONTROLE"; lot: number; resultat: "CONFORME" | "NON_CONFORME"; observations?: string }
   | { type: "LIBERER_LOT"; id: number }
   | { type: "BLOQUER_LOT"; id: number; motif?: string }
+  | { type: "PATCH_CLIENT"; id: number; nom?: string; type_client?: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number; bloque?: boolean }
+  | { type: "PATCH_FOURNISSEUR"; id: number; nom?: string; contact?: string; telephone?: string; email?: string; adresse?: string; actif?: boolean }
+  | { type: "PATCH_TARIF"; id: number; prix_unitaire?: number; date_debut_validite?: string; date_fin_validite?: string | null }
   | { type: "CREATE_CLIENT"; code: string; nom: string; type_client: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number }
   | { type: "CREATE_COMMANDE"; client: number; type_commande: string }
   | { type: "ADD_LIGNE_COMMANDE"; commande: number; article: number; quantite: number; prix_unitaire: number }
@@ -658,6 +662,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           case "BLOQUER_LOT":
             await actions.bloquerLot(action.id, action.motif);
             break;
+          case "PATCH_CLIENT": {
+            const champs: Record<string, unknown> = { ...action };
+            delete champs.type;
+            delete champs.id;
+            await api.patch(detail(endpoints.clients, action.id), champs);
+            break;
+          }
+          case "PATCH_FOURNISSEUR": {
+            const champs: Record<string, unknown> = { ...action };
+            delete champs.type;
+            delete champs.id;
+            await api.patch(detail(endpoints.fournisseurs, action.id), champs);
+            break;
+          }
+          case "PATCH_TARIF": {
+            const champs: Record<string, unknown> = { ...action };
+            delete champs.type;
+            delete champs.id;
+            await api.patch(detail(endpoints.tarifs, action.id), champs);
+            break;
+          }
           case "CREATE_CLIENT":
             await api.post(endpoints.clients, {
               code: action.code,
@@ -1064,13 +1089,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ofNumero,
       userName,
       stockOf: (articleId) => stockArticleTotal(s, articleId),
-      tarifFor: (articleId, clientId) => {
-        const specific = clientId
-          ? s.tarifs.find((t) => t.article === articleId && t.client === clientId)
-          : undefined;
-        const pub = s.tarifs.find((t) => t.article === articleId && t.client == null);
-        return num((specific ?? pub)?.prix_unitaire);
-      },
+      tarifFor: (articleId, clientId) => num(tarifEnVigueur(s.tarifs, articleId, clientId ?? null)?.prix_unitaire),
       produitsFinis: s.articles.filter((a) => a.type_article === "PRODUIT_FINI" && a.actif),
       matieres: s.articles.filter((a) => a.type_article === "MATIERE_PREMIERE" && a.actif),
       ready,
