@@ -7,7 +7,7 @@ import { displayName } from "@/lib/labels";
 import { formatDateTime, formatMoney, num } from "@/lib/utils";
 
 export default function DecaissementsPage() {
-  const { state, dispatch, can, userName } = useStore();
+  const { state, dispatch, can, userName, currentUser } = useStore();
   const sessionsOuvertes = state.sessionsCaisse.filter((s) => s.statut === "OUVERTE");
   const [session, setSession] = useState(sessionsOuvertes[0]?.id ?? 0);
   useEffect(() => {
@@ -55,7 +55,8 @@ export default function DecaissementsPage() {
           <Field label="Autorisé par">
             <select className={inputClass} value={autorisePar} onChange={(e) => setAutorisePar(Number(e.target.value))}>
               <option value={0}>—</option>
-              {state.utilisateurs.filter((u) => u.actif).map((u) => (
+              {/* Le backend refuse qu'on s'autorise soi-même (DecaissementSerializer.validate) */}
+              {state.utilisateurs.filter((u) => u.actif && u.id !== currentUser?.id).map((u) => (
                 <option key={u.id} value={u.id}>{displayName(u)}</option>
               ))}
             </select>

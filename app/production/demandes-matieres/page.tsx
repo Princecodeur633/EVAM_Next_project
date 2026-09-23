@@ -35,6 +35,7 @@ export default function SortiesPage() {
   const [dmOf, setDmOf] = useState(ofOptions[0]?.id ?? 0);
   const [dmMat, setDmMat] = useState(matieres[0]?.id ?? 0);
   const [dmQty, setDmQty] = useState(0);
+  const [livraisonPartielle, setLivraisonPartielle] = useState<Record<number, string>>({});
   const [compOf, setCompOf] = useState(ofOptions[0]?.id ?? 0);
   const [compMat, setCompMat] = useState(matieres[0]?.id ?? 0);
   const [compQty, setCompQty] = useState(0);
@@ -85,7 +86,8 @@ export default function SortiesPage() {
             { key: "n", label: "N°" },
             { key: "of", label: "OF" },
             { key: "m", label: "Matière" },
-            { key: "q", label: "Qté" },
+            { key: "q", label: "Qté demandée" },
+            { key: "ql", label: "Qté livrée" },
             { key: "s", label: "Statut" },
             { key: "a", label: "" },
           ]}
@@ -94,12 +96,28 @@ export default function SortiesPage() {
             of: ofNumero(d.ordre_fabrication),
             m: articleName(d.matiere),
             q: formatQty(num(d.quantite_demandee), 3),
+            ql: d.quantite_livree != null ? formatQty(num(d.quantite_livree), 3) : "—",
             s: STATUT_DEMANDE_MATIERE_LABEL[d.statut] ?? d.statut,
             a:
               can("LIVRER_DEMANDE_MATIERE") && d.statut !== "LIVREE_A_LA_PRODUCTION" && d.statut !== "ANNULEE" ? (
-                <Button className="h-8 px-2.5 text-[12px]" onClick={() => void dispatch({ type: "LIVRER_DEMANDE_MATIERE", id: d.id })}>
-                  Livrer
-                </Button>
+                <span className="flex gap-2 items-center justify-end">
+                  <input
+                    type="number"
+                    placeholder={`${num(d.quantite_demandee)}`}
+                    className="h-8 w-20 border border-line rounded px-2 text-[12px]"
+                    value={livraisonPartielle[d.id] ?? ""}
+                    onChange={(e) => setLivraisonPartielle((m) => ({ ...m, [d.id]: e.target.value }))}
+                  />
+                  <Button
+                    className="h-8 px-2.5 text-[12px]"
+                    onClick={() => {
+                      const saisie = livraisonPartielle[d.id];
+                      void dispatch({ type: "LIVRER_DEMANDE_MATIERE", id: d.id, quantite_livree: saisie ? Number(saisie) : undefined });
+                    }}
+                  >
+                    Livrer
+                  </Button>
+                </span>
               ) : (
                 "—"
               ),

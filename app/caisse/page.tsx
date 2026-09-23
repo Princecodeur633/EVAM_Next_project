@@ -8,8 +8,12 @@ import { formatDa, num } from "@/lib/utils";
 import type { ModePaiement } from "@/lib/types";
 
 export default function CaissePage() {
-  const { state, dispatch, clientName, can } = useStore();
-  const session = state.sessionsCaisse.find((s) => s.statut === "OUVERTE");
+  const { state, dispatch, clientName, can, currentUser } = useStore();
+  // Un encaissement n'est accepté par le backend que sur la session OUVERTE
+  // du caissier connecté (voir EncaissementSerializer.validate_session_caisse) :
+  // ne jamais prendre "la première session ouverte" trouvée, qui pourrait
+  // appartenir à un autre caissier.
+  const session = state.sessionsCaisse.find((s) => s.statut === "OUVERTE" && s.caissier === currentUser?.id);
   const [mode, setMode] = useState<ModePaiement>("ESPECES");
   const [caisse, setCaisse] = useState(state.caisses[0]?.id ?? 0);
   const [solde, setSolde] = useState(0);
