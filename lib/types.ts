@@ -367,6 +367,12 @@ export interface Depot {
   nom: string;
   adresse: string;
   actif: boolean;
+  /** Dépôt utilisé automatiquement par le code (mouvements générés par la
+   * production, la qualité, les achats...) : nom/actif ne devraient plus être
+   * modifiés librement depuis l'écran Dépôts, la suppression y est masquée. */
+  est_systeme: boolean;
+  /** Rôle du dépôt système (ex. "Produits finis libérés"), vide si non-système. */
+  role: string;
 }
 
 export interface StockArticle {
@@ -452,6 +458,8 @@ export interface DemandeMatiere {
   ordre_fabrication: number;
   matiere: number;
   quantite_demandee: string;
+  /** Renseignée par le backend au moment de /livrer/ ; en lecture seule. */
+  quantite_livree: string | null;
   demandeur: number;
   statut: StatutDemandeMatiere;
   date_creation: string;
