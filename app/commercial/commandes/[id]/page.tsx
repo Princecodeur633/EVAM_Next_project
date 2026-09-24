@@ -7,6 +7,7 @@ import { Button, Field, Guard, ORDER_STEPS, PageHeader, Panel, StatusStepper, in
 import { STATUT_FACTURE_LABEL, TYPE_COMMANDE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import { formatDa, formatDate, formatQty, num } from "@/lib/utils";
+import { telechargerFacturePdf } from "@/lib/facturePdf";
 
 export default function CommandeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +16,7 @@ export default function CommandeDetailPage() {
   const lignes = state.lignesCommande.filter((l) => l.commande === Number(id));
   const facture = state.factures.find((f) => f.commande === Number(id));
   const lignesFacture = state.lignesFacture.filter((l) => l.facture === facture?.id);
+  const client = state.clients.find((c) => c.id === cmd?.client);
   const [article, setArticle] = useState(produitsFinis[0]?.id ?? 0);
   const [qty, setQty] = useState(1);
   if (!cmd) return <p className="text-[13px] text-muted">Commande introuvable.</p>;
@@ -63,9 +65,19 @@ export default function CommandeDetailPage() {
 
       {facture && (
         <Panel className="p-4 space-y-2">
-          <h2 className="text-[13px] font-semibold">
-            Facture {facture.numero} · {STATUT_FACTURE_LABEL[facture.statut] ?? facture.statut}
-          </h2>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-[13px] font-semibold">
+              Facture {facture.numero} · {STATUT_FACTURE_LABEL[facture.statut] ?? facture.statut}
+            </h2>
+            {lignesFacture.length > 0 && client && (
+              <Button
+                className="h-8 px-2.5 text-[12px]"
+                onClick={() => telechargerFacturePdf({ facture, client, commande: cmd, lignes: lignesFacture, articleName })}
+              >
+                Télécharger en PDF
+              </Button>
+            )}
+          </div>
           <p className="text-[13px]">Montant HT : {formatDa(num(facture.montant_ht_total))}</p>
           <p className="text-[13px]">Taxes (TVA + accise + centimes) : {formatDa(num(facture.montant_taxes_total))}</p>
           <p className="text-[13px] font-medium">Total TTC : {formatDa(num(facture.montant_total))}</p>
