@@ -38,6 +38,7 @@ const I = {
   suiviEau: { href: "/production/suivi-eau", label: "Suivi eau", hint: "Captage et embouteillage" },
   pertes: { href: "/production/pertes", label: "Pertes", hint: "Pertes et rebuts" },
   qualite: { href: "/production/qualite", label: "Lots qualité", hint: "Contrôle et libération" },
+  ofRecus: { href: "/production/qualite/of", label: "OF reçus", hint: "Production terminée, à contrôler" },
   besoinsOf: { href: "/production/besoins", label: "Besoins matières", hint: "Besoins théoriques" },
   sorties: { href: "/production/demandes-matieres", label: "Matières atelier", hint: "Sorties et retours" },
   stock: { href: "/stocks", label: "Situation", hint: "Stock disponible" },
@@ -100,7 +101,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   RESPONSABLE_QUALITE: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("qualite", "Qualité", "check", [I.qualite, I.ft, I.reclamations]),
+    g("qualite", "Qualité", "check", [I.ofRecus, I.qualite, I.ft, I.reclamations]),
   ],
   MAGASINIER: [
     g("poste", "Menu", "home", [I.accueil]),

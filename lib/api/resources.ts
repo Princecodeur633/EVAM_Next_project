@@ -257,6 +257,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "lots",
     "journal",
     "ofList",
+    "utilisateurs",
     "encaissements",
     "coutsMatieres",
     "coutsEnergie",
@@ -268,6 +269,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "rapports",
   ],
   RESPONSABLE_PRODUCTION: [
+    "utilisateurs",
     "codesFiscaux",
     "famillesFiscales",
     "famillesArticle",
@@ -296,6 +298,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "besoinsAchat",
   ],
   AGENT_PRODUCTION: [
+    "utilisateurs",
     "famillesArticle",
     "articles",
     "ofList",
@@ -308,6 +311,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "lots",
   ],
   RESPONSABLE_QUALITE: [
+    "utilisateurs",
     "codesFiscaux",
     "famillesFiscales",
     "famillesArticle",
@@ -322,9 +326,12 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "retoursPhysiques",
     "stock",
     "fichesTechniques",
+    "compositions",
     "ofList",
   ],
   MAGASINIER: [
+    "utilisateurs",
+    "clients",
     "articles",
     "depots",
     "stock",
@@ -347,6 +354,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "transferts",
   ],
   RESPONSABLE_ACHATS: [
+    "utilisateurs",
     "codesFiscaux",
     "famillesFiscales",
     "famillesArticle",
@@ -367,6 +375,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "lots",
   ],
   COMMERCIAL: [
+    "utilisateurs",
     "famillesFiscales",
     "famillesArticle",
     "formatsArticle",
@@ -388,6 +397,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "reclamations",
   ],
   CAISSIER: [
+    "utilisateurs",
     "articles",
     "commandes",
     "factures",
@@ -399,6 +409,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "clients",
   ],
   RESPONSABLE_DISTRIBUTION: [
+    "utilisateurs",
+    "clients",
     "articles",
     "stock",
     "lots",
@@ -409,10 +421,14 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "preparations",
     "bonsLivraison",
     "commandes",
+    "lignesCommande",
+    "factures",
+    "lignesFacture",
     "reclamations",
   ],
-  CHAUFFEUR: ["articles", "chauffeurs", "tournees", "bonsLivraison"],
+  CHAUFFEUR: ["utilisateurs", "articles", "chauffeurs", "tournees", "bonsLivraison"],
   COMPTABILITE_DAF: [
+    "utilisateurs",
     "famillesFiscales",
     "famillesArticle",
     "articles",
