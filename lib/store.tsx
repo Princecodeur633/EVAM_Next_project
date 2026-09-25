@@ -71,6 +71,8 @@ export type Action =
   | { type: "VALIDER_FT"; id: number }
   | { type: "CREATE_FT"; article: number; version?: number }
   | { type: "CREATE_COMPOSITION"; fiche_technique: number; matiere: number; quantite_necessaire: number }
+  | { type: "PATCH_COMPOSITION"; id: number; quantite_necessaire: number }
+  | { type: "DELETE_COMPOSITION"; id: number }
   | {
       type: "CREATE_ARTICLE";
       code: string;
@@ -572,6 +574,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               matiere: action.matiere,
               quantite_necessaire: action.quantite_necessaire,
             });
+            break;
+          case "PATCH_COMPOSITION":
+            await api.patch(detail(endpoints.compositions, action.id), { quantite_necessaire: action.quantite_necessaire });
+            break;
+          case "DELETE_COMPOSITION":
+            await api.del(detail(endpoints.compositions, action.id));
             break;
           case "CREATE_ARTICLE":
             await api.post(endpoints.articles, {
