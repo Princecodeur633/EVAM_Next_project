@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronDown, LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { Bell, ChevronDown, Circle, LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { breadcrumbs, canAccess, flattenNav, isNavActive, navForRole } from "@/lib/nav";
 import { ROLE_PROFILES } from "@/lib/roles";
@@ -10,7 +10,7 @@ import { useStore } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "./BrandLogo";
-import { ACCENT_CLASS, ACCENT_SOFT, NAV_ICONS, ROLE_ICONS } from "./icons";
+import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, NAV_ICONS, ROLE_ICONS } from "./icons";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { state, currentUser, dispatch } = useStore();
@@ -23,6 +23,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [query, setQuery] = useState("");
   const [navOpen, setNavOpen] = useState(false);
   const [openSub, setOpenSub] = useState<Record<string, boolean>>({});
+  const [railOpen, setRailOpen] = useState(false);
+  const railTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Petits délais : évite d'ouvrir la barre quand le curseur ne fait que la traverser.
+  const openRail = () => {
+    if (railTimer.current) clearTimeout(railTimer.current);
+    railTimer.current = setTimeout(() => setRailOpen(true), 90);
+  };
+  const closeRail = () => {
+    if (railTimer.current) clearTimeout(railTimer.current);
+    railTimer.current = setTimeout(() => setRailOpen(false), 180);
+  };
+
+  useEffect(
+    () => () => {
+      if (railTimer.current) clearTimeout(railTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     setNavOpen(false);
@@ -72,19 +91,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       (i.hint ?? "").toLowerCase().includes(query.toLowerCase()),
   );
 
-  const renderSidebar = () => (
+  const itemIcon = (item: { href: string; label: string }) => LABEL_ICONS[item.label] ?? ITEM_ICONS[item.href] ?? Circle;
+  const fade = (collapsed: boolean) =>
+    cn("truncate transition-opacity duration-200", collapsed ? "opacity-0" : "opacity-100 delay-75");
+
+  const renderSidebar = (collapsed = false) => (
     <>
-      <Link href="/accueil" className="h-[72px] px-3 sm:px-4 flex items-center gap-3 border-b border-white/10" onClick={() => setNavOpen(false)}>
-        <BrandLogo size="md" className="max-h-10 w-auto" priority />
+      <Link
+        href="/accueil"
+        className="h-[72px] shrink-0 px-3 flex items-center border-b border-white/10 overflow-hidden"
+        onClick={() => setNavOpen(false)}
+      >
+        <BrandLogo
+          size="md"
+          priority
+          className={cn("max-h-10 transition-[width] duration-300", collapsed ? "w-10" : "w-auto")}
+        />
       </Link>
 
-      <div className="px-3 py-3 border-b border-white/10">
-        <div className="rounded-[9px] px-3 py-2.5 bg-white/5 border border-white/5">
+      <div className="px-2 py-3 border-b border-white/10">
+        <div
+          className={cn(
+            "rounded-[9px] px-[7px] py-2 border transition-colors duration-200",
+            collapsed ? "bg-transparent border-transparent" : "bg-white/5 border-white/5",
+          )}
+          title={collapsed ? `${profile.label} · ${profile.station}` : undefined}
+        >
           <div className="flex items-center gap-2.5">
-            <span className={cn("h-8 w-8 rounded-[7px] flex items-center justify-center text-white", ACCENT_CLASS[profile.accent])}>
+            <span className={cn("h-8 w-8 shrink-0 rounded-[7px] flex items-center justify-center text-white", ACCENT_CLASS[profile.accent])}>
               <IconRole size={15} strokeWidth={1.75} />
             </span>
-            <div className="min-w-0">
+            <div className={cn("min-w-0", fade(collapsed))}>
               <p className="text-white text-[12.5px] font-semibold truncate">{profile.label}</p>
               <p className="text-[11px] text-white/45 truncate">{profile.station}</p>
             </div>
@@ -92,36 +129,59 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 px-2 overscroll-contain">
+      <nav className={cn("flex-1 py-3 px-2 overscroll-contain overflow-x-hidden", collapsed ? "overflow-y-hidden" : "overflow-y-auto")}>
         {groups.map((g) => {
           const GIcon = NAV_ICONS[g.icon] ?? HomeFallback;
           return (
             <div key={g.id} className="mb-3.5">
-              <p className="px-3 mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-white/35 font-medium">
-                <GIcon size={11} strokeWidth={1.75} />
-                {g.label}
-              </p>
+              <div className="relative h-[15px] mb-1.5">
+                <p
+                  className={cn(
+                    "absolute inset-0 px-3 flex items-center gap-2 whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-white/35 font-medium",
+                    fade(collapsed),
+                  )}
+                >
+                  <GIcon size={11} strokeWidth={1.75} className="shrink-0" />
+                  {g.label}
+                </p>
+                <span
+                  className={cn(
+                    "absolute left-[14px] top-1/2 h-px w-5 bg-white/15 transition-opacity duration-200",
+                    collapsed ? "opacity-100" : "opacity-0",
+                  )}
+                />
+              </div>
               {g.items.map((item) => {
+                const ItemIcon = itemIcon(item);
                 if (item.children && item.children.length > 0) {
                   const childActive = item.children.some((c) => isNavActive(pathname, c.href, allHrefs));
-                  const expanded = openSub[item.href] ?? childActive;
+                  const expanded = !collapsed && (openSub[item.href] ?? childActive);
                   return (
                     <div key={item.href}>
                       <button
                         type="button"
-                        title={item.hint}
+                        title={collapsed ? item.label : item.hint}
                         aria-expanded={expanded}
                         onClick={() => setOpenSub((s) => ({ ...s, [item.href]: !expanded }))}
                         className={cn(
-                          "w-[calc(100%-0.5rem)] mx-1 px-3 py-[8px] rounded-[7px] text-[13px] flex items-center justify-between gap-2 transition-all duration-150",
-                          childActive ? "text-white font-medium" : "hover:bg-white/6 hover:text-white text-white/75",
+                          "w-[calc(100%-0.5rem)] mx-1 px-3 py-[8px] rounded-[7px] text-[13px] flex items-center gap-3 whitespace-nowrap transition-all duration-150",
+                          childActive
+                            ? collapsed
+                              ? "bg-white/12 text-white"
+                              : "text-white font-medium"
+                            : "hover:bg-white/6 hover:text-white text-white/75",
                         )}
                       >
-                        <span className="truncate">{item.label}</span>
+                        <ItemIcon size={16} strokeWidth={1.75} className="shrink-0" />
+                        <span className={cn("flex-1 text-left", fade(collapsed))}>{item.label}</span>
                         <ChevronDown
                           size={13}
                           strokeWidth={1.75}
-                          className={cn("shrink-0 text-white/45 transition-transform duration-200", expanded && "rotate-180")}
+                          className={cn(
+                            "shrink-0 text-white/45 transition-all duration-200",
+                            expanded && "rotate-180",
+                            collapsed && "opacity-0",
+                          )}
                         />
                       </button>
                       <div
@@ -131,9 +191,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         )}
                       >
                         <div className="overflow-hidden">
-                          <div className="ml-5 mr-1 mt-0.5 mb-1 pl-2 border-l border-white/10 space-y-px">
+                          <div className="ml-[24px] mr-1 mt-0.5 mb-1 pl-2 border-l border-white/10 space-y-px">
                             {item.children.map((child) => {
                               const active = isNavActive(pathname, child.href, allHrefs);
+                              const ChildIcon = itemIcon(child);
                               return (
                                 <Link
                                   key={child.href}
@@ -142,13 +203,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                   tabIndex={expanded ? undefined : -1}
                                   onClick={() => setNavOpen(false)}
                                   className={cn(
-                                    "block px-2.5 py-[6px] rounded-[6px] text-[12.5px] transition-all duration-150",
+                                    "flex items-center gap-2.5 px-2.5 py-[6px] rounded-[6px] text-[12.5px] whitespace-nowrap transition-all duration-150",
                                     active
                                       ? "bg-white/12 text-white font-medium shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
                                       : "hover:bg-white/6 hover:text-white text-white/60",
                                   )}
                                 >
-                                  {child.label}
+                                  <ChildIcon size={14} strokeWidth={1.75} className="shrink-0 opacity-80" />
+                                  <span className="truncate">{child.label}</span>
                                 </Link>
                               );
                             })}
@@ -161,18 +223,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 const active = isNavActive(pathname, item.href, allHrefs);
                 return (
                   <Link
-                    key={item.href}
+                    key={item.href + item.label}
                     href={item.href}
-                    title={item.hint}
+                    title={collapsed ? item.label : item.hint}
                     onClick={() => setNavOpen(false)}
                     className={cn(
-                      "block mx-1 px-3 py-[8px] rounded-[7px] text-[13px] transition-all duration-150",
+                      "flex items-center gap-3 mx-1 px-3 py-[8px] rounded-[7px] text-[13px] whitespace-nowrap transition-all duration-150",
                       active
                         ? "bg-white/12 text-white font-medium shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
                         : "hover:bg-white/6 hover:text-white text-white/75",
                     )}
                   >
-                    {item.label}
+                    <ItemIcon size={16} strokeWidth={1.75} className="shrink-0" />
+                    <span className={fade(collapsed)}>{item.label}</span>
                   </Link>
                 );
               })}
@@ -180,14 +243,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           );
         })}
       </nav>
-      <p className="px-4 py-3 text-[11px] text-white/30 border-t border-white/10">Eau · Jus · Yaourts</p>
+      <p className={cn("px-4 py-3 text-[11px] text-white/30 border-t border-white/10 whitespace-nowrap", fade(collapsed))}>
+        Eau · Jus · Yaourts
+      </p>
     </>
   );
 
   return (
     <div className="min-h-dvh flex bg-bg">
-      <aside className="hidden lg:flex w-[252px] shrink-0 bg-sidebar text-sidebar-text flex-col h-dvh sticky top-0 border-r border-white/5">
-        {renderSidebar()}
+      {/* Barre latérale bureau : repliée (icônes), dépliée au survol par-dessus le contenu. */}
+      <div className="hidden lg:block w-16 shrink-0" aria-hidden />
+      <aside
+        onMouseEnter={openRail}
+        onMouseLeave={closeRail}
+        onFocus={openRail}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) closeRail();
+        }}
+        className={cn(
+          "hidden lg:flex fixed inset-y-0 left-0 z-40 h-dvh bg-sidebar text-sidebar-text flex-col overflow-hidden border-r border-white/5",
+          "transition-[width,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          railOpen ? "w-[252px] shadow-[8px_0_32px_-8px_rgba(0,0,0,0.35)]" : "w-16",
+        )}
+      >
+        {renderSidebar(!railOpen)}
       </aside>
 
       {navOpen && (
