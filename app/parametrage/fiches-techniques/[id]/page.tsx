@@ -1,25 +1,47 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useState } from "react";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { STATUT_FT_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { actions } from "@/lib/api";
+import type { ElementComposition } from "@/lib/types";
 import { formatQty, num } from "@/lib/utils";
 
 export default function FicheTechniqueDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, articleName, matieres, can, canEditParam } = useStore();
-  const ft = state.fichesTechniques.find((f) => f.id === Number(id));
-  const compo = state.compositions.filter((c) => c.fiche_technique === Number(id));
-  const [matiere, setMatiere] = useState(matieres[0]?.id ?? 0);
+  const ficheId = Number(id);
+  const { state, dispatch, articleName, can, canEditParam } = useStore();
+  const ft = state.fichesTechniques.find((f) => f.id === ficheId);
+  const compo = state.compositions.filter((c) => c.fiche_technique === ficheId);
+  const [disponibles, setDisponibles] = useState<ElementComposition[]>([]);
+  const [matiere, setMatiere] = useState(0);
   const [qty, setQty] = useState(0);
   const [editionQte, setEditionQte] = useState<Record<number, string>>({});
-  if (!ft) return <p className="text-[13px] text-muted">Fiche introuvable.</p>;
   const writable = canEditParam("/parametrage/fiches-techniques");
   // Une fiche validée est figée (on la version plutôt que de la modifier) :
   // la composition ne reste éditable que tant qu'elle est en brouillon.
-  const editableCompo = writable && ft.statut === "BROUILLON";
+  const editableCompo = writable && ft?.statut === "BROUILLON";
+
+  // Liste de choix à jour (matières premières/intermédiaires actives, pas
+  // encore présentes dans cette fiche) : recalculée côté serveur, on ne la
+  // reconstruit jamais nous-mêmes pour ne pas proposer un doublon ou un
+  // produit fini par erreur.
+  useEffect(() => {
+    if (!editableCompo) return;
+    let annule = false;
+    void actions.elementsDisponibles(ficheId).then((elements) => {
+      if (annule) return;
+      setDisponibles(elements);
+      setMatiere((m) => (elements.some((e) => e.id === m) ? m : elements[0]?.id ?? 0));
+    });
+    return () => {
+      annule = true;
+    };
+  }, [ficheId, editableCompo, compo.length]);
+
+  if (!ft) return <p className="text-[13px] text-muted">Fiche introuvable.</p>;
 
   return (
     <div className="space-y-4">
@@ -31,15 +53,24 @@ export default function FicheTechniqueDetailPage() {
           <Button onClick={() => void dispatch({ type: "VALIDER_FT", id: ft.id })}>Valider</Button>
         ) : null}
       />
-      {writable && ft.statut === "BROUILLON" && (
+      {editableCompo && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Matière">
-            <select className={inputClass} value={matiere} onChange={(e) => setMatiere(Number(e.target.value))}>
-              {matieres.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
-            </select>
+            {disponibles.length === 0 ? (
+              <p className="text-[13px] text-muted pb-2">Plus aucun élément disponible à ajouter.</p>
+            ) : (
+              <select className={inputClass} value={matiere} onChange={(e) => setMatiere(Number(e.target.value))}>
+                {disponibles.map((a) => <option key={a.id} value={a.id}>{a.code} · {a.designation}</option>)}
+              </select>
+            )}
           </Field>
           <Field label="Qté / unité"><input type="number" className={inputClass} value={qty} onChange={(e) => setQty(Number(e.target.value))} /></Field>
-          <Button onClick={() => void dispatch({ type: "CREATE_COMPOSITION", fiche_technique: ft.id, matiere, quantite_necessaire: qty })}>Ajouter</Button>
+          <Button
+            disabled={!matiere || qty <= 0}
+            onClick={() => void dispatch({ type: "CREATE_COMPOSITION", fiche_technique: ft.id, matiere, quantite_necessaire: qty })}
+          >
+            Ajouter
+          </Button>
         </Panel>
       )}
       <Panel className="p-4">
@@ -48,7 +79,7 @@ export default function FicheTechniqueDetailPage() {
         <div className="divide-y divide-line">
           {compo.map((c) => (
             <div key={c.id} className="flex items-center justify-between gap-3 py-2">
-              <span className="text-[13px]">{articleName(c.matiere)}</span>
+              <span className="text-[13px]">{c.matiere_code ? `${c.matiere_code} · ${c.matiere_designation}` : articleName(c.matiere)}</span>
               {editableCompo ? (
                 <span className="flex items-center gap-2">
                   <input

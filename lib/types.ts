@@ -151,6 +151,7 @@ export interface JournalAction {
 
 export interface Article {
   id: number;
+  /** Généré automatiquement côté serveur (MP-000001 / PI-000001 / PF-000001) : jamais saisi. */
   code: string;
   designation: string;
   type_article: TypeArticle;
@@ -176,6 +177,21 @@ export interface Article {
   centre_cout?: string;
   actif: boolean;
   date_creation: string;
+  /** Id de la fiche technique brouillon créée automatiquement pour un produit fini (ou null). */
+  fiche_technique_brouillon?: number | null;
+  /** Id de la fiche technique validée en vigueur (ou null). */
+  fiche_technique_validee?: number | null;
+}
+
+/** Un article pouvant entrer dans une composition (matière première ou
+ * produit intermédiaire actif, pas encore présent dans la fiche) — renvoyé
+ * par GET .../fiches-techniques/{id}/elements_disponibles/. */
+export interface ElementComposition {
+  id: number;
+  code: string;
+  designation: string;
+  type_article: TypeArticle;
+  unite_mesure: UniteMesure;
 }
 
 export interface FamilleArticle {
@@ -219,6 +235,7 @@ export interface ControleQualiteRequis {
 
 export interface CodeFiscal {
   id: number;
+  /** Généré automatiquement (EV-FISC-{famille}-{taux}) : jamais saisi. */
   code: string;
   /** FK vers FamilleFiscale (liste déroulante). */
   famille_fiscale: number;
@@ -241,6 +258,8 @@ export interface FicheTechnique {
   valide_par: number | null;
   date_creation: string;
   date_validation: string | null;
+  /** Composition imbriquée en lecture seule — plus besoin d'un appel séparé pour l'afficher. */
+  composition: CompositionFicheTechnique[];
 }
 
 export interface CompositionFicheTechnique {
@@ -248,6 +267,10 @@ export interface CompositionFicheTechnique {
   fiche_technique: number;
   matiere: number;
   quantite_necessaire: string;
+  matiere_code?: string;
+  matiere_designation?: string;
+  matiere_type?: TypeArticle;
+  unite_mesure?: UniteMesure;
 }
 
 export interface FicheConditionnement {
@@ -261,6 +284,7 @@ export interface FicheConditionnement {
 
 export interface Fournisseur {
   id: number;
+  /** Généré automatiquement (FRS-000001...) : jamais saisi. */
   code: string;
   nom: string;
   contact: string;
@@ -455,6 +479,9 @@ export interface BesoinMatierePrevu {
 export interface DemandeMatiere {
   id: number;
   numero: string;
+  /** OF, matière et quantité sont générés en bloc par
+   * .../ordres-fabrication/{id}/demander_matieres/ (toute la composition de
+   * l'OF en une fois) : plus de création manuelle ligne par ligne. */
   ordre_fabrication: number;
   matiere: number;
   quantite_demandee: string;
@@ -571,6 +598,7 @@ export interface ControleQualite {
 
 export interface Client {
   id: number;
+  /** Généré automatiquement (CLI-000001...) : jamais saisi. */
   code: string;
   nom: string;
   type_client: TypeClient;
@@ -673,15 +701,30 @@ export interface Caisse {
   nom: string;
   emplacement: string;
   actif: boolean;
+  /** Caisse de consolidation unique, créée par le système (non supprimable,
+   * aucun caissier affecté, aucune session ne s'y ouvre). */
+  est_principale: boolean;
+  /** Le caissier qui ouvre/clôture ses sessions sur cette caisse (une caisse = un caissier). */
+  caissier: number | null;
+  caissier_nom: string | null;
+  /** Solde actuel : pour la principale, le total de toutes les caisses ; sinon le solde propre. */
+  solde_actuel: string;
+  /** Id de la session ouverte sur cette caisse, ou null. */
+  session_ouverte: number | null;
 }
 
 export interface SessionCaisse {
   id: number;
   caisse: number;
   caissier: number;
+  /** Automatique : 0 à la première ouverture, sinon le solde compté de la clôture précédente. */
   solde_ouverture: string;
   solde_theorique_cloture: string | null;
   solde_compte_cloture: string | null;
+  /** Pendant que la session est ouverte : calculé en direct (ouverture + encaissements − décaissements). */
+  solde_theorique_actuel: string;
+  /** solde_compte_cloture − solde_theorique_cloture, une fois clôturée. */
+  ecart: string | null;
   statut: StatutSession;
   date_ouverture: string;
   date_cloture: string | null;
@@ -692,6 +735,8 @@ export interface Encaissement {
   numero: string;
   session_caisse: number;
   facture: number;
+  /** Toujours l'utilisateur connecté au moment de l'encaissement (renseigné par le serveur). */
+  encaisse_par: number | null;
   montant: string;
   mode_paiement: ModePaiement;
   date_encaissement: string;

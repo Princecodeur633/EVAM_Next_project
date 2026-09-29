@@ -8,7 +8,6 @@ import { useStore } from "@/lib/store";
 export default function FournisseursPage() {
   const router = useRouter();
   const { state, dispatch, can } = useStore();
-  const [code, setCode] = useState("");
   const [nom, setNom] = useState("");
   const [contact, setContact] = useState("");
   const [telephone, setTelephone] = useState("");
@@ -19,17 +18,16 @@ export default function FournisseursPage() {
       <PageHeader eyebrow="Référentiel" title="Fournisseurs" description="Fournisseurs de matières premières et d’emballages. Cliquez sur une ligne pour voir la fiche complète." />
       {can("CREATE_CF") && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
-          <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
           <Field label="Nom"><input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
           <Field label="Contact"><input className={inputClass} value={contact} onChange={(e) => setContact(e.target.value)} /></Field>
           <Field label="Téléphone"><input className={inputClass} value={telephone} onChange={(e) => setTelephone(e.target.value)} /></Field>
           <Field label="Email"><input type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
           <Field label="Adresse"><input className={inputClass} value={adresse} onChange={(e) => setAdresse(e.target.value)} /></Field>
           <Button
-            disabled={!code}
+            disabled={!nom.trim()}
             onClick={() => {
-              void dispatch({ type: "CREATE_FOURNISSEUR", code, nom, contact, telephone, email, adresse });
-              setCode(""); setNom(""); setContact(""); setTelephone(""); setEmail(""); setAdresse("");
+              void dispatch({ type: "CREATE_FOURNISSEUR", nom, contact, telephone, email, adresse });
+              setNom(""); setContact(""); setTelephone(""); setEmail(""); setAdresse("");
             }}
           >
             Créer

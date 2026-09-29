@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { Button, DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
 import { MODE_PAIEMENT_LABEL, STATUT_FACTURE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import { formatDa, num } from "@/lib/utils";
@@ -15,9 +15,8 @@ export default function CaissePage() {
   // ne jamais prendre "la première session ouverte" trouvée, qui pourrait
   // appartenir à un autre caissier.
   const session = state.sessionsCaisse.find((s) => s.statut === "OUVERTE" && s.caissier === currentUser?.id);
+  const maCaisse = state.caisses.find((c) => c.caissier === currentUser?.id);
   const [mode, setMode] = useState<ModePaiement>("ESPECES");
-  const [caisse, setCaisse] = useState(state.caisses[0]?.id ?? 0);
-  const [solde, setSolde] = useState(0);
 
   return (
     <div className="space-y-4">
@@ -27,16 +26,19 @@ export default function CaissePage() {
         description="Ouvrez une session, puis encaissez les factures en espèces, mobile money, virement ou chèque."
       />
       {!session && can("ENCAISSER") && (
-        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
-          <Field label="Caisse">
-            <select className={inputClass} value={caisse} onChange={(e) => setCaisse(Number(e.target.value))}>
-              {state.caisses.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
-            </select>
-          </Field>
-          <Field label="Solde d'ouverture">
-            <input type="number" className={inputClass} value={solde} onChange={(e) => setSolde(Number(e.target.value))} />
-          </Field>
-          <Button disabled={!caisse} onClick={() => void dispatch({ type: "CREATE_SESSION", caisse, solde_ouverture: solde })}>Ouvrir session</Button>
+        <Panel className="p-4 flex flex-wrap items-center justify-between gap-3">
+          {maCaisse ? (
+            <>
+              <p className="text-[13px] text-muted">
+                Caisse « {maCaisse.nom} » — solde repris de la dernière clôture : {formatDa(num(maCaisse.solde_actuel))}
+              </p>
+              <Button onClick={() => void dispatch({ type: "CREATE_SESSION" })}>Ouvrir ma session</Button>
+            </>
+          ) : (
+            <p className="text-[13px] text-danger">
+              Aucune caisse ne vous est affectée : demandez à l’Administrateur SI de vous en attribuer une (Administration → Caisses).
+            </p>
+          )}
         </Panel>
       )}
       {session && <p className="text-[13px] text-muted">Session ouverte · solde d’ouverture {formatDa(num(session.solde_ouverture))}</p>}

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import Link from "next/link";
+import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { TYPE_ARTICLE_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore, type ListeValeurs } from "@/lib/store";
 import type { TypeArticle, UniteMesure } from "@/lib/types";
@@ -17,7 +18,6 @@ export default function ArticlesPage() {
   const { state, dispatch, canEditParam, familleName } = useStore();
   const router = useRouter();
   const writable = canEditParam("/parametrage/articles") || canEditParam("/parametrage/produits");
-  const [code, setCode] = useState("");
   const [designation, setDesignation] = useState("");
   const [type, setType] = useState<TypeArticle>("PRODUIT_FINI");
   const [unite, setUnite] = useState<UniteMesure>("UNITE");
@@ -48,7 +48,6 @@ export default function ArticlesPage() {
       />
       {writable && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
-          <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
           <Field label="Désignation (auto si vide)">
             <input className={inputClass} value={designation} onChange={(e) => setDesignation(e.target.value)} />
           </Field>
@@ -95,11 +94,9 @@ export default function ArticlesPage() {
             </select>
           </Field>
           <Button
-            disabled={!code}
             onClick={() =>
               void dispatch({
                 type: "CREATE_ARTICLE",
-                code,
                 designation: designation.trim() || undefined,
                 type_article: type,
                 unite_mesure: unite,
@@ -124,6 +121,7 @@ export default function ArticlesPage() {
             { key: "u", label: "Unité" },
             { key: "f", label: "Famille" },
             { key: "fisc", label: "Code fiscal" },
+            { key: "ft", label: "Fiche technique" },
           ]}
           rows={rows.map((a) => ({
             c: a.code,
@@ -132,6 +130,15 @@ export default function ArticlesPage() {
             u: a.unite_mesure,
             f: familleName(a.famille),
             fisc: a.code_fiscal ? (state.codesFiscaux.find((c) => c.id === a.code_fiscal)?.code ?? `#${a.code_fiscal}`) : "—",
+            ft: a.fiche_technique_validee ? (
+              <Link href={`/parametrage/fiches-techniques/${a.fiche_technique_validee}`} className="text-primary" onClick={(e) => e.stopPropagation()}>
+                <StatusBadge tone="success">Validée</StatusBadge>
+              </Link>
+            ) : a.fiche_technique_brouillon ? (
+              <Link href={`/parametrage/fiches-techniques/${a.fiche_technique_brouillon}`} className="text-primary" onClick={(e) => e.stopPropagation()}>
+                <StatusBadge tone="warning">Brouillon</StatusBadge>
+              </Link>
+            ) : "—",
             href: `/parametrage/produits/${a.id}`,
           }))}
           onRowClick={(row) => router.push(String(row.href))}

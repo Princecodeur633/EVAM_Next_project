@@ -12,7 +12,6 @@ export default function MatieresPage() {
   const router = useRouter();
   const { state, dispatch, canEditParam } = useStore();
   const writable = canEditParam("/parametrage/articles") || canEditParam("/parametrage/matieres");
-  const [code, setCode] = useState("");
   const [designation, setDesignation] = useState("");
   const [unite, setUnite] = useState<UniteMesure>("KG");
   const rows = state.articles.filter((a) => a.type_article === "MATIERE_PREMIERE");
@@ -22,14 +21,13 @@ export default function MatieresPage() {
       <PageHeader eyebrow="Référentiel" title="Matières premières" description="Ingrédients et emballages utilisés en production. Cliquez sur une ligne pour voir la fiche complète." />
       {writable && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
-          <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
           <Field label="Désignation"><input className={inputClass} value={designation} onChange={(e) => setDesignation(e.target.value)} /></Field>
           <Field label="Unité">
             <select className={inputClass} value={unite} onChange={(e) => setUnite(e.target.value as UniteMesure)}>
               {(Object.keys(UNITE_LABEL) as UniteMesure[]).map((k) => <option key={k} value={k}>{UNITE_LABEL[k]}</option>)}
             </select>
           </Field>
-          <Button disabled={!code} onClick={() => void dispatch({ type: "CREATE_ARTICLE", code, designation, type_article: "MATIERE_PREMIERE", unite_mesure: unite })}>Créer</Button>
+          <Button disabled={!designation.trim()} onClick={() => void dispatch({ type: "CREATE_ARTICLE", designation, type_article: "MATIERE_PREMIERE", unite_mesure: unite })}>Créer</Button>
         </Panel>
       )}
       <Panel>

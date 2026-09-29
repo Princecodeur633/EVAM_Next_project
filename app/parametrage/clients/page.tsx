@@ -12,7 +12,6 @@ export default function ParamClientsPage() {
   const router = useRouter();
   const { state, dispatch, canEditParam } = useStore();
   const writable = canEditParam("/parametrage/clients");
-  const [code, setCode] = useState("");
   const [nom, setNom] = useState("");
   const [type, setType] = useState<TypeClient>("SOCIETE");
   const [telephone, setTelephone] = useState("");
@@ -24,7 +23,6 @@ export default function ParamClientsPage() {
       <PageHeader eyebrow="Référentiel" title="Clients" description="Répertoire des particuliers, sociétés et clients sous contrat. Cliquez sur une ligne pour voir la fiche complète." />
       {writable && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
-          <Field label="Code"><input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
           <Field label="Nom"><input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
           <Field label="Type">
             <select className={inputClass} value={type} onChange={(e) => setType(e.target.value as TypeClient)}>
@@ -38,10 +36,10 @@ export default function ParamClientsPage() {
           <Field label="Encours autorisé"><input type="number" className={inputClass} value={encours} onChange={(e) => setEncours(Number(e.target.value))} /></Field>
           <Field label="Délai de paiement (jours)"><input type="number" className={inputClass} value={delai} onChange={(e) => setDelai(Number(e.target.value))} /></Field>
           <Button
-            disabled={!code}
+            disabled={!nom.trim()}
             onClick={() => {
-              void dispatch({ type: "CREATE_CLIENT", code, nom, type_client: type, telephone, adresse, encours_autorise: encours, delai_paiement_jours: delai });
-              setCode(""); setNom(""); setTelephone(""); setAdresse(""); setEncours(0); setDelai(0);
+              void dispatch({ type: "CREATE_CLIENT", nom, type_client: type, telephone, adresse, encours_autorise: encours, delai_paiement_jours: delai });
+              setNom(""); setTelephone(""); setAdresse(""); setEncours(0); setDelai(0);
             }}
           >
             Créer
