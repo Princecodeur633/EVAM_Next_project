@@ -3,12 +3,17 @@
 import { useEffect, useState } from "react";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
-import { displayName } from "@/lib/labels";
+import { actions } from "@/lib/api";
 import { formatDateTime, formatMoney, num } from "@/lib/utils";
+import type { Autorisateur } from "@/lib/types";
 
 export default function DecaissementsPage() {
   const { state, dispatch, can, userName, currentUser } = useStore();
   const sessionsOuvertes = state.sessionsCaisse.filter((s) => s.statut === "OUVERTE");
+  const [autorisateurs, setAutorisateurs] = useState<Autorisateur[]>([]);
+  useEffect(() => {
+    void actions.autorisateursDecaissement().then(setAutorisateurs);
+  }, []);
   const [session, setSession] = useState(sessionsOuvertes[0]?.id ?? 0);
   useEffect(() => {
     if (!session && sessionsOuvertes[0]) setSession(sessionsOuvertes[0].id);
@@ -55,9 +60,10 @@ export default function DecaissementsPage() {
           <Field label="Autorisé par">
             <select className={inputClass} value={autorisePar} onChange={(e) => setAutorisePar(Number(e.target.value))}>
               <option value={0}>—</option>
-              {/* Le backend refuse qu'on s'autorise soi-même (DecaissementSerializer.validate) */}
-              {state.utilisateurs.filter((u) => u.actif && u.id !== currentUser?.id).map((u) => (
-                <option key={u.id} value={u.id}>{displayName(u)}</option>
+              {/* Réservé à la Direction et à la Comptabilité/DAF (voir /decaissements/autorisateurs/) ;
+                  le backend refuse aussi qu'on s'autorise soi-même. */}
+              {autorisateurs.filter((a) => a.id !== currentUser?.id).map((a) => (
+                <option key={a.id} value={a.id}>{a.nom} ({a.profil_libelle})</option>
               ))}
             </select>
           </Field>

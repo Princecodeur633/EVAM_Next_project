@@ -4,6 +4,7 @@ import type {
   AnomalieDetectee,
   Article,
   ArticleFournisseur,
+  Autorisateur,
   Avoir,
   BesoinApprovisionnement,
   BesoinMatierePrevu,
@@ -495,6 +496,8 @@ export const actions = {
   genererLignesFacture: (id: number) => api.post<Facture>(`${endpoints.factures}${id}/generer_lignes/`),
   utiliserAvoir: (id: number, facture: number) =>
     api.post<Avoir>(`${endpoints.avoirs}${id}/utiliser/`, { facture }),
+  /** Liste de choix du champ « Autorisé par » d'un décaissement : Direction et Comptabilité/DAF uniquement. */
+  autorisateursDecaissement: () => api.get<Autorisateur[]>(`${endpoints.decaissements}autorisateurs/`),
   cloturerSession: (id: number, solde_compte: string, justification?: string) =>
     api.post<{ session: SessionCaisse }>(`${endpoints.sessionsCaisse}${id}/cloturer/`, {
       solde_compte,
