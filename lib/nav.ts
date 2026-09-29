@@ -20,6 +20,8 @@ export type NavItem = {
   href: string;
   label: string;
   hint?: string;
+  /** Sous-pages affichées en menu déroulant dans la barre latérale. */
+  children?: NavItem[];
 };
 
 export type NavGroup = {
@@ -75,6 +77,20 @@ const I = {
   impayes: { href: "/commercial/impayes", label: "Impayés", hint: "Factures en retard" },
 };
 
+/** Pages du référentiel, dépliées sous l’entrée « Référentiel » selon les droits du profil. */
+const PARAM_PAGES: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles", hint: "Eau, jus, yaourts" },
+  { href: "/parametrage/matieres", label: "Matières", hint: "Matières premières" },
+  { href: "/parametrage/conditionnements", label: "Conditionnements", hint: "Cartons et palettes" },
+  { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Recettes de fabrication" },
+  { href: "/parametrage/depots", label: "Dépôts", hint: "Magasins" },
+  { href: "/parametrage/unites", label: "Unités de mesure", hint: "Litre, kg, carton…" },
+  { href: "/parametrage/clients", label: "Clients", hint: "Fiches clients" },
+  { href: "/parametrage/tarifs", label: "Tarifs", hint: "Prix de vente" },
+  { href: "/parametrage/fournisseurs", label: "Fournisseurs", hint: "Fournisseurs matières" },
+  { href: "/parametrage/fiscalite", label: "Codes fiscaux", hint: "TVA, accises, centimes" },
+];
+
 function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup {
   return { id, label, icon, items };
 }
@@ -82,7 +98,7 @@ function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup 
 export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ADMIN_SI: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("ref", "Référentiel", "sliders", [I.param, I.fiscalite]),
+    g("ref", "Référentiel", "sliders", [I.param]),
     g("admin", "Administration", "shield", [I.users, I.profils, I.droits, I.audit]),
   ],
   DIRECTION: [
@@ -142,11 +158,20 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
 };
 
 export function navForRole(role: Profil): NavGroup[] {
-  return ROLE_MENU[role];
+  return ROLE_MENU[role].map((group) => ({
+    ...group,
+    items: group.items.map((item) =>
+      item.href === I.param.href
+        ? { ...item, children: PARAM_PAGES.filter((p) => canReadParam(role, p.href) || canEditParam(role, p.href)) }
+        : item,
+    ),
+  }));
 }
 
 export function flattenNav(role: Profil) {
-  return navForRole(role).flatMap((group) => group.items.map((i) => ({ ...i, group: group.label })));
+  return navForRole(role).flatMap((group) =>
+    group.items.flatMap((i) => [i, ...(i.children ?? [])].map((x) => ({ ...x, group: group.label }))),
+  );
 }
 
 /** Correspondance menu → route, sans ouvrir les écrans « frères » du même préfixe. */

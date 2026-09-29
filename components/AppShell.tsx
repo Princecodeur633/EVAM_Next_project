@@ -22,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [jump, setJump] = useState(false);
   const [query, setQuery] = useState("");
   const [navOpen, setNavOpen] = useState(false);
+  const [openSub, setOpenSub] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setNavOpen(false);
@@ -101,6 +102,62 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {g.label}
               </p>
               {g.items.map((item) => {
+                if (item.children && item.children.length > 0) {
+                  const childActive = item.children.some((c) => isNavActive(pathname, c.href, allHrefs));
+                  const expanded = openSub[item.href] ?? childActive;
+                  return (
+                    <div key={item.href}>
+                      <button
+                        type="button"
+                        title={item.hint}
+                        aria-expanded={expanded}
+                        onClick={() => setOpenSub((s) => ({ ...s, [item.href]: !expanded }))}
+                        className={cn(
+                          "w-[calc(100%-0.5rem)] mx-1 px-3 py-[8px] rounded-[7px] text-[13px] flex items-center justify-between gap-2 transition-all duration-150",
+                          childActive ? "text-white font-medium" : "hover:bg-white/6 hover:text-white text-white/75",
+                        )}
+                      >
+                        <span className="truncate">{item.label}</span>
+                        <ChevronDown
+                          size={13}
+                          strokeWidth={1.75}
+                          className={cn("shrink-0 text-white/45 transition-transform duration-200", expanded && "rotate-180")}
+                        />
+                      </button>
+                      <div
+                        className={cn(
+                          "grid transition-[grid-template-rows] duration-200 ease-out",
+                          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                        )}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="ml-5 mr-1 mt-0.5 mb-1 pl-2 border-l border-white/10 space-y-px">
+                            {item.children.map((child) => {
+                              const active = isNavActive(pathname, child.href, allHrefs);
+                              return (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  title={child.hint}
+                                  tabIndex={expanded ? undefined : -1}
+                                  onClick={() => setNavOpen(false)}
+                                  className={cn(
+                                    "block px-2.5 py-[6px] rounded-[6px] text-[12.5px] transition-all duration-150",
+                                    active
+                                      ? "bg-white/12 text-white font-medium shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+                                      : "hover:bg-white/6 hover:text-white text-white/60",
+                                  )}
+                                >
+                                  {child.label}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
                 const active = isNavActive(pathname, item.href, allHrefs);
                 return (
                   <Link
