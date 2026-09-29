@@ -749,9 +749,20 @@ export interface Decaissement {
   montant: string;
   motif: string;
   beneficiaire: string;
+  /** Réservé à la Direction ou la Comptabilité/DAF — voir Autorisateur. */
   autorise_par: number;
   effectue_par: number;
   date_decaissement: string;
+}
+
+/** Une personne pouvant autoriser un décaissement (Direction ou
+ * Comptabilité/DAF, comptes actifs) — GET .../decaissements/autorisateurs/. */
+export interface Autorisateur {
+  id: number;
+  username: string;
+  nom: string;
+  profil: Profil;
+  profil_libelle: string;
 }
 
 export interface EcartCaisse {

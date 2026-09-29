@@ -74,6 +74,13 @@ export default function ProduitDetailPage() {
 
       <Panel className="p-4 space-y-3">
         <h2 className="text-[13px] font-semibold">Identité</h2>
+        {article.type_article === "PRODUIT_FINI" && (
+          <p className="text-[12px] text-muted">
+            Pour un produit fini, le code (ex. {article.code}) est recalculé à partir de la famille, du parfum, du
+            format et de l’unité de vente — dès que l’article est utilisé dans une commande, un stock, un OF ou un
+            lot, ces quatre champs ne peuvent plus être modifiés.
+          </p>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <Field label="Désignation">
             <input className={inputClass} disabled={!canEditFiche} value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} />

@@ -14,6 +14,15 @@ type ListeAffichee = {
   valeurs: { id: number; libelle: string; actif: boolean }[];
 };
 
+/** Reproduit apps/core/codification.py:sigle() : 3 premières lettres du
+ * premier mot, sans accents — sert seulement à savoir si le parfum est
+ * facultatif (famille "Eau"/"Eaux minérales"...) ; le backend tranche. */
+function sigle3(texte: string) {
+  const ascii = texte.normalize("NFKD").replace(/[̀-ͯ]/g, "").toUpperCase();
+  const mot = ascii.match(/[A-Z]+/)?.[0] ?? "";
+  return mot.slice(0, 3);
+}
+
 export default function ArticlesPage() {
   const { state, dispatch, canEditParam, familleName } = useStore();
   const router = useRouter();
@@ -39,12 +48,20 @@ export default function ArticlesPage() {
 
   const actifs = <T extends { actif: boolean }>(items: T[]) => items.filter((v) => v.actif);
 
+  // Un produit fini est codifié à partir de famille + parfum + format +
+  // unité de vente (voir apps/core/codification.py) : ces trois premiers
+  // sont donc obligatoires, et le parfum aussi sauf pour la famille "Eau".
+  const estPF = type === "PRODUIT_FINI";
+  const familleNom = state.famillesArticle.find((f) => f.id === famille)?.nom ?? "";
+  const parfumFacultatif = !estPF || sigle3(familleNom) === "EAU";
+  const peutCreer = !estPF || (famille > 0 && format > 0 && uniteVente > 0 && (parfumFacultatif || parfum > 0));
+
   return (
     <div className="space-y-4">
       <PageHeader
         eyebrow="Référentiel"
         title="Articles"
-        description="Produits finis et intermédiaires : eau, jus et yaourts. Famille, format, parfum et unité de vente se choisissent dans des listes ; la désignation est générée si elle est laissée vide."
+        description="Produits finis et intermédiaires : eau, jus et yaourts. Pour un produit fini, famille, format et unité de vente sont obligatoires (ils forment le code, ex. EAU70P8, JUSGRE70P8) ; le parfum aussi, sauf pour l'eau. La désignation est générée si elle est laissée vide."
       />
       {writable && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
@@ -61,25 +78,25 @@ export default function ArticlesPage() {
               {(Object.keys(UNITE_LABEL) as UniteMesure[]).map((k) => <option key={k} value={k}>{UNITE_LABEL[k]}</option>)}
             </select>
           </Field>
-          <Field label="Famille">
+          <Field label={estPF ? "Famille *" : "Famille"}>
             <select className={inputClass} value={famille} onChange={(e) => setFamille(Number(e.target.value))}>
               <option value={0}>—</option>
               {actifs(state.famillesArticle).map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
             </select>
           </Field>
-          <Field label="Format">
+          <Field label={estPF ? "Format *" : "Format"}>
             <select className={inputClass} value={format} onChange={(e) => setFormat(Number(e.target.value))}>
               <option value={0}>—</option>
               {actifs(state.formatsArticle).map((f) => <option key={f.id} value={f.id}>{f.valeur}</option>)}
             </select>
           </Field>
-          <Field label="Parfum / variante">
+          <Field label={estPF && !parfumFacultatif ? "Parfum / variante *" : "Parfum / variante"}>
             <select className={inputClass} value={parfum} onChange={(e) => setParfum(Number(e.target.value))}>
-              <option value={0}>—</option>
+              <option value={0}>{parfumFacultatif ? "—" : "— obligatoire pour cette famille —"}</option>
               {actifs(state.parfums).map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
             </select>
           </Field>
-          <Field label="Unité de vente">
+          <Field label={estPF ? "Unité de vente *" : "Unité de vente"}>
             <select className={inputClass} value={uniteVente} onChange={(e) => setUniteVente(Number(e.target.value))}>
               <option value={0}>—</option>
               {actifs(state.unitesVente).map((u) => <option key={u.id} value={u.id}>{u.nom}</option>)}
@@ -94,6 +111,7 @@ export default function ArticlesPage() {
             </select>
           </Field>
           <Button
+            disabled={!peutCreer}
             onClick={() =>
               void dispatch({
                 type: "CREATE_ARTICLE",
