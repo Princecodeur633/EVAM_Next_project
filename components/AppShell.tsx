@@ -251,8 +251,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh flex bg-bg">
-      {/* Barre latérale bureau : repliée (icônes), dépliée au survol par-dessus le contenu. */}
-      <div className="hidden lg:block w-16 shrink-0" aria-hidden />
+      {/* Barre latérale bureau : repliée (icônes), dépliée au survol. L'espace réservé suit la même
+          animation que la barre, donc le contenu se décale et se redimensionne avec elle. */}
+      <div
+        aria-hidden
+        className={cn(
+          "hidden lg:block shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          railOpen ? "w-[252px]" : "w-16",
+        )}
+      />
       <aside
         onMouseEnter={openRail}
         onMouseLeave={closeRail}
@@ -262,8 +269,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
         className={cn(
           "hidden lg:flex fixed inset-y-0 left-0 z-40 h-dvh bg-sidebar text-sidebar-text flex-col overflow-hidden border-r border-white/5",
-          "transition-[width,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          railOpen ? "w-[252px] shadow-[8px_0_32px_-8px_rgba(0,0,0,0.35)]" : "w-16",
+          "transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          railOpen ? "w-[252px]" : "w-16",
         )}
       >
         {renderSidebar(!railOpen)}
