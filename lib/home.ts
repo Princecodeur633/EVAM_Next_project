@@ -57,7 +57,7 @@ import {
   TYPE_MVT_LABEL,
   TYPE_PROBLEME_LABEL,
 } from "./labels";
-import type { AppState, OrdreFabrication, Profil, StatutOF } from "./types";
+import type { AppState, Caisse, OrdreFabrication, Profil, SessionCaisse, StatutOF } from "./types";
 import { formatDa, formatDate, formatDateTime, formatQty, num } from "./utils";
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger" | "teal";
@@ -68,7 +68,9 @@ export type HomeTask = { href: string; title: string; detail: string; badge?: { 
 export type HomeSection = { id: string; title: string; icon: LucideIcon; href: string; total: number; items: HomeTask[]; empty: string; tone?: Tone };
 export type HomeChart = { title: string; subtitle?: string; href?: string; kind: "donut" | "hbar"; data: ChartPoint[]; centerLabel?: string };
 export type HomeAction = { href: string; label: string; icon: LucideIcon };
-export type HomeData = { actions: HomeAction[]; kpis: HomeKpi[]; sections: HomeSection[]; chart?: HomeChart };
+/** Situation des caisses, affichée en tête de l’accueil caissier. */
+export type HomeCash = { principale?: Caisse; maCaisse?: Caisse; session?: SessionCaisse; caisses: Caisse[] };
+export type HomeData = { actions: HomeAction[]; kpis: HomeKpi[]; sections: HomeSection[]; chart?: HomeChart; cash?: HomeCash };
 
 export type HomeHelpers = {
   meId: number;
@@ -762,14 +764,17 @@ function commercial(state: AppState, h: HomeHelpers): HomeData {
 }
 
 function caissier(state: AppState, h: HomeHelpers): HomeData {
-  const ouvertes = state.sessionsCaisse.filter((s) => s.statut === "OUVERTE");
-  const session = ouvertes.find((s) => s.caissier === h.meId) ?? ouvertes[0];
+  // Uniquement la session du caissier connecté : celle d’un collègue ne lui permet pas d’encaisser.
+  const session = state.sessionsCaisse.find((s) => s.statut === "OUVERTE" && s.caissier === h.meId);
+  const principale = state.caisses.find((c) => c.est_principale);
+  const maCaisse = state.caisses.find((c) => c.caissier === h.meId);
   const aEncaisser = state.factures.filter((f) => f.statut === "EMISE" || f.statut === "PARTIELLEMENT_PAYEE");
   const encJour = state.encaissements.filter((e) => sameDay(e.date_encaissement));
   const decJour = state.decaissements.filter((d) => sameDay(d.date_decaissement));
   const ecarts = state.ecartsCaisse.filter((e) => !e.justification?.trim());
   const factureNum = (id: number) => state.factures.find((f) => f.id === id)?.numero ?? `Facture n°${id}`;
   return {
+    cash: { principale, maCaisse, session, caisses: state.caisses.filter((c) => c.actif && !c.est_principale) },
     actions: session
       ? [
           { href: "/caisse", label: "Encaisser", icon: Wallet },
@@ -780,7 +785,7 @@ function caissier(state: AppState, h: HomeHelpers): HomeData {
       {
         label: "Session de caisse",
         value: session ? "Ouverte" : "Fermée",
-        hint: session ? `Fond ${formatDa(num(session.solde_ouverture))}` : "Ouvrez une session pour encaisser",
+        hint: session ? `Solde ${formatDa(num(session.solde_theorique_actuel ?? session.solde_ouverture))}` : "Ouvrez une session pour encaisser",
         tone: session ? "success" : "warning",
         icon: Vault,
         href: "/caisse/cloture",

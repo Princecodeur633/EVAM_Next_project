@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, CheckCircle2, CircleSlash, Info } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, ArrowUpRight, CheckCircle2, CircleSlash, Eye, EyeOff, Info, Landmark, Vault } from "lucide-react";
 import { DonutChart, KpiCard } from "@/components/charts";
 import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, ROLE_ICONS } from "@/components/icons";
 import { StatusBadge } from "@/components/ui";
-import { homeForRole, type HomeChart, type HomeSection } from "@/lib/home";
+import { homeForRole, type HomeCash, type HomeChart, type HomeSection } from "@/lib/home";
 import { canAccess, flattenNav } from "@/lib/nav";
 import { ROLE_PROFILES } from "@/lib/roles";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { cn, formatDa, num } from "@/lib/utils";
 
 const TONE_CHIP: Record<string, string> = {
   neutral: "bg-surface-2 text-muted",
@@ -108,6 +109,8 @@ export default function AccueilPage() {
           )}
         </div>
       </section>
+
+      {home.cash && <CashStrip cash={home.cash} />}
 
       {/* Indicateurs clés */}
       <div className={cn("grid grid-cols-1 min-[420px]:grid-cols-2 gap-3", kpis.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4")}>
@@ -281,5 +284,80 @@ function ChartCard({ chart, href }: { chart: HomeChart; href?: string }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** Solde de la caisse principale (consolidé de toutes les caisses) + détail par caisse. */
+function CashStrip({ cash }: { cash: HomeCash }) {
+  const [visible, setVisible] = useState(true);
+  const { principale, maCaisse, session, caisses } = cash;
+  const ouvertes = caisses.filter((c) => c.session_ouverte != null).length;
+  const mask = (v: string | number | null | undefined) => (visible ? formatDa(num(v)) : "••••••");
+  const monSolde = session ? session.solde_theorique_actuel ?? session.solde_ouverture : maCaisse?.solde_actuel;
+  const autres = caisses.filter((c) => c.id !== maCaisse?.id);
+
+  return (
+    <section className="evam-card overflow-hidden grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div className="relative bg-sidebar text-white p-5 sm:p-6 overflow-hidden">
+        <Landmark size={140} strokeWidth={1} className="absolute -right-6 -bottom-8 text-white/[0.06] pointer-events-none" />
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="h-9 w-9 rounded-[8px] bg-white/10 flex items-center justify-center shrink-0">
+              <Vault size={17} strokeWidth={1.7} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-white/55 font-medium">Caisse principale</p>
+              <p className="text-[12px] text-white/70 truncate">{principale ? "Solde consolidé de toutes les caisses" : "Non disponible"}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setVisible((v) => !v)}
+            className="h-8 w-8 shrink-0 rounded-[7px] flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label={visible ? "Masquer les montants" : "Afficher les montants"}
+            title={visible ? "Masquer les montants" : "Afficher les montants"}
+          >
+            {visible ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        <p className="relative mt-4 text-[30px] sm:text-[38px] font-semibold num tracking-tight leading-none break-words">
+          {principale ? mask(principale.solde_actuel) : "—"}
+        </p>
+        <p className="relative mt-3 text-[12px] text-white/60">
+          {caisses.length} caisse{caisses.length > 1 ? "s" : ""} · {ouvertes} session{ouvertes > 1 ? "s" : ""} ouverte{ouvertes > 1 ? "s" : ""}
+        </p>
+      </div>
+
+      <div className="p-4 sm:p-5 flex flex-col gap-3 min-w-0">
+        <div className="rounded-[9px] border border-primary/25 bg-primary-soft/50 px-3.5 py-3 flex items-center gap-3 min-w-0">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] uppercase tracking-[0.1em] text-muted font-medium">Ma caisse</p>
+            <p className="text-[13px] font-semibold truncate">{maCaisse?.nom ?? "Aucune caisse affectée"}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-[17px] font-semibold num leading-none">{maCaisse ? mask(monSolde) : "—"}</p>
+            <p className={cn("text-[11px] mt-1 font-medium", session ? "text-success" : "text-muted")}>{session ? "Session ouverte" : "Session fermée"}</p>
+          </div>
+        </div>
+        {autres.length > 0 && (
+          <ul className="divide-y divide-line">
+            {autres.slice(0, 4).map((c) => (
+              <li key={c.id} className="flex items-center gap-2.5 py-2 min-w-0">
+                <span
+                  className={cn("h-2 w-2 rounded-full shrink-0", c.session_ouverte != null ? "bg-success" : "bg-line-strong")}
+                  title={c.session_ouverte != null ? "Session ouverte" : "Session fermée"}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12.5px] font-medium truncate">{c.nom}</p>
+                  <p className="text-[11px] text-muted truncate">{c.caissier_nom ?? "Sans caissier"}</p>
+                </div>
+                <span className="text-[12.5px] num font-medium shrink-0">{mask(c.solde_actuel)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {autres.length > 4 && <p className="text-[11px] text-muted">+ {autres.length - 4} autre(s) caisse(s)</p>}
+      </div>
+    </section>
   );
 }
