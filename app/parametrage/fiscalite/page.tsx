@@ -10,7 +10,6 @@ import { num } from "@/lib/utils";
 export default function FiscalitePage() {
   const { state, canEditParam, dispatch, familleFiscaleName } = useStore();
   const canEdit = canEditParam("/parametrage/fiscalite");
-  const [code, setCode] = useState("");
   const [famille, setFamille] = useState(0);
   const [nouvelleFamille, setNouvelleFamille] = useState("");
   const [tva, setTva] = useState("18");
@@ -25,7 +24,6 @@ export default function FiscalitePage() {
     setErr(null);
     try {
       await api.post(endpoints.codesFiscaux, {
-        code: code.trim(),
         famille_fiscale: famille,
         exonere,
         taux_tva: tva,
@@ -34,7 +32,6 @@ export default function FiscalitePage() {
         sfec_actif: true,
         actif: true,
       });
-      setCode("");
       setFamille(0);
       await dispatch({ type: "REFRESH" });
     } catch (e) {
@@ -84,9 +81,9 @@ export default function FiscalitePage() {
       {canEdit && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-end">
           <h2 className="col-span-full text-[13px] font-semibold">Nouveau code fiscal</h2>
-          <Field label="Code">
-            <input className={inputClass} value={code} onChange={(e) => setCode(e.target.value)} placeholder="EV-FISC-…" />
-          </Field>
+          <p className="col-span-full text-[12px] text-muted -mt-2">
+            Le code (ex. « EV-FISC-JUS-18 ») est généré automatiquement à partir de la famille et du taux — inutile de le saisir.
+          </p>
           <Field label="Famille fiscale">
             <select className={inputClass} value={famille} onChange={(e) => setFamille(Number(e.target.value))}>
               <option value={0}>—</option>
@@ -109,7 +106,7 @@ export default function FiscalitePage() {
             Exonéré de TVA
           </label>
           {err && <p className="col-span-full text-[13px] text-danger">{err}</p>}
-          <Button disabled={busy || !code.trim() || !famille} onClick={() => void createCode()}>
+          <Button disabled={busy || !famille} onClick={() => void createCode()}>
             Créer le code fiscal
           </Button>
         </Panel>

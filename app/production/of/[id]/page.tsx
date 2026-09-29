@@ -15,6 +15,8 @@ export default function OfDetailPage() {
   if (!of) return <p className="text-[13px] text-muted">Ordre de fabrication introuvable.</p>;
 
   const besoins = state.besoinsMatieres.filter((b) => b.ordre_fabrication === of.id);
+  const demandes = state.demandesMatieres.filter((d) => d.ordre_fabrication === of.id);
+  const dejaDemandees = demandes.some((d) => d.statut !== "ANNULEE");
   const sorties = state.sortiesMatieres.filter((s) => s.ordre_fabrication === of.id);
   const etapes = state.etapes.filter((e) => e.ordre_fabrication === of.id);
   const pertes = state.pertes.filter((p) => p.ordre_fabrication === of.id);
@@ -71,7 +73,14 @@ export default function OfDetailPage() {
           <Row k="Agents" v={of.agents_affectes.length ? of.agents_affectes.map((id) => userName(id)).join(", ") : "Aucun"} />
         </Panel>
         <Panel className="p-4 lg:col-span-2">
-          <h2 className="text-[13px] font-semibold mb-2">Besoins matières</h2>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <h2 className="text-[13px] font-semibold">Besoins matières</h2>
+            {can("DEMANDER_MATIERES_OF") && besoins.length > 0 && !dejaDemandees && (
+              <Button className="h-8 px-2.5 text-[12px]" onClick={() => void dispatch({ type: "DEMANDER_MATIERES_OF", id: of.id })}>
+                Demander les matières au magasin
+              </Button>
+            )}
+          </div>
           {besoins.length === 0 ? (
             <p className="text-[13px] text-muted">Aucun besoin — l’OF n’est pas encore lancé ou fiche technique manquante.</p>
           ) : (
@@ -80,6 +89,11 @@ export default function OfDetailPage() {
                 <li key={b.id}>{articleName(b.matiere)} · théorique {formatQty(num(b.quantite_theorique), 3)}</li>
               ))}
             </ul>
+          )}
+          {dejaDemandees && (
+            <p className="text-[12px] text-muted mt-2">
+              Matières déjà demandées au magasin ({demandes.length}). Pour un besoin supplémentaire, utilisez une demande complémentaire (écran « Matières atelier »).
+            </p>
           )}
         </Panel>
       </div>

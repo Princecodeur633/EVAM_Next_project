@@ -71,6 +71,7 @@ const I = {
   profils: { href: "/admin/profils", label: "Profils" },
   droits: { href: "/admin/droits", label: "Profils & accès" },
   audit: { href: "/admin/audit", label: "Journal d'audit" },
+  caisses: { href: "/admin/caisses", label: "Caisses", hint: "Créer et affecter les caisses" },
   reclamations: { href: "/reclamations", label: "Réclamations", hint: "Retours clients" },
   fiscalite: { href: "/parametrage/fiscalite", label: "Codes fiscaux", hint: "Matrice fiscale" },
   avoirs: { href: "/commercial/avoirs", label: "Avoirs", hint: "Crédits clients" },
@@ -99,7 +100,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ADMIN_SI: [
     g("poste", "Menu", "home", [I.accueil]),
     g("ref", "Référentiel", "sliders", [I.param]),
-    g("admin", "Administration", "shield", [I.users, I.profils, I.droits, I.audit]),
+    g("admin", "Administration", "shield", [I.users, I.caisses, I.profils, I.droits, I.audit]),
   ],
   DIRECTION: [
     g("poste", "Menu", "home", [I.accueil]),

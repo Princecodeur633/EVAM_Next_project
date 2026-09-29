@@ -32,9 +32,6 @@ export default function SortiesPage() {
   const [qty, setQty] = useState(0);
   const [type, setType] = useState<TypeSortie>("NORMALE");
   const [motif, setMotif] = useState("");
-  const [dmOf, setDmOf] = useState(ofOptions[0]?.id ?? 0);
-  const [dmMat, setDmMat] = useState(matieres[0]?.id ?? 0);
-  const [dmQty, setDmQty] = useState(0);
   const [livraisonPartielle, setLivraisonPartielle] = useState<Record<number, string>>({});
   const [compOf, setCompOf] = useState(ofOptions[0]?.id ?? 0);
   const [compMat, setCompMat] = useState(matieres[0]?.id ?? 0);
@@ -52,33 +49,8 @@ export default function SortiesPage() {
       <PageHeader
         eyebrow="Magasin / Production"
         title="Matières atelier"
-        description="Demandes au magasin, livraison, sorties, compléments et retours. Une livraison de demande génère automatiquement la sortie."
+        description="Livraison, sorties, compléments et retours. Une livraison de demande génère automatiquement la sortie. Les demandes se créent en bloc, pour toute la composition d’un OF, depuis sa fiche (écran Ordres de fabrication → « Demander les matières au magasin »)."
       />
-
-      {can("CREATE_DEMANDE_MATIERE") && (
-        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
-          <h2 className="col-span-full text-[13px] font-semibold">Demande matière (production → magasin)</h2>
-          <Field label="OF">
-            <select className={inputClass} value={dmOf} onChange={(e) => setDmOf(Number(e.target.value))}>
-              {ofOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-          </Field>
-          <Field label="Matière">
-            <select className={inputClass} value={dmMat} onChange={(e) => setDmMat(Number(e.target.value))}>
-              {matieres.map((a) => <option key={a.id} value={a.id}>{a.code}</option>)}
-            </select>
-          </Field>
-          <Field label="Quantité">
-            <input type="number" className={inputClass} value={dmQty} onChange={(e) => setDmQty(Number(e.target.value))} />
-          </Field>
-          <Button
-            disabled={!dmOf || !dmMat || dmQty <= 0}
-            onClick={() => void dispatch({ type: "CREATE_DEMANDE_MATIERE", ordre_fabrication: dmOf, matiere: dmMat, quantite_demandee: dmQty })}
-          >
-            Demander
-          </Button>
-        </Panel>
-      )}
 
       <Panel>
         <DataTable

@@ -39,6 +39,7 @@ import type {
   Depot,
   DepotDistribution,
   EcartCaisse,
+  ElementComposition,
   Encaissement,
   EtapeProduction,
   ExportComptable,
@@ -469,6 +470,14 @@ export const actions = {
   convertirPlanEnOf: (id: number) => api.post<OrdreFabrication>(`${endpoints.plans}${id}/convertir_en_of/`),
   avancerOf: (id: number) => api.post<{ statut: string; of: OrdreFabrication }>(`${endpoints.ofList}${id}/avancer_statut/`),
   annulerOf: (id: number, motif: string) => api.post<OrdreFabrication>(`${endpoints.ofList}${id}/annuler/`, { motif }),
+  /** Demande d'un coup toute la composition de l'OF au magasin (une DemandeMatiere par matière). */
+  demanderMatieres: (id: number) => api.post<DemandeMatiere[]>(`${endpoints.ofList}${id}/demander_matieres/`),
+  elementsDisponibles: (ficheId: number, typeArticle?: string) =>
+    api.get<ElementComposition[]>(
+      `${endpoints.fichesTechniques}${ficheId}/elements_disponibles/${typeArticle ? `?type_article=${typeArticle}` : ""}`,
+    ),
+  ajouterElementsComposition: (ficheId: number, elements: { matiere: number; quantite_necessaire: number | string }[]) =>
+    api.post<FicheTechnique>(`${endpoints.fichesTechniques}${ficheId}/ajouter_elements/`, { elements }),
   livrerDemandeMatiere: (id: number, quantite_livree?: string | number) =>
     api.post<DemandeMatiere>(
       `${endpoints.demandesMatieres}${id}/livrer/`,
@@ -486,10 +495,10 @@ export const actions = {
   genererLignesFacture: (id: number) => api.post<Facture>(`${endpoints.factures}${id}/generer_lignes/`),
   utiliserAvoir: (id: number, facture: number) =>
     api.post<Avoir>(`${endpoints.avoirs}${id}/utiliser/`, { facture }),
-  cloturerSession: (id: number, solde_theorique: string | undefined, solde_compte: string) =>
-    api.post<{ session: SessionCaisse; avertissement?: string }>(`${endpoints.sessionsCaisse}${id}/cloturer/`, {
-      ...(solde_theorique ? { solde_theorique } : {}),
+  cloturerSession: (id: number, solde_compte: string, justification?: string) =>
+    api.post<{ session: SessionCaisse }>(`${endpoints.sessionsCaisse}${id}/cloturer/`, {
       solde_compte,
+      ...(justification ? { justification } : {}),
     }),
   confirmerPreparation: (id: number) => api.post<PreparationLivraison>(`${endpoints.preparations}${id}/confirmer_preparation/`),
   confirmerSortie: (id: number) => api.post<PreparationLivraison>(`${endpoints.preparations}${id}/confirmer_sortie/`),

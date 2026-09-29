@@ -68,16 +68,19 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     role: "RESPONSABLE_PRODUCTION",
     label: "Responsable Production",
     station: "Atelier — planification",
-    mission: "Planifiez la journée, lancez les OF et validez les fiches techniques.",
+    mission: "Planifiez la journée et lancez les OF. Les fiches techniques (composition) sont paramétrées par l’Admin SI.",
     posture: "Vous orchestrez l’atelier. Le stock vendable n’existe qu’après libération qualité.",
-    owns: ["Plans", "Ordres de fabrication", "Fiches techniques", "Besoins matières"],
-    never: ["Libérer un lot", "Encaisser", "Accéder aux coûts"],
+    owns: ["Plans", "Ordres de fabrication", "Besoins matières"],
+    never: ["Libérer un lot", "Encaisser", "Accéder aux coûts", "Modifier une fiche technique"],
     rules: ["Un OF se lance seulement avec une fiche technique validée.", "Les besoins matières sont calculés au lancement."],
     flow: ["planifier", "fabriquer"],
     accent: "teal",
     icon: "factory",
     homeHint: "Créer le plan du jour puis lancer les OF.",
-    paramAllow: ["/parametrage/produits", "/parametrage/matieres", "/parametrage/fiches-techniques", "/parametrage/conditionnements"],
+    // Les fiches techniques (composition) sont désormais réservées à
+    // l'Admin SI : le Responsable Production les consulte seulement.
+    paramAllow: ["/parametrage/produits", "/parametrage/matieres", "/parametrage/conditionnements"],
+    paramRead: ["/parametrage/fiches-techniques"],
   },
   AGENT_PRODUCTION: {
     role: "AGENT_PRODUCTION",
@@ -124,6 +127,7 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     icon: "boxes",
     homeHint: "Servir les sorties matières et confirmer les préparations.",
     paramAllow: ["/parametrage/depots"],
+    paramRead: ["/parametrage/fiches-techniques"],
   },
   RESPONSABLE_ACHATS: {
     role: "RESPONSABLE_ACHATS",

@@ -57,7 +57,7 @@ export type Action =
   | { type: "AVANCER_OF"; id: number }
   | { type: "ANNULER_OF"; id: number; motif: string }
   | { type: "CONVERTIR_PLAN"; id: number }
-  | { type: "CREATE_DEMANDE_MATIERE"; ordre_fabrication: number; matiere: number; quantite_demandee: number }
+  | { type: "DEMANDER_MATIERES_OF"; id: number }
   | { type: "LIVRER_DEMANDE_MATIERE"; id: number; quantite_livree?: number }
   | { type: "CREATE_COMPLEMENT"; ordre_fabrication: number; matiere: number; quantite: number; motif: string }
   | { type: "APPROUVER_COMPLEMENT"; id: number }
@@ -75,7 +75,6 @@ export type Action =
   | { type: "DELETE_COMPOSITION"; id: number }
   | {
       type: "CREATE_ARTICLE";
-      code: string;
       /** Optionnelle : générée côté backend (famille + parfum + format - unité de vente) si vide. */
       designation?: string;
       type_article: string;
@@ -134,7 +133,7 @@ export type Action =
   | { type: "PATCH_CLIENT"; id: number; nom?: string; type_client?: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number; bloque?: boolean }
   | { type: "PATCH_FOURNISSEUR"; id: number; nom?: string; contact?: string; telephone?: string; email?: string; adresse?: string; actif?: boolean }
   | { type: "PATCH_TARIF"; id: number; prix_unitaire?: number; date_debut_validite?: string; date_fin_validite?: string | null }
-  | { type: "CREATE_CLIENT"; code: string; nom: string; type_client: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number }
+  | { type: "CREATE_CLIENT"; nom: string; type_client: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number }
   | { type: "CREATE_COMMANDE"; client: number; type_commande: string }
   | { type: "ADD_LIGNE_COMMANDE"; commande: number; article: number; quantite: number; prix_unitaire: number }
   | { type: "PATCH_COMMANDE"; id: number; statut: string }
@@ -149,10 +148,11 @@ export type Action =
   | { type: "TERMINER_RECONDITIONNEMENT"; id: number; quantite_reconditionnee: number; cout?: number }
   | { type: "CREATE_SOLUTION"; reclamation: number; type_solution: string; montant_avoir?: number; montant_rembourse?: number; nouvelle_commande?: number }
   | { type: "CREATE_TARIF"; article: number; prix_unitaire: number; date_debut_validite: string; client?: number | null; date_fin_validite?: string }
-  | { type: "CREATE_SESSION"; caisse: number; solde_ouverture: number }
+  | { type: "CREATE_SESSION" }
+  | { type: "CREATE_CAISSE"; nom: string; emplacement?: string; caissier?: number | null }
+  | { type: "PATCH_CAISSE"; id: number; nom?: string; emplacement?: string; caissier?: number | null; actif?: boolean }
   | { type: "ENCAISSER"; session_caisse: number; facture: number; montant: number; mode_paiement: ModePaiement }
-  | { type: "CLOTURER_CAISSE"; id: number; solde_theorique?: string; solde_compte: string }
-  | { type: "JUSTIFIER_ECART"; session_caisse: number; montant_ecart: number; justification: string }
+  | { type: "CLOTURER_CAISSE"; id: number; solde_compte: string; justification?: string }
   | { type: "CREATE_DA"; article: number; quantite_demandee: number; motif?: string; besoin?: number }
   | { type: "APPROUVER_DA"; id: number }
   | { type: "REJETER_DA"; id: number }
@@ -161,7 +161,7 @@ export type Action =
   | { type: "ENVOYER_CF"; id: number }
   | { type: "CREATE_RECEPTION"; commande: number; conforme?: boolean; observations?: string }
   | { type: "ADD_LIGNE_RECEPTION"; reception: number; ligne_commande: number; quantite_recue: number }
-  | { type: "CREATE_FOURNISSEUR"; code: string; nom: string; contact?: string; telephone?: string; email?: string; adresse?: string }
+  | { type: "CREATE_FOURNISSEUR"; nom: string; contact?: string; telephone?: string; email?: string; adresse?: string }
   | { type: "CREATE_MVT"; article: number; depot: number; type_mouvement: string; quantite: number; motif?: string; document_origine?: string }
   | { type: "CREATE_INVENTAIRE"; depot: number; date_inventaire: string }
   | { type: "ADD_LIGNE_INVENTAIRE"; inventaire: number; article: number; quantite_theorique: number; quantite_comptee: number }
@@ -470,12 +470,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           case "CONVERTIR_PLAN":
             await actions.convertirPlanEnOf(action.id);
             break;
-          case "CREATE_DEMANDE_MATIERE":
-            await api.post(endpoints.demandesMatieres, {
-              ordre_fabrication: action.ordre_fabrication,
-              matiere: action.matiere,
-              quantite_demandee: action.quantite_demandee,
-            });
+          case "DEMANDER_MATIERES_OF":
+            // Toute la composition de l'OF en une fois (plus de saisie
+            // matière par matière : le backend le refuse désormais).
+            await actions.demanderMatieres(action.id);
             break;
           case "LIVRER_DEMANDE_MATIERE":
             await actions.livrerDemandeMatiere(action.id, action.quantite_livree);
@@ -583,7 +581,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             break;
           case "CREATE_ARTICLE":
             await api.post(endpoints.articles, {
-              code: action.code,
               designation: action.designation ?? "",
               type_article: action.type_article,
               unite_mesure: action.unite_mesure,
@@ -693,7 +690,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
           case "CREATE_CLIENT":
             await api.post(endpoints.clients, {
-              code: action.code,
               nom: action.nom,
               type_client: action.type_client,
               adresse: action.adresse ?? "",
@@ -805,11 +801,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             });
             break;
           case "CREATE_SESSION":
-            await api.post(endpoints.sessionsCaisse, {
-              caisse: action.caisse,
-              solde_ouverture: action.solde_ouverture,
+            // Corps vide : la caisse du caissier et le solde d'ouverture
+            // (report du solde compté de la clôture précédente) sont
+            // déterminés automatiquement côté serveur.
+            await api.post(endpoints.sessionsCaisse, {});
+            break;
+          case "CREATE_CAISSE":
+            await api.post(endpoints.caisses, {
+              nom: action.nom,
+              emplacement: action.emplacement ?? "",
+              caissier: action.caissier ?? null,
+              actif: true,
             });
             break;
+          case "PATCH_CAISSE": {
+            const champs: Record<string, unknown> = {};
+            if (action.nom !== undefined) champs.nom = action.nom;
+            if (action.emplacement !== undefined) champs.emplacement = action.emplacement;
+            if (action.caissier !== undefined) champs.caissier = action.caissier;
+            if (action.actif !== undefined) champs.actif = action.actif;
+            await api.patch(detail(endpoints.caisses, action.id), champs);
+            break;
+          }
           case "ENCAISSER":
             await api.post(endpoints.encaissements, {
               session_caisse: action.session_caisse,
@@ -818,17 +831,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               mode_paiement: action.mode_paiement,
             });
             break;
-          case "CLOTURER_CAISSE": {
-            const res = await actions.cloturerSession(action.id, action.solde_theorique, action.solde_compte);
-            if (res.avertissement) fail(res.avertissement);
-            break;
-          }
-          case "JUSTIFIER_ECART":
-            await api.post(endpoints.ecartsCaisse, {
-              session_caisse: action.session_caisse,
-              montant_ecart: action.montant_ecart,
-              justification: action.justification,
-            });
+          case "CLOTURER_CAISSE":
+            // Le solde théorique est toujours calculé côté serveur. S'il y a
+            // un écart, la justification est obligatoire ici : sans elle,
+            // le backend refuse la clôture (l'écart est alors créé
+            // automatiquement, plus de POST /caisse/ecarts/ séparé).
+            await actions.cloturerSession(action.id, action.solde_compte, action.justification);
             break;
           case "CREATE_DA":
             await api.post(endpoints.demandesAchat, {
@@ -877,7 +885,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             break;
           case "CREATE_FOURNISSEUR":
             await api.post(endpoints.fournisseurs, {
-              code: action.code,
               nom: action.nom,
               contact: action.contact ?? "",
               telephone: action.telephone ?? "",
