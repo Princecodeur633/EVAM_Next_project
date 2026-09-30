@@ -4,15 +4,18 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { TYPE_CLIENT_LABEL } from "@/lib/labels";
+import { canReadParam } from "@/lib/roles";
 import { useStore } from "@/lib/store";
 import type { TypeClient } from "@/lib/types";
 import { formatDa, formatDate, num } from "@/lib/utils";
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, canEditParam, articleName } = useStore();
+  const { state, dispatch, canEditParam, articleName, role } = useStore();
   const client = state.clients.find((c) => c.id === Number(id));
   const writable = canEditParam("/parametrage/clients");
+  // Les tarifs ne sont visibles que des profils qui y ont accès (jamais l’Admin SI).
+  const voitTarifs = canReadParam(role, "/parametrage/tarifs");
 
   const [form, setForm] = useState(() => ({
     nom: client?.nom ?? "",
@@ -113,6 +116,7 @@ export default function ClientDetailPage() {
         </Button>
       )}
 
+      {voitTarifs && (
       <Panel className="p-4 space-y-3">
         <h2 className="text-[13px] font-semibold">Tarifs spécifiques</h2>
         <DataTable
@@ -130,6 +134,7 @@ export default function ClientDetailPage() {
           }))}
         />
       </Panel>
+      )}
     </div>
   );
 }
