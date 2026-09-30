@@ -22,7 +22,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [jump, setJump] = useState(false);
   const [query, setQuery] = useState("");
   const [navOpen, setNavOpen] = useState(false);
-  const [openSub, setOpenSub] = useState<Record<string, boolean>>({});
   const [railOpen, setRailOpen] = useState(false);
   const railTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -153,73 +152,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               {g.items.map((item) => {
                 const ItemIcon = itemIcon(item);
-                if (item.children && item.children.length > 0) {
-                  const childActive = item.children.some((c) => isNavActive(pathname, c.href, allHrefs));
-                  const expanded = !collapsed && (openSub[item.href] ?? childActive);
-                  return (
-                    <div key={item.href}>
-                      <button
-                        type="button"
-                        title={collapsed ? item.label : item.hint}
-                        aria-expanded={expanded}
-                        onClick={() => setOpenSub((s) => ({ ...s, [item.href]: !expanded }))}
-                        className={cn(
-                          "w-[calc(100%-0.5rem)] mx-1 px-3 py-[8px] rounded-[7px] text-[13px] flex items-center gap-3 whitespace-nowrap transition-all duration-150",
-                          childActive
-                            ? collapsed
-                              ? "bg-white/12 text-white"
-                              : "text-white font-medium"
-                            : "hover:bg-white/6 hover:text-white text-white/75",
-                        )}
-                      >
-                        <ItemIcon size={16} strokeWidth={1.75} className="shrink-0" />
-                        <span className={cn("flex-1 text-left", fade(collapsed))}>{item.label}</span>
-                        <ChevronDown
-                          size={13}
-                          strokeWidth={1.75}
-                          className={cn(
-                            "shrink-0 text-white/45 transition-all duration-200",
-                            expanded && "rotate-180",
-                            collapsed && "opacity-0",
-                          )}
-                        />
-                      </button>
-                      <div
-                        className={cn(
-                          "grid transition-[grid-template-rows] duration-200 ease-out",
-                          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                        )}
-                      >
-                        <div className="overflow-hidden">
-                          <div className="ml-[24px] mr-1 mt-0.5 mb-1 pl-2 border-l border-white/10 space-y-px">
-                            {item.children.map((child) => {
-                              const active = isNavActive(pathname, child.href, allHrefs);
-                              const ChildIcon = itemIcon(child);
-                              return (
-                                <Link
-                                  key={child.href}
-                                  href={child.href}
-                                  title={child.hint}
-                                  tabIndex={expanded ? undefined : -1}
-                                  onClick={() => setNavOpen(false)}
-                                  className={cn(
-                                    "flex items-center gap-2.5 px-2.5 py-[6px] rounded-[6px] text-[12.5px] whitespace-nowrap transition-all duration-150",
-                                    active
-                                      ? "bg-white/12 text-white font-medium shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-                                      : "hover:bg-white/6 hover:text-white text-white/60",
-                                  )}
-                                >
-                                  <ChildIcon size={14} strokeWidth={1.75} className="shrink-0 opacity-80" />
-                                  <span className="truncate">{child.label}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
                 const active = isNavActive(pathname, item.href, allHrefs);
                 return (
                   <Link

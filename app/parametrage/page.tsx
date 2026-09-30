@@ -20,7 +20,6 @@ const GROUPS = [
     title: "Stocks & tiers",
     items: [
       ["Dépôts", "/parametrage/depots", "Magasins"],
-      ["Unités de mesure", "/parametrage/unites", "Litre, kg, carton…"],
       ["Clients", "/parametrage/clients", "Fiches clients"],
       ["Tarifs", "/parametrage/tarifs", "Prix de vente"],
       ["Fournisseurs", "/parametrage/fournisseurs", "Fournisseurs matières"],

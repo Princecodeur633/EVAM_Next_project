@@ -20,8 +20,6 @@ export type NavItem = {
   href: string;
   label: string;
   hint?: string;
-  /** Sous-pages affichées en menu déroulant dans la barre latérale. */
-  children?: NavItem[];
 };
 
 export type NavGroup = {
@@ -65,7 +63,6 @@ const I = {
   anomalies: { href: "/comptabilite/brouillards", label: "Anomalies", hint: "Écarts à traiter" },
   exports: { href: "/comptabilite/export-sage", label: "Exports comptables", hint: "Exports de période" },
   clotures: { href: "/comptabilite/clotures", label: "Clôtures", hint: "Périodes comptables" },
-  param: { href: "/parametrage", label: "Référentiel", hint: "Articles et tiers" },
   ft: { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Consultation recettes" },
   users: { href: "/admin/utilisateurs", label: "Utilisateurs" },
   profils: { href: "/admin/profils", label: "Profils" },
@@ -73,19 +70,17 @@ const I = {
   audit: { href: "/admin/audit", label: "Journal d'audit" },
   caisses: { href: "/admin/caisses", label: "Caisses", hint: "Créer et affecter les caisses" },
   reclamations: { href: "/reclamations", label: "Réclamations", hint: "Retours clients" },
-  fiscalite: { href: "/parametrage/fiscalite", label: "Codes fiscaux", hint: "Matrice fiscale" },
   avoirs: { href: "/commercial/avoirs", label: "Avoirs", hint: "Crédits clients" },
   impayes: { href: "/commercial/impayes", label: "Impayés", hint: "Factures en retard" },
 };
 
-/** Pages du référentiel, dépliées sous l’entrée « Référentiel » selon les droits du profil. */
+/** Pages du référentiel, listées directement dans le groupe « Référentiel » selon les droits du profil. */
 const PARAM_PAGES: NavItem[] = [
   { href: "/parametrage/produits", label: "Articles", hint: "Eau, jus, yaourts" },
   { href: "/parametrage/matieres", label: "Matières", hint: "Matières premières" },
   { href: "/parametrage/conditionnements", label: "Conditionnements", hint: "Cartons et palettes" },
   { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Recettes de fabrication" },
   { href: "/parametrage/depots", label: "Dépôts", hint: "Magasins" },
-  { href: "/parametrage/unites", label: "Unités de mesure", hint: "Litre, kg, carton…" },
   { href: "/parametrage/clients", label: "Clients", hint: "Fiches clients" },
   { href: "/parametrage/tarifs", label: "Tarifs", hint: "Prix de vente" },
   { href: "/parametrage/fournisseurs", label: "Fournisseurs", hint: "Fournisseurs matières" },
@@ -99,7 +94,6 @@ function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup 
 export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ADMIN_SI: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("ref", "Référentiel", "sliders", [I.param]),
     g("admin", "Administration", "shield", [I.users, I.caisses, I.profils, I.droits, I.audit]),
   ],
   DIRECTION: [
@@ -110,7 +104,6 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("poste", "Menu", "home", [I.accueil]),
     g("prod", "Production", "factory", [I.planning, I.of, I.besoinsOf, I.sorties, I.suiviEau, I.da]),
     g("stock", "Stocks", "boxes", [I.stock]),
-    g("ref", "Référentiel", "sliders", [I.param]),
   ],
   AGENT_PRODUCTION: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -129,12 +122,10 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("poste", "Menu", "home", [I.accueil]),
     g("appro", "Achats", "cart", [I.apBesoins, I.da, I.cf, I.rec]),
     g("stock", "Stocks", "boxes", [I.stock]),
-    g("ref", "Référentiel", "sliders", [I.param]),
   ],
   COMMERCIAL: [
     g("poste", "Menu", "home", [I.accueil]),
     g("vente", "Commercial", "handshake", [I.cmd, I.cmdNew, I.clients, I.factures, I.avoirs, I.impayes, I.reclamations]),
-    g("ref", "Référentiel", "sliders", [I.param]),
   ],
   CAISSIER: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -154,25 +145,22 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("fin", "Comptabilité", "ledger", [I.anomalies, I.exports, I.clotures, I.audit, I.impayes]),
     g("couts", "Coûts", "coins", [I.couts, I.marges]),
     g("caisse", "Caisse", "banknote", [I.sessions, I.decaissements]),
-    g("ref", "Fiscalité", "sliders", [I.fiscalite]),
   ],
 };
 
 export function navForRole(role: Profil): NavGroup[] {
-  return ROLE_MENU[role].map((group) => ({
-    ...group,
-    items: group.items.map((item) =>
-      item.href === I.param.href
-        ? { ...item, children: PARAM_PAGES.filter((p) => canReadParam(role, p.href) || canEditParam(role, p.href)) }
-        : item,
-    ),
-  }));
+  const base = ROLE_MENU[role];
+  const used = new Set(base.flatMap((group) => group.items.map((i) => i.href)));
+  const refItems = PARAM_PAGES.filter((p) => !used.has(p.href) && (canReadParam(role, p.href) || canEditParam(role, p.href)));
+  if (refItems.length === 0) return base;
+  const ref = g("ref", "Référentiel", "sliders", refItems);
+  // Le référentiel se place avant l’administration, sinon en fin de menu.
+  const adminIdx = base.findIndex((group) => group.id === "admin");
+  return adminIdx >= 0 ? [...base.slice(0, adminIdx), ref, ...base.slice(adminIdx)] : [...base, ref];
 }
 
 export function flattenNav(role: Profil) {
-  return navForRole(role).flatMap((group) =>
-    group.items.flatMap((i) => [i, ...(i.children ?? [])].map((x) => ({ ...x, group: group.label }))),
-  );
+  return navForRole(role).flatMap((group) => group.items.map((i) => ({ ...i, group: group.label })));
 }
 
 /** Correspondance menu → route, sans ouvrir les écrans « frères » du même préfixe. */
@@ -295,7 +283,6 @@ export function breadcrumbs(pathname: string) {
     conditionnements: "Conditionnements",
     "fiches-techniques": "Fiches techniques",
     depots: "Dépôts",
-    unites: "Unités",
     seuils: "Articles",
     tarifs: "Tarifs",
     fournisseurs: "Fournisseurs",
