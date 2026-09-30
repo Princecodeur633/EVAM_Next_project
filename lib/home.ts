@@ -33,8 +33,10 @@ import {
   UserPlus,
   UserX,
   Users,
+  UserCog,
   Vault,
   Wallet,
+  Warehouse,
 } from "lucide-react";
 import type { ChartPoint } from "@/components/charts";
 import { stockDisponible } from "./engine";
@@ -65,7 +67,8 @@ export type KpiTone = "default" | "warning" | "success" | "danger" | "teal";
 
 export type HomeKpi = { label: string; value: string | number; hint?: string; tone?: KpiTone; href?: string; icon: LucideIcon };
 export type HomeTask = { href: string; title: string; detail: string; badge?: { label: string; tone: Tone }; meta?: string };
-export type HomeSection = { id: string; title: string; icon: LucideIcon; href: string; total: number; items: HomeTask[]; empty: string; tone?: Tone };
+/** `pinned` : carte toujours affichée, même vide. */
+export type HomeSection = { id: string; title: string; icon: LucideIcon; href: string; total: number; items: HomeTask[]; empty: string; tone?: Tone; pinned?: boolean };
 export type HomeChart = { title: string; subtitle?: string; href?: string; kind: "donut" | "hbar"; data: ChartPoint[]; centerLabel?: string };
 export type HomeAction = { href: string; label: string; icon: LucideIcon };
 /** Situation des caisses, affichée en tête de l’accueil caissier. */
@@ -226,23 +229,114 @@ export function homeForRole(role: Profil, state: AppState, h: HomeHelpers): Home
   }
 }
 
+/** Fiches techniques encore en brouillon (partagé par l’admin et le responsable production). */
+function ftBrouillonSection(state: AppState, h: HomeHelpers, title: string, empty: string): HomeSection {
+  return section({
+    id: "ft",
+    title,
+    icon: ScrollText,
+    href: "/parametrage/fiches-techniques",
+    tone: "warning",
+    empty,
+    all: [...state.fichesTechniques]
+      .filter((f) => f.statut === "BROUILLON")
+      .sort(byDateDesc((f) => f.date_creation))
+      .map((f) => ({
+        href: `/parametrage/fiches-techniques/${f.id}`,
+        title: h.articleName(f.article),
+        detail: `Version ${f.version} · créée par ${h.userName(f.cree_par)}`,
+        meta: formatDate(f.date_creation),
+        badge: { label: "Brouillon", tone: "neutral" },
+      })),
+  });
+}
+
 function admin(state: AppState, h: HomeHelpers): HomeData {
+  // L’admin reçoit d’abord comptes + journal, le reste arrive en arrière-plan. La caisse
+  // principale et les dépôts système existant toujours, leur absence signifie « pas encore chargé ».
+  const loaded = state.depots.length > 0 || state.caisses.length > 0;
+  const wait = (msg: string) => (loaded ? msg : "Chargement…");
+
+  const actifs = state.utilisateurs.filter((u) => u.actif);
   const inactifs = state.utilisateurs.filter((u) => !u.actif);
-  const actifs = state.utilisateurs.length - inactifs.length;
   const journalToday = state.journal.filter((j) => sameDay(j.date_action));
-  const nouveaux = state.utilisateurs.filter((u) => withinDays(u.date_creation, 30));
+  const ftBrouillon = state.fichesTechniques.filter((f) => f.statut === "BROUILLON");
+
+  const aUneCaisse = (id: number) => state.caisses.some((c) => c.caissier === id && !c.est_principale);
+  const aUneFicheChauffeur = (id: number) => state.chauffeurs.some((c) => c.utilisateur === id);
+  const caissiersSansCaisse = loaded ? actifs.filter((u) => u.profil === "CAISSIER" && !aUneCaisse(u.id)) : [];
+  const incomplets = actifs
+    .map((u) => {
+      if (!u.profil || !PROFIL_LABEL[u.profil]) return { u, raison: "Sans rôle", href: "/admin/utilisateurs" };
+      if (!loaded) return null;
+      if (u.profil === "CAISSIER" && !aUneCaisse(u.id)) return { u, raison: "Sans caisse", href: "/admin/caisses" };
+      if (u.profil === "CHAUFFEUR" && !aUneFicheChauffeur(u.id)) return { u, raison: "Sans fiche chauffeur", href: "/admin/utilisateurs" };
+      return null;
+    })
+    .filter((x): x is { u: (typeof actifs)[number]; raison: string; href: string } => x != null);
+
+  const depotsSysteme = state.depots.filter((d) => d.est_systeme);
+  const depotsKo = depotsSysteme.filter((d) => !d.actif).length + Math.max(0, 3 - depotsSysteme.length);
+
   return {
     actions: [
       { href: "/admin/utilisateurs", label: "Gérer les comptes", icon: UserPlus },
-      { href: "/admin/audit", label: "Journal d’audit", icon: History },
+      { href: "/admin/caisses", label: "Caisses", icon: Vault },
     ],
     kpis: [
-      { label: "Comptes actifs", value: actifs, hint: `${state.utilisateurs.length} au total`, icon: Users, href: "/admin/utilisateurs" },
-      { label: "Comptes inactifs", value: inactifs.length, tone: inactifs.length ? "warning" : "success", icon: UserX, href: "/admin/utilisateurs" },
+      { label: "Comptes actifs", value: actifs.length, hint: `${state.utilisateurs.length} au total · ${inactifs.length} inactif(s)`, icon: Users, href: "/admin/utilisateurs" },
+      { label: "Comptes à compléter", value: incomplets.length, hint: "Sans caisse ou sans rôle", tone: incomplets.length ? "warning" : "success", icon: UserCog, href: "/admin/utilisateurs" },
+      { label: "Fiches en brouillon", value: ftBrouillon.length, hint: "À valider", tone: ftBrouillon.length ? "warning" : "success", icon: ScrollText, href: "/parametrage/fiches-techniques" },
       { label: "Actions aujourd’hui", value: journalToday.length, hint: "Journal d’audit", tone: "teal", icon: History, href: "/admin/audit" },
-      { label: "Nouveaux comptes", value: nouveaux.length, hint: "30 derniers jours", icon: UserPlus, href: "/admin/utilisateurs" },
     ],
     sections: [
+      ftBrouillonSection(state, h, "Fiches techniques en brouillon", wait("Aucune fiche en brouillon.")),
+      section({
+        id: "incomplets",
+        title: "Comptes sans caisse/rôle",
+        icon: UserCog,
+        href: "/admin/utilisateurs",
+        tone: "warning",
+        empty: wait("Tous les comptes actifs sont configurés."),
+        all: incomplets.map(({ u, raison, href }) => ({
+          href,
+          title: displayName(u),
+          detail: PROFIL_LABEL[u.profil] ?? "Profil non renseigné",
+          badge: { label: raison, tone: "warning" },
+        })),
+      }),
+      section({
+        id: "caissiers",
+        title: "Caissiers sans caisse affectée",
+        icon: Vault,
+        href: "/admin/caisses",
+        tone: "danger",
+        empty: wait("Chaque caissier a sa caisse."),
+        all: caissiersSansCaisse.map((u) => ({
+          href: "/admin/caisses",
+          title: displayName(u),
+          detail: "Ne peut ouvrir aucune session de caisse",
+          badge: { label: "À affecter", tone: "danger" },
+        })),
+      }),
+      section({
+        id: "depots",
+        title: "Dépôts système",
+        pinned: true,
+        icon: Warehouse,
+        href: "/parametrage/depots",
+        tone: depotsKo ? "danger" : "teal",
+        empty: wait("Aucun dépôt système trouvé : vérifiez l’initialisation du backend."),
+        all: depotsSysteme.map((d) => {
+          const lignes = state.stock.filter((s) => s.depot === d.id && num(s.quantite_physique) > 0);
+          return {
+            href: "/parametrage/depots",
+            title: d.nom,
+            detail: `${d.role || "Dépôt système"} · ${lignes.length} article(s) · ${formatQty(sum(lignes, (s) => s.quantite_physique), 0)} en stock`,
+            badge: d.actif ? { label: "Actif", tone: "success" as const } : { label: "Inactif", tone: "danger" as const },
+          };
+        }),
+      }),
       section({
         id: "journal",
         title: "Activité récente",
@@ -261,7 +355,6 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
         title: "Comptes désactivés",
         icon: UserX,
         href: "/admin/utilisateurs",
-        tone: "warning",
         empty: "Tous les comptes sont actifs.",
         all: inactifs.map((u) => ({
           href: "/admin/utilisateurs",
@@ -277,7 +370,7 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
       subtitle: "Utilisateurs actifs",
       href: "/admin/utilisateurs",
       kind: "hbar",
-      data: countBy(state.utilisateurs.filter((u) => u.actif), (u) => u.profil, (k) => PROFIL_LABEL[k as Profil] ?? k),
+      data: countBy(actifs, (u) => u.profil, (k) => PROFIL_LABEL[k as Profil] ?? k),
     },
   };
 }
@@ -349,7 +442,6 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
   const plans = state.plans.filter((p) => p.statut === "A_CONVERTIR_EN_OF" || p.statut === "PREVISION");
   const matieres = state.demandesMatieres.filter((d) => d.statut === "A_PREPARER" || d.statut === "PARTIELLEMENT_PREPAREE" || d.statut === "PREPAREE");
   const pertesJour = state.pertes.filter((p) => sameDay(p.date_constat));
-  const ftBrouillon = state.fichesTechniques.filter((f) => f.statut === "BROUILLON");
   const ofOrder = (o: OrdreFabrication) => ["EN_PRODUCTION", "PRET", "MATIERES_EN_PREPARATION", "A_PREPARER", "BROUILLON", "PRODUCTION_TERMINEE", "EN_CONTROLE"].indexOf(o.statut);
   return {
     actions: [
@@ -399,19 +491,7 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
           badge: { label: STATUT_DEMANDE_MATIERE_LABEL[d.statut], tone: d.statut === "PREPAREE" ? "teal" : "info" },
         })),
       }),
-      section({
-        id: "ft",
-        title: "Fiches techniques à valider",
-        icon: ScrollText,
-        href: "/parametrage/fiches-techniques",
-        empty: "Toutes les fiches sont validées.",
-        all: ftBrouillon.map((f) => ({
-          href: `/parametrage/fiches-techniques/${f.id}`,
-          title: h.articleName(f.article),
-          detail: `Version ${f.version}`,
-          badge: { label: "Brouillon", tone: "neutral" },
-        })),
-      }),
+      ftBrouillonSection(state, h, "Fiches techniques à valider", "Toutes les fiches sont validées."),
     ],
     chart: ofDonut(state.ofList),
   };

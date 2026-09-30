@@ -36,7 +36,7 @@ export default function AccueilPage() {
   const sections = home.sections
     .map((s) => ({ ...s, href: allowed(s.href) ? s.href : "", items: s.items.filter((i) => allowed(i.href)) }))
     // Une section vide et secondaire n’apporte rien : on ne garde que celles qui ont du contenu ou qui sont prioritaires.
-    .filter((s, i) => s.total > 0 || s.tone === "warning" || s.tone === "danger" || i < 2);
+    .filter((s, i) => s.pinned || s.total > 0 || s.tone === "warning" || s.tone === "danger" || i < 2);
   const pending = sections.filter((s) => s.tone === "warning" || s.tone === "danger").reduce((a, s) => a + s.total, 0);
 
   const seen = new Set<string>();
