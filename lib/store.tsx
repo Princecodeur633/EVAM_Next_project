@@ -56,7 +56,8 @@ export type Action =
   | { type: "CREATE_OF"; article: number; quantite_a_produire: number; plan_production?: number; agents_affectes?: number[] }
   | { type: "AVANCER_OF"; id: number }
   | { type: "ANNULER_OF"; id: number; motif: string }
-  | { type: "CONVERTIR_PLAN"; id: number }
+  | { type: "CONVERTIR_PLAN"; id: number; agents_affectes?: number[] }
+  | { type: "AFFECTER_AGENTS_OF"; id: number; agents: number[] }
   | { type: "DEMANDER_MATIERES_OF"; id: number }
   | { type: "LIVRER_DEMANDE_MATIERE"; id: number; quantite_livree?: number }
   | { type: "CREATE_COMPLEMENT"; ordre_fabrication: number; matiere: number; quantite: number; motif: string }
@@ -482,7 +483,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             await actions.annulerOf(action.id, action.motif);
             break;
           case "CONVERTIR_PLAN":
-            await actions.convertirPlanEnOf(action.id);
+            await actions.convertirPlanEnOf(action.id, action.agents_affectes);
+            break;
+          case "AFFECTER_AGENTS_OF":
+            await actions.affecterAgentsOF(action.id, action.agents);
             break;
           case "DEMANDER_MATIERES_OF":
             // Toute la composition de l'OF en une fois (plus de saisie

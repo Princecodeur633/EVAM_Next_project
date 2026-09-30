@@ -475,7 +475,12 @@ export function detail(path: string, id: number) {
 
 export const actions = {
   validerFiche: (id: number) => api.post<FicheTechnique>(`${endpoints.fichesTechniques}${id}/valider/`),
-  convertirPlanEnOf: (id: number) => api.post<OrdreFabrication>(`${endpoints.plans}${id}/convertir_en_of/`),
+  convertirPlanEnOf: (id: number, agents_affectes?: number[]) =>
+    api.post<OrdreFabrication>(`${endpoints.plans}${id}/convertir_en_of/`, agents_affectes?.length ? { agents_affectes } : {}),
+  /** Comptes Agent Production actifs, pour les sélecteurs « Agents affectés ». */
+  agentsDisponibles: () => api.get<{ id: number; username: string; nom: string }[]>(`${endpoints.ofList}agents_disponibles/`),
+  affecterAgentsOF: (id: number, agents: number[]) =>
+    api.post<OrdreFabrication>(`${endpoints.ofList}${id}/affecter_agents/`, { agents }),
   avancerOf: (id: number) => api.post<{ statut: string; of: OrdreFabrication }>(`${endpoints.ofList}${id}/avancer_statut/`),
   annulerOf: (id: number, motif: string) => api.post<OrdreFabrication>(`${endpoints.ofList}${id}/annuler/`, { motif }),
   /** Demande d'un coup toute la composition de l'OF au magasin (une DemandeMatiere par matière). */
