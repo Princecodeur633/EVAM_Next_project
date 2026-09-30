@@ -73,7 +73,27 @@ export type HomeChart = { title: string; subtitle?: string; href?: string; kind:
 export type HomeAction = { href: string; label: string; icon: LucideIcon };
 /** Situation des caisses, affichée en tête de l’accueil caissier. */
 export type HomeCash = { principale?: Caisse; maCaisse?: Caisse; session?: SessionCaisse; caisses: Caisse[] };
-export type HomeData = { actions: HomeAction[]; kpis: HomeKpi[]; sections: HomeSection[]; chart?: HomeChart; cash?: HomeCash };
+/** Étape d’une feuille de route (priorités d’action de l’admin). */
+export type HomePriority = {
+  title: string;
+  detail: string;
+  href: string;
+  cta: string;
+  icon: LucideIcon;
+  done: number;
+  total: number;
+  status: "done" | "todo" | "loading";
+  /** Éléments restants, affichés en aperçu sous la barre de progression. */
+  missing: string[];
+};
+export type HomeData = {
+  actions: HomeAction[];
+  kpis: HomeKpi[];
+  sections: HomeSection[];
+  chart?: HomeChart;
+  cash?: HomeCash;
+  priorities?: HomePriority[];
+};
 
 export type HomeHelpers = {
   meId: number;
@@ -278,7 +298,68 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
   const depotsSysteme = state.depots.filter((d) => d.est_systeme);
   const depotsKo = depotsSysteme.filter((d) => !d.actif).length + Math.max(0, 3 - depotsSysteme.length);
 
+  // Priorités d’action : comptes + rôle → caisses → fiches techniques des produits finis.
+  const profils = Object.keys(PROFIL_LABEL) as Profil[];
+  const profilsSansCompte = profils.filter((p) => p !== "ADMIN_SI" && !actifs.some((u) => u.profil === p));
+  const sansRole = actifs.filter((u) => !u.profil || !PROFIL_LABEL[u.profil]);
+  const caissiers = actifs.filter((u) => u.profil === "CAISSIER");
+  const produitsFinis = state.articles.filter((a) => a.type_article === "PRODUIT_FINI" && a.actif);
+  const avecFicheValidee = new Set(state.fichesTechniques.filter((f) => f.statut === "VALIDEE").map((f) => f.article));
+  const pfSansFiche = produitsFinis.filter((a) => !avecFicheValidee.has(a.id));
+  const priorities: HomePriority[] = [
+    {
+      title: "Créer les comptes et leur rôle",
+      detail: profilsSansCompte.length
+        ? `${profilsSansCompte.length} poste(s) sans compte actif${sansRole.length ? ` · ${sansRole.length} compte(s) sans rôle` : ""}`
+        : sansRole.length
+          ? `${sansRole.length} compte(s) sans rôle`
+          : "Chaque poste a au moins un compte.",
+      href: "/admin/utilisateurs",
+      cta: "Créer un compte",
+      icon: UserPlus,
+      done: profils.length - 1 - profilsSansCompte.length,
+      total: profils.length - 1,
+      status: profilsSansCompte.length || sansRole.length ? "todo" : "done",
+      missing: [...sansRole.map((u) => `${displayName(u)} (sans rôle)`), ...profilsSansCompte.map((p) => PROFIL_LABEL[p])],
+    },
+    {
+      title: "Créer et affecter chaque caisse",
+      detail: !loaded
+        ? "Chargement…"
+        : caissiers.length === 0
+          ? "Aucun caissier : créez d’abord un compte Caissier."
+          : caissiersSansCaisse.length
+            ? `${caissiersSansCaisse.length} caissier(s) sans caisse`
+            : "Chaque caissier a sa caisse.",
+      href: "/admin/caisses",
+      cta: "Affecter une caisse",
+      icon: Vault,
+      done: caissiers.length - caissiersSansCaisse.length,
+      total: caissiers.length,
+      status: !loaded ? "loading" : caissiers.length === 0 || caissiersSansCaisse.length ? "todo" : "done",
+      missing: caissiersSansCaisse.map(displayName),
+    },
+    {
+      title: "Valider la fiche technique de chaque produit fini",
+      detail: !loaded
+        ? "Chargement…"
+        : produitsFinis.length === 0
+          ? "Aucun produit fini créé pour l’instant."
+          : pfSansFiche.length
+            ? `${pfSansFiche.length} produit(s) fini(s) sans fiche validée`
+            : "Tous les produits finis ont une fiche validée.",
+      href: "/parametrage/fiches-techniques",
+      cta: "Valider les fiches",
+      icon: ScrollText,
+      done: produitsFinis.length - pfSansFiche.length,
+      total: produitsFinis.length,
+      status: !loaded ? "loading" : pfSansFiche.length ? "todo" : "done",
+      missing: pfSansFiche.map((a) => a.designation),
+    },
+  ];
+
   return {
+    priorities,
     actions: [
       { href: "/admin/utilisateurs", label: "Gérer les comptes", icon: UserPlus },
       { href: "/admin/caisses", label: "Caisses", icon: Vault },
