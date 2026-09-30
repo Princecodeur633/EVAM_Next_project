@@ -37,7 +37,7 @@ export default function ParametrageHubPage() {
   const { currentUser, canEditParam } = useStore();
   const allow = currentUser ? ROLE_PROFILES[currentUser.role].paramAllow : [];
   const read = currentUser ? ROLE_PROFILES[currentUser.role].paramRead ?? [] : [];
-  const all = currentUser?.role === "ADMIN_SI" || allow.includes("*");
+  const all = allow.includes("*");
 
   function visible(href: string) {
     if (all) return true;

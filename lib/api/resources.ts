@@ -252,7 +252,10 @@ export type CatalogKey = keyof typeof catalog;
 const SHARED_CATALOG: CatalogKey[] = ["articles", "stock", "lots"];
 
 const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
-  ADMIN_SI: Object.keys(catalog) as CatalogKey[],
+  // Admin SI : tout sauf commandes, factures, encaissements et tarifs (⛔ cahier des charges).
+  ADMIN_SI: (Object.keys(catalog) as CatalogKey[]).filter(
+    (k) => !["tarifs", "commandes", "lignesCommande", "factures", "lignesFacture", "encaissements"].includes(k),
+  ),
   DIRECTION: [
     "articles",
     "stock",
@@ -515,4 +518,4 @@ export const actions = {
   genererRapport: (periode: "JOURNALIER" | "MENSUEL") =>
     api.post<RapportGenere>(`${endpoints.rapports}generer_aujourd_hui/`, { periode }),
 };
-
+
