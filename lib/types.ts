@@ -993,9 +993,22 @@ export interface SessionUser {
   active: boolean;
 }
 
+/** Annuaire léger de tous les comptes (GET /comptes/annuaire/), ouvert à tout
+ * utilisateur authentifié — sert à résoudre un nom sans les droits d'ADMIN_SI
+ * qu'exige UtilisateurViewSet. */
+export interface AnnuaireEntry {
+  id: number;
+  username: string;
+  nom: string;
+  profil: Profil;
+  profil_libelle: string;
+  actif: boolean;
+}
+
 export interface AppState {
   currentUserId: number | null;
   depotId: number | null;
+  annuaire: AnnuaireEntry[];
   utilisateurs: Utilisateur[];
   journal: JournalAction[];
   articles: Article[];

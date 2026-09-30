@@ -191,6 +191,7 @@ function emptyState(): AppState {
   return {
     currentUserId: null,
     depotId: null,
+    annuaire: [],
     utilisateurs: [],
     journal: [],
     articles: [],
@@ -377,6 +378,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveSession(nextSession);
       setSession(nextSession);
       setState({ ...loaded, currentUserId: nextSession.userId });
+
+      // Annuaire des noms : ouvert à tout utilisateur authentifié (contrairement à
+      // /comptes/utilisateurs/, réservé à l'Admin SI) — chargé à part, sans bloquer
+      // le premier affichage.
+      void actions.annuaire().then((annuaire) => {
+        setState((s) => ({ ...s, annuaire }));
+      }).catch(() => {});
 
       if (moi.profil === "ADMIN_SI") {
         const remaining = catalogKeysForRole(moi.profil).filter((k) => !ADMIN_CORE_KEYS.includes(k));
@@ -1099,6 +1107,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (id == null) return "—";
       const u = state.utilisateurs.find((x) => x.id === id);
       if (u) return displayName(u);
+      const a = state.annuaire.find((x) => x.id === id);
+      if (a) return a.nom;
       if (session?.userId === id) return session.name || session.username;
       return `#${id}`;
     };

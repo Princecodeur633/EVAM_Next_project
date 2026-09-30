@@ -1,6 +1,7 @@
 import { api, listAll } from "./client";
 import type {
   Amortissement,
+  AnnuaireEntry,
   AnomalieDetectee,
   Article,
   ArticleFournisseur,
@@ -501,6 +502,8 @@ export const actions = {
     api.post<Avoir>(`${endpoints.avoirs}${id}/utiliser/`, { facture }),
   /** Liste de choix du champ « Autorisé par » d'un décaissement : Direction et Comptabilité/DAF uniquement. */
   autorisateursDecaissement: () => api.get<Autorisateur[]>(`${endpoints.decaissements}autorisateurs/`),
+  /** Annuaire léger (id, nom, profil) de tous les comptes — ouvert à tout utilisateur authentifié. */
+  annuaire: () => api.get<AnnuaireEntry[]>("/comptes/annuaire/"),
   cloturerSession: (id: number, solde_compte: string, justification?: string) =>
     api.post<{ session: SessionCaisse }>(`${endpoints.sessionsCaisse}${id}/cloturer/`, {
       solde_compte,
