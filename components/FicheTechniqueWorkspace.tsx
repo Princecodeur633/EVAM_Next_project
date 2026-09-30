@@ -21,9 +21,10 @@ function FtBadge({ ft }: { ft: FicheTechnique }) {
 
 /** Liste des fiches à gauche, éditeur de la fiche sélectionnée à droite. */
 export function FicheTechniqueWorkspace({ selectedId }: { selectedId: number | null }) {
-  const { state, articleName, produitsFinis, canEditParam, can, dispatch } = useStore();
+  const { state, articleName, produitsFinis, can, dispatch } = useStore();
   const router = useRouter();
-  const writable = canEditParam(BASE);
+  // L’écriture des fiches et de leur composition est réservée à l’Admin SI côté backend.
+  const writable = can("CREATE_FT");
   const [query, setQuery] = useState("");
   const [fStatut, setFStatut] = useState<"TOUS" | "BROUILLON" | "VALIDEE">("TOUS");
   const [creating, setCreating] = useState(false);
@@ -58,7 +59,9 @@ export function FicheTechniqueWorkspace({ selectedId }: { selectedId: number | n
   async function createFiche() {
     if (!newArticle) return;
     pendingArticle.current = newArticle;
-    const ok = await dispatch({ type: "CREATE_FT", article: newArticle });
+    // Nouvelle version = dernière version de l’article + 1 (unicité article/version côté backend).
+    const version = Math.max(0, ...state.fichesTechniques.filter((f) => f.article === newArticle).map((f) => f.version)) + 1;
+    const ok = await dispatch({ type: "CREATE_FT", article: newArticle, version });
     if (!ok) {
       pendingArticle.current = null;
       return;
