@@ -83,3 +83,70 @@ export function DrawerSection({ title, hint, children }: { title: string; hint?:
     </section>
   );
 }
+
+/**
+ * Panneau latéral intégré à la page (colonne de droite, ~30 %) : même contenu qu'un tiroir,
+ * mais sans fond flouté sur ordinateur. Sur mobile, il s'ouvre en plein écran si `mobileOpen`.
+ */
+export function SidePanel({
+  title,
+  subtitle,
+  icon,
+  children,
+  footer,
+  onClose,
+  mobileOpen = false,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  icon?: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  /** Croix de fermeture (revient à l'état par défaut du panneau). */
+  onClose?: () => void;
+  mobileOpen?: boolean;
+}) {
+  return (
+    <div className={cn("lg:block lg:sticky lg:top-[72px]", mobileOpen ? "fixed inset-0 z-50 lg:static lg:z-auto" : "hidden")}>
+      {mobileOpen && onClose && (
+        <button type="button" aria-label="Fermer" className="lg:hidden absolute inset-0 bg-ink/40 drawer-fade" onClick={onClose} />
+      )}
+      <aside
+        className={cn(
+          "bg-surface flex flex-col",
+          "lg:relative lg:border lg:border-line lg:rounded-[10px] lg:shadow-[var(--shadow)] lg:max-h-[calc(100dvh-96px)] lg:overflow-hidden",
+          mobileOpen && "absolute inset-y-0 right-0 w-full sm:max-w-[440px] shadow-[var(--shadow)] drawer-in lg:static lg:max-w-none lg:shadow-none lg:animate-none",
+        )}
+      >
+        <header className="px-4 py-3.5 border-b border-line flex items-start gap-3 shrink-0">
+          {icon && <span className="h-8 w-8 shrink-0 rounded-[8px] bg-primary-soft text-primary flex items-center justify-center">{icon}</span>}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[14px] font-semibold tracking-tight break-words">{title}</h2>
+            {subtitle && <div className="text-[11.5px] text-muted mt-0.5">{subtitle}</div>}
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-7 w-7 shrink-0 flex items-center justify-center rounded-[7px] text-muted hover:text-ink hover:bg-surface-2"
+              aria-label="Fermer"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </header>
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-5">{children}</div>
+        {footer && (
+          <footer className="px-4 py-3 border-t border-line bg-surface-2/60 flex flex-wrap items-center justify-end gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {footer}
+          </footer>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+/** Grille « tableau 70 % / panneau 30 % » ; empilée sur mobile. */
+export function SplitLayout({ children }: { children: ReactNode }) {
+  return <div className="grid lg:grid-cols-[minmax(0,7fr)_minmax(300px,3fr)] gap-4 items-start">{children}</div>;
+}

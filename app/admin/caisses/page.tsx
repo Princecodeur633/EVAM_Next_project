@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { AlertTriangle, Landmark, Lock, Plus, Vault } from "lucide-react";
-import { Drawer, DrawerSection } from "@/components/Drawer";
+import { DrawerSection, SidePanel, SplitLayout } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { displayName } from "@/lib/labels";
@@ -10,6 +10,7 @@ import { useStore } from "@/lib/store";
 import type { Caisse } from "@/lib/types";
 import { cn, formatDa, num } from "@/lib/utils";
 
+/** Contenu du panneau de droite ; null = état par défaut (formulaire de création). */
 type Edition = { mode: "create"; caissier?: number } | { mode: "edit"; caisse: Caisse };
 
 export default function CaissesPage() {
@@ -40,7 +41,7 @@ export default function CaissesPage() {
   });
 
   return (
-    <div className="space-y-4 max-w-[1200px]">
+    <div className="space-y-4 max-w-[1440px]">
       <PageHeader
         eyebrow="Administration"
         title="Caisses"
@@ -83,6 +84,7 @@ export default function CaissesPage() {
         </div>
       )}
 
+      <SplitLayout>
       <Panel className="overflow-hidden">
         <FilterBar shown={caisses.length} total={toutes.length} active={!!q || fStatut !== "TOUTES"} onReset={() => { setQ(""); setFStatut("TOUTES"); }}>
           <SearchInput value={q} onChange={setQ} placeholder="Caisse, emplacement, caissier…" />
@@ -111,14 +113,14 @@ export default function CaissesPage() {
               </tr>
             )}
             {caisses.map((c) => {
-              const editable = writable && !c.est_principale;
+              const actif = edition?.mode === "edit" && edition.caisse.id === c.id;
               return (
                 <tr
                   key={c.id}
-                  onClick={editable ? () => setEdition({ mode: "edit", caisse: c }) : undefined}
+                  onClick={() => setEdition({ mode: "edit", caisse: c })}
                   className={cn(
-                    "border-b border-line last:border-0 transition-colors",
-                    c.est_principale ? "bg-primary-soft/40" : editable && "cursor-pointer hover:bg-primary-soft/50",
+                    "border-b border-line last:border-0 transition-colors cursor-pointer",
+                    actif ? "bg-primary-soft" : c.est_principale ? "bg-primary-soft/40 hover:bg-primary-soft/70" : "hover:bg-primary-soft/50",
                     !c.actif && "opacity-70",
                   )}
                 >
@@ -170,12 +172,29 @@ export default function CaissesPage() {
         </table>
       </Panel>
 
-      {edition && <CaisseDrawer key={edition.mode === "edit" ? edition.caisse.id : "new"} edition={edition} onClose={close} />}
+      {/* Panneau de droite : fiche de la caisse cliquée, sinon formulaire de création. */}
+      {edition?.mode === "edit" && edition.caisse.est_principale ? (
+        <PrincipalePanel caisse={state.caisses.find((c) => c.id === edition.caisse.id) ?? edition.caisse} onClose={close} />
+      ) : edition?.mode === "edit" && writable ? (
+        <CaissePanel key={edition.caisse.id} edition={{ mode: "edit", caisse: state.caisses.find((c) => c.id === edition.caisse.id) ?? edition.caisse }} onClose={close} mobileOpen />
+      ) : writable ? (
+        <CaissePanel
+          key={edition?.mode === "create" ? `new-${edition.caissier ?? 0}` : "new"}
+          edition={edition?.mode === "create" ? edition : { mode: "create" }}
+          onClose={edition ? close : undefined}
+          mobileOpen={edition != null}
+        />
+      ) : (
+        <SidePanel title="Détail de la caisse" icon={<Vault size={16} />}>
+          <p className="text-[12.5px] text-muted">Cliquez sur une caisse du tableau pour afficher ses informations.</p>
+        </SidePanel>
+      )}
+      </SplitLayout>
     </div>
   );
 }
 
-function CaisseDrawer({ edition, onClose }: { edition: Edition; onClose: () => void }) {
+function CaissePanel({ edition, onClose, mobileOpen }: { edition: Edition; onClose?: () => void; mobileOpen: boolean }) {
   const { state, dispatch } = useStore();
   const caisse = edition.mode === "edit" ? edition.caisse : null;
   const [nom, setNom] = useState(caisse?.nom ?? "");
@@ -195,21 +214,30 @@ function CaisseDrawer({ edition, onClose }: { edition: Edition; onClose: () => v
       ? await dispatch({ type: "PATCH_CAISSE", id: caisse.id, nom: nom.trim(), emplacement, caissier: caissier || null, actif })
       : await dispatch({ type: "CREATE_CAISSE", nom: nom.trim(), emplacement, caissier: caissier || null });
     setSaving(false);
-    if (ok) onClose();
+    if (ok) {
+      if (!caisse) {
+        setNom("");
+        setEmplacement("");
+        setCaissier(0);
+      }
+      onClose?.();
+    }
   }
 
   return (
-    <Drawer
-      open
+    <SidePanel
+      mobileOpen={mobileOpen}
       onClose={onClose}
       title={caisse ? caisse.nom : "Nouvelle caisse"}
       subtitle={caisse ? `Solde actuel ${formatDa(num(caisse.solde_actuel))}` : "Elle apparaîtra dans la consolidation de la caisse principale."}
       icon={<Vault size={17} />}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
+          {onClose && (
+            <Button variant="ghost" onClick={onClose}>
+              Annuler
+            </Button>
+          )}
           <Button disabled={!nom.trim() || saving} onClick={() => void submit()}>
             {saving ? "Enregistrement…" : caisse ? "Enregistrer" : "Créer la caisse"}
           </Button>
@@ -249,6 +277,45 @@ function CaisseDrawer({ edition, onClose }: { edition: Edition; onClose: () => v
           </label>
         </DrawerSection>
       )}
-    </Drawer>
+    </SidePanel>
+  );
+}
+
+/** Fiche de la caisse principale : consolidation en lecture seule, détail par caisse. */
+function PrincipalePanel({ caisse, onClose }: { caisse: Caisse; onClose: () => void }) {
+  const { state, userName } = useStore();
+  const autres = state.caisses.filter((c) => !c.est_principale).sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+  const ouvertes = autres.filter((c) => c.session_ouverte != null).length;
+  return (
+    <SidePanel mobileOpen onClose={onClose} title={caisse.nom} subtitle="Consolidation · lecture seule" icon={<Landmark size={16} />}>
+      <div className="rounded-[10px] bg-sidebar text-white px-4 py-4">
+        <p className="text-[11px] uppercase tracking-[0.12em] text-white/60 font-medium">Solde consolidé</p>
+        <p className="text-[26px] font-semibold num leading-tight mt-1 break-words">{formatDa(num(caisse.solde_actuel))}</p>
+        <p className="text-[12px] text-white/60 mt-1">
+          {autres.length} caisse(s) · {ouvertes} session(s) ouverte(s)
+        </p>
+      </div>
+      <DrawerSection title="Détail par caisse">
+        {autres.length === 0 ? (
+          <p className="text-[12.5px] text-muted">Aucune caisse de caissier pour l’instant.</p>
+        ) : (
+          <ul className="rounded-[9px] border border-line divide-y divide-line">
+            {autres.map((c) => (
+              <li key={c.id} className="flex items-center gap-2.5 px-3 py-2.5 min-w-0">
+                <span className={cn("h-2 w-2 rounded-full shrink-0", c.session_ouverte != null ? "bg-success" : "bg-line-strong")} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12.5px] font-medium truncate">{c.nom}</p>
+                  <p className="text-[11px] text-muted truncate">{c.caissier ? c.caissier_nom ?? userName(c.caissier) : "Sans caissier"}</p>
+                </div>
+                <span className="text-[12.5px] num font-medium shrink-0">{formatDa(num(c.solde_actuel))}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </DrawerSection>
+      <p className="text-[12px] text-muted flex items-start gap-1.5">
+        <Lock size={12} className="mt-0.5 shrink-0" /> Aucun caissier, aucune session : la caisse principale se met à jour automatiquement.
+      </p>
+    </SidePanel>
   );
 }

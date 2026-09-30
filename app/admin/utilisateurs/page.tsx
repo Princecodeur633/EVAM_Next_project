@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { KeyRound, Plus, Power, UserCog, UserPlus, Wand2 } from "lucide-react";
-import { Drawer, DrawerSection } from "@/components/Drawer";
+import { DrawerSection, SidePanel, SplitLayout } from "@/components/Drawer";
 import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { ACCENT_SOFT } from "@/components/icons";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
@@ -59,20 +59,26 @@ export default function UtilisateursPage() {
   }, []);
 
   return (
-    <div className="space-y-4 max-w-[1200px]">
+    <div className="space-y-4 max-w-[1440px]">
       <PageHeader
         eyebrow="Administration"
         title="Utilisateurs"
         description="Créez les comptes de l’usine, attribuez un rôle et gérez l’accès de chacun."
         actions={
           writable ? (
-            <Button onClick={() => setCreating(true)}>
+            <Button
+              onClick={() => {
+                setSelectedId(null);
+                setCreating(true);
+              }}
+            >
               <Plus size={15} /> Utilisateur
             </Button>
           ) : null
         }
       />
 
+      <SplitLayout>
       <Panel className="overflow-hidden">
         <FilterBar
           shown={rows.length}
@@ -176,9 +182,9 @@ export default function UtilisateursPage() {
         )}
       </Panel>
 
-      {creating && <CreateUserDrawer onClose={close} />}
-      {selected && (
-        <EditUserDrawer
+      {/* Panneau de droite : détail du compte cliqué, sinon formulaire de création. */}
+      {selected ? (
+        <EditUserPanel
           key={selected.id}
           user={selected}
           isSelf={selected.id === currentUser?.id}
@@ -186,7 +192,14 @@ export default function UtilisateursPage() {
           onClose={close}
           dispatch={dispatch}
         />
+      ) : writable ? (
+        <CreateUserPanel mobileOpen={creating} onClose={creating ? close : undefined} />
+      ) : (
+        <SidePanel title="Détail du compte" icon={<UserCog size={16} />}>
+          <p className="text-[12.5px] text-muted">Cliquez sur un compte du tableau pour afficher ses informations.</p>
+        </SidePanel>
       )}
+      </SplitLayout>
     </div>
   );
 }
@@ -224,7 +237,7 @@ function PasswordInput({ value, onChange, label }: { value: string; onChange: (v
   );
 }
 
-function CreateUserDrawer({ onClose }: { onClose: () => void }) {
+function CreateUserPanel({ onClose, mobileOpen }: { onClose?: () => void; mobileOpen: boolean }) {
   const { dispatch } = useStore();
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
@@ -238,21 +251,31 @@ function CreateUserDrawer({ onClose }: { onClose: () => void }) {
     setSaving(true);
     const ok = await dispatch({ type: "CREATE_USER", username: username.trim(), password, profil, first_name: first.trim(), last_name: last.trim(), email: email.trim() });
     setSaving(false);
-    if (ok) onClose();
+    if (ok) {
+      // Formulaire vidé pour enchaîner la création suivante.
+      setFirst("");
+      setLast("");
+      setUsername("");
+      setEmail("");
+      setPassword(motDePasseProvisoire());
+      onClose?.();
+    }
   }
 
   return (
-    <Drawer
-      open
+    <SidePanel
+      mobileOpen={mobileOpen}
       onClose={onClose}
       title="Nouvel utilisateur"
       subtitle="Le compte est actif dès sa création."
       icon={<UserPlus size={17} />}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
+          {onClose && (
+            <Button variant="ghost" onClick={onClose}>
+              Annuler
+            </Button>
+          )}
           <Button disabled={!username.trim() || !password || saving} onClick={() => void submit()}>
             {saving ? "Création…" : "Créer le compte"}
           </Button>
@@ -260,7 +283,7 @@ function CreateUserDrawer({ onClose }: { onClose: () => void }) {
       }
     >
       <DrawerSection title="Identité">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           <Field label="Prénom">
             <input className={inputClass} value={first} onChange={(e) => setFirst(e.target.value)} autoFocus />
           </Field>
@@ -281,11 +304,11 @@ function CreateUserDrawer({ onClose }: { onClose: () => void }) {
       <DrawerSection title="Mot de passe provisoire" hint="À communiquer à l’utilisateur ; il pourra être réinitialisé à tout moment.">
         <PasswordInput label="Mot de passe" value={password} onChange={setPassword} />
       </DrawerSection>
-    </Drawer>
+    </SidePanel>
   );
 }
 
-function EditUserDrawer({
+function EditUserPanel({
   user,
   isSelf,
   writable,
@@ -330,8 +353,8 @@ function EditUserDrawer({
   }
 
   return (
-    <Drawer
-      open
+    <SidePanel
+      mobileOpen
       onClose={onClose}
       title={displayName(user)}
       subtitle={
@@ -356,7 +379,7 @@ function EditUserDrawer({
       }
     >
       <DrawerSection title="Identité">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           <Field label="Prénom">
             <input className={inputClass} value={first} onChange={(e) => setFirst(e.target.value)} disabled={!writable} />
           </Field>
@@ -415,6 +438,6 @@ function EditUserDrawer({
           </DrawerSection>
         </>
       )}
-    </Drawer>
+    </SidePanel>
   );
 }
