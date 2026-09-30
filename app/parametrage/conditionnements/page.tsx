@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { FilterBar, FilterSelect, SearchInput, matchSearch } from "@/components/Filters";
 import { useStore } from "@/lib/store";
 import { num } from "@/lib/utils";
 
@@ -13,6 +14,12 @@ export default function ConditionnementsPage() {
   const [type, setType] = useState("carton");
   const [poids, setPoids] = useState("");
   const [parPalette, setParPalette] = useState("");
+  const [q, setQ] = useState("");
+  const [fEmballage, setFEmballage] = useState("");
+  const emballages = [...new Set(state.fichesConditionnement.map((f) => f.type_emballage).filter(Boolean))].map((e) => ({ value: e, label: e }));
+  const filtered = state.fichesConditionnement.filter(
+    (f) => matchSearch(q, articleName(f.article), f.type_emballage) && (!fEmballage || f.type_emballage === fEmballage),
+  );
 
   return (
     <div className="space-y-4">
@@ -45,8 +52,13 @@ export default function ConditionnementsPage() {
           </Button>
         </Panel>
       )}
-      <Panel>
+      <Panel className="overflow-hidden">
+        <FilterBar shown={filtered.length} total={state.fichesConditionnement.length} active={!!q || !!fEmballage} onReset={() => { setQ(""); setFEmballage(""); }}>
+          <SearchInput value={q} onChange={setQ} placeholder="Article ou emballage…" />
+          <FilterSelect label="Emballage" allLabel="Tous les emballages" value={fEmballage} onChange={setFEmballage} options={emballages} />
+        </FilterBar>
         <DataTable
+          emptyText="Aucune fiche ne correspond à ces filtres."
           columns={[
             { key: "a", label: "Article" },
             { key: "n", label: "U / carton" },
@@ -54,7 +66,7 @@ export default function ConditionnementsPage() {
             { key: "p", label: "Poids carton" },
             { key: "pal", label: "Cartons / palette" },
           ]}
-          rows={state.fichesConditionnement.map((f) => ({
+          rows={filtered.map((f) => ({
             a: articleName(f.article),
             n: f.nombre_unites_par_carton,
             t: f.type_emballage,

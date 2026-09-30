@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { useStore } from "@/lib/store";
 import { formatDa, formatDate, num } from "@/lib/utils";
 import { statutTarif } from "@/lib/tarifs";
@@ -16,6 +17,17 @@ export default function TarifsPage() {
   const [prix, setPrix] = useState(0);
   const [debut, setDebut] = useState(new Date().toISOString().slice(0, 10));
   const [fin, setFin] = useState("");
+  const [q, setQ] = useState("");
+  const [fClient, setFClient] = useState("");
+  const [fStatut, setFStatut] = useState<"TOUS" | "En vigueur" | "À venir" | "Expiré">("TOUS");
+  const clientsTarifes = [...new Set(state.tarifs.map((t) => t.client).filter((c): c is number => c != null))].map((c) => ({ value: String(c), label: clientName(c) }));
+  const filtered = state.tarifs.filter(
+    (t) =>
+      matchSearch(q, articleName(t.article), t.client ? clientName(t.client) : "Public") &&
+      (!fClient || (fClient === "PUBLIC" ? t.client == null : String(t.client) === fClient)) &&
+      (fStatut === "TOUS" || statutTarif(t).label === fStatut),
+  );
+  const nbStatut = (l: string) => state.tarifs.filter((t) => statutTarif(t).label === l).length;
 
   return (
     <div className="space-y-4">
@@ -44,8 +56,19 @@ export default function TarifsPage() {
           </Button>
         </Panel>
       )}
-      <Panel>
+      <Panel className="overflow-hidden">
+        <FilterBar shown={filtered.length} total={state.tarifs.length} active={!!q || !!fClient || fStatut !== "TOUS"} onReset={() => { setQ(""); setFClient(""); setFStatut("TOUS"); }}>
+          <SearchInput value={q} onChange={setQ} placeholder="Article ou client…" />
+          <Segmented label="Statut" value={fStatut} onChange={setFStatut} options={[
+            { value: "TOUS", label: "Tous" },
+            { value: "En vigueur", label: "En vigueur", count: nbStatut("En vigueur") },
+            { value: "À venir", label: "À venir", count: nbStatut("À venir") },
+            { value: "Expiré", label: "Expirés", count: nbStatut("Expiré") },
+          ]} />
+          <FilterSelect label="Client" allLabel="Public et clients" value={fClient} onChange={setFClient} options={[{ value: "PUBLIC", label: "Tarif public uniquement" }, ...clientsTarifes]} />
+        </FilterBar>
         <DataTable
+          emptyText="Aucun tarif ne correspond à ces filtres."
           columns={[
             { key: "a", label: "Article" },
             { key: "c", label: "Client" },
@@ -54,7 +77,7 @@ export default function TarifsPage() {
             { key: "f", label: "Fin" },
             { key: "s", label: "Statut" },
           ]}
-          rows={state.tarifs.map((t) => {
+          rows={filtered.map((t) => {
             const s = statutTarif(t);
             return {
               a: articleName(t.article),

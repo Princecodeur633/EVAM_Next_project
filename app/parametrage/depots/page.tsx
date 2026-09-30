@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { Eye, Lock, MapPin, Plus, ShieldCheck, Warehouse } from "lucide-react";
 import { Drawer, DrawerSection } from "@/components/Drawer";
+import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { stockDisponible } from "@/lib/engine";
 import { useStore } from "@/lib/store";
@@ -20,8 +21,15 @@ export default function DepotsPage() {
     setCreating(false);
   }, []);
 
-  const depots = [...state.depots].sort((a, b) => Number(b.est_systeme) - Number(a.est_systeme) || a.nom.localeCompare(b.nom, "fr"));
+  const tous = [...state.depots].sort((a, b) => Number(b.est_systeme) - Number(a.est_systeme) || a.nom.localeCompare(b.nom, "fr"));
   const viewed = state.depots.find((d) => d.id === viewId) ?? null;
+  const [q, setQ] = useState("");
+  const [fRole, setFRole] = useState<"TOUS" | "SYSTEME" | "STANDARD" | "INACTIFS">("TOUS");
+  const depots = tous.filter(
+    (d) =>
+      matchSearch(q, d.nom, d.adresse, d.role) &&
+      (fRole === "TOUS" || (fRole === "SYSTEME" ? d.est_systeme : fRole === "STANDARD" ? !d.est_systeme : !d.actif)),
+  );
   const stockOf = (d: Depot) => state.stock.filter((s) => s.depot === d.id && num(s.quantite_physique) > 0);
 
   return (
@@ -48,6 +56,15 @@ export default function DepotsPage() {
       </div>
 
       <Panel className="overflow-hidden">
+        <FilterBar shown={depots.length} total={tous.length} active={!!q || fRole !== "TOUS"} onReset={() => { setQ(""); setFRole("TOUS"); }}>
+          <SearchInput value={q} onChange={setQ} placeholder="Nom, adresse, rôle…" />
+          <Segmented label="Type" value={fRole} onChange={setFRole} options={[
+            { value: "TOUS", label: "Tous" },
+            { value: "SYSTEME", label: "Rôle système", count: tous.filter((d) => d.est_systeme).length },
+            { value: "STANDARD", label: "Standard", count: tous.filter((d) => !d.est_systeme).length },
+            { value: "INACTIFS", label: "Inactifs", count: tous.filter((d) => !d.actif).length },
+          ]} />
+        </FilterBar>
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-[0.08em] text-muted">
@@ -61,7 +78,7 @@ export default function DepotsPage() {
             {depots.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-12 text-center text-[13px] text-muted">
-                  Aucun dépôt.
+                  {tous.length === 0 ? "Aucun dépôt." : "Aucun dépôt ne correspond à ces filtres."}
                 </td>
               </tr>
             )}

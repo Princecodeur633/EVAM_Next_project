@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { AlertTriangle, Landmark, Lock, Plus, Vault } from "lucide-react";
 import { Drawer, DrawerSection } from "@/components/Drawer";
+import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { displayName } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -20,9 +21,23 @@ export default function CaissesPage() {
   const affectes = new Set(state.caisses.filter((c) => !c.est_principale && c.caissier != null).map((c) => c.caissier));
   const caissiersSansCaisse = state.utilisateurs.filter((u) => u.profil === "CAISSIER" && u.actif && !affectes.has(u.id));
   // Caisse principale en premier, puis les caisses actives par nom.
-  const caisses = [...state.caisses].sort(
+  const toutes = [...state.caisses].sort(
     (a, b) => Number(b.est_principale) - Number(a.est_principale) || Number(b.actif) - Number(a.actif) || a.nom.localeCompare(b.nom, "fr"),
   );
+
+  const [q, setQ] = useState("");
+  const [fStatut, setFStatut] = useState<"TOUTES" | "ACTIVES" | "INACTIVES" | "SANS" | "OUVERTES">("TOUTES");
+  const ordinaires = toutes.filter((c) => !c.est_principale);
+  const caisses = toutes.filter((c) => {
+    if (!matchSearch(q, c.nom, c.emplacement, c.caissier_nom, c.caissier ? userName(c.caissier) : "")) return false;
+    // La caisse principale reste visible dans la vue « Toutes » uniquement.
+    if (fStatut === "TOUTES") return true;
+    if (c.est_principale) return false;
+    if (fStatut === "ACTIVES") return c.actif;
+    if (fStatut === "INACTIVES") return !c.actif;
+    if (fStatut === "SANS") return c.caissier == null;
+    return c.session_ouverte != null;
+  });
 
   return (
     <div className="space-y-4 max-w-[1200px]">
@@ -69,6 +84,16 @@ export default function CaissesPage() {
       )}
 
       <Panel className="overflow-hidden">
+        <FilterBar shown={caisses.length} total={toutes.length} active={!!q || fStatut !== "TOUTES"} onReset={() => { setQ(""); setFStatut("TOUTES"); }}>
+          <SearchInput value={q} onChange={setQ} placeholder="Caisse, emplacement, caissier…" />
+          <Segmented label="Statut" value={fStatut} onChange={setFStatut} options={[
+            { value: "TOUTES", label: "Toutes" },
+            { value: "ACTIVES", label: "Actives", count: ordinaires.filter((c) => c.actif).length },
+            { value: "OUVERTES", label: "Session ouverte", count: ordinaires.filter((c) => c.session_ouverte != null).length },
+            { value: "SANS", label: "Sans caissier", count: ordinaires.filter((c) => c.caissier == null).length },
+            { value: "INACTIVES", label: "Inactives", count: ordinaires.filter((c) => !c.actif).length },
+          ]} />
+        </FilterBar>
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-[0.08em] text-muted">
@@ -81,7 +106,7 @@ export default function CaissesPage() {
             {caisses.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-4 py-12 text-center text-[13px] text-muted">
-                  Aucune caisse pour l’instant.
+                  {toutes.length === 0 ? "Aucune caisse pour l’instant." : "Aucune caisse ne correspond à ces filtres."}
                 </td>
               </tr>
             )}

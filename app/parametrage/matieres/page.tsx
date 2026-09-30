@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { UNITE_LABEL } from "@/lib/labels";
+import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { useStore } from "@/lib/store";
 import type { UniteMesure } from "@/lib/types";
 import { formatQty, num } from "@/lib/utils";
@@ -15,6 +16,16 @@ export default function MatieresPage() {
   const [designation, setDesignation] = useState("");
   const [unite, setUnite] = useState<UniteMesure>("KG");
   const rows = state.articles.filter((a) => a.type_article === "MATIERE_PREMIERE");
+  const [q, setQ] = useState("");
+  const [fUnite, setFUnite] = useState("");
+  const [fStatut, setFStatut] = useState<"TOUS" | "ACTIFS" | "INACTIFS">("TOUS");
+  const filtered = rows.filter(
+    (a) =>
+      matchSearch(q, a.code, a.designation) &&
+      (!fUnite || a.unite_mesure === fUnite) &&
+      (fStatut === "TOUS" || (fStatut === "ACTIFS" ? a.actif : !a.actif)),
+  );
+  const unitesPresentes = [...new Set(rows.map((a) => a.unite_mesure))].map((u) => ({ value: u, label: UNITE_LABEL[u] ?? u }));
 
   return (
     <div className="space-y-4">
@@ -30,8 +41,23 @@ export default function MatieresPage() {
           <Button disabled={!designation.trim()} onClick={() => void dispatch({ type: "CREATE_ARTICLE", designation, type_article: "MATIERE_PREMIERE", unite_mesure: unite })}>Créer</Button>
         </Panel>
       )}
-      <Panel>
+      <Panel className="overflow-hidden">
+        <FilterBar
+          shown={filtered.length}
+          total={rows.length}
+          active={!!q || !!fUnite || fStatut !== "TOUS"}
+          onReset={() => { setQ(""); setFUnite(""); setFStatut("TOUS"); }}
+        >
+          <SearchInput value={q} onChange={setQ} placeholder="Code ou désignation…" />
+          <Segmented label="Statut" value={fStatut} onChange={setFStatut} options={[
+            { value: "TOUS", label: "Toutes" },
+            { value: "ACTIFS", label: "Actives", count: rows.filter((a) => a.actif).length },
+            { value: "INACTIFS", label: "Inactives", count: rows.filter((a) => !a.actif).length },
+          ]} />
+          <FilterSelect label="Unité" allLabel="Toutes les unités" value={fUnite} onChange={setFUnite} options={unitesPresentes} />
+        </FilterBar>
         <DataTable
+          emptyText="Aucune matière ne correspond à ces filtres."
           columns={[
             { key: "c", label: "Code" },
             { key: "d", label: "Désignation" },
@@ -40,7 +66,7 @@ export default function MatieresPage() {
             { key: "al", label: "Stock d'alerte" },
             { key: "s", label: "Statut" },
           ]}
-          rows={rows.map((a) => ({
+          rows={filtered.map((a) => ({
             c: a.code,
             d: a.designation,
             u: UNITE_LABEL[a.unite_mesure] ?? a.unite_mesure,

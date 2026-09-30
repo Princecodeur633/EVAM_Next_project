@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { TYPE_ARTICLE_LABEL, UNITE_LABEL } from "@/lib/labels";
+import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { useStore, type ListeValeurs } from "@/lib/store";
 import type { TypeArticle, UniteMesure } from "@/lib/types";
 
@@ -38,6 +39,21 @@ export default function ArticlesPage() {
   const [nouvelleListe, setNouvelleListe] = useState<ListeValeurs>("famille_article");
   const [nouvelleValeur, setNouvelleValeur] = useState("");
   const rows = state.articles.filter((a) => a.type_article === "PRODUIT_FINI" || a.type_article === "PRODUIT_INTERMEDIAIRE");
+  const [q, setQ] = useState("");
+  const [fType, setFType] = useState("");
+  const [fFamille, setFFamille] = useState("");
+  const [fFiche, setFFiche] = useState<"TOUS" | "VALIDEE" | "BROUILLON" | "SANS">("TOUS");
+  const [fStatut, setFStatut] = useState("");
+  const ficheDe = (a: (typeof rows)[number]) => (a.fiche_technique_validee ? "VALIDEE" : a.fiche_technique_brouillon ? "BROUILLON" : "SANS");
+  const filtered = rows.filter(
+    (a) =>
+      matchSearch(q, a.code, a.designation, a.marque) &&
+      (!fType || a.type_article === fType) &&
+      (!fFamille || String(a.famille ?? "") === fFamille) &&
+      (fFiche === "TOUS" || ficheDe(a) === fFiche) &&
+      (!fStatut || (fStatut === "ACTIFS" ? a.actif : !a.actif)),
+  );
+  const famillesPresentes = [...new Set(rows.map((a) => a.famille).filter((f): f is number => f != null))].map((f) => ({ value: String(f), label: familleName(f) }));
 
   const listes: ListeAffichee[] = [
     { cle: "famille_article", titre: "Familles", valeurs: state.famillesArticle.map((v) => ({ id: v.id, libelle: v.nom, actif: v.actif })) },
@@ -130,8 +146,29 @@ export default function ArticlesPage() {
           </Button>
         </Panel>
       )}
-      <Panel>
+      <Panel className="overflow-hidden">
+        <FilterBar
+          shown={filtered.length}
+          total={rows.length}
+          active={!!q || !!fType || !!fFamille || !!fStatut || fFiche !== "TOUS"}
+          onReset={() => { setQ(""); setFType(""); setFFamille(""); setFStatut(""); setFFiche("TOUS"); }}
+        >
+          <SearchInput value={q} onChange={setQ} placeholder="Code, désignation, marque…" />
+          <Segmented label="Fiche technique" value={fFiche} onChange={setFFiche} options={[
+            { value: "TOUS", label: "Toutes fiches" },
+            { value: "VALIDEE", label: "Validée", count: rows.filter((a) => ficheDe(a) === "VALIDEE").length },
+            { value: "BROUILLON", label: "Brouillon", count: rows.filter((a) => ficheDe(a) === "BROUILLON").length },
+            { value: "SANS", label: "Sans fiche", count: rows.filter((a) => ficheDe(a) === "SANS").length },
+          ]} />
+          <FilterSelect label="Type" allLabel="Tous les types" value={fType} onChange={setFType} options={[
+            { value: "PRODUIT_FINI", label: TYPE_ARTICLE_LABEL.PRODUIT_FINI },
+            { value: "PRODUIT_INTERMEDIAIRE", label: TYPE_ARTICLE_LABEL.PRODUIT_INTERMEDIAIRE },
+          ]} />
+          <FilterSelect label="Famille" allLabel="Toutes les familles" value={fFamille} onChange={setFFamille} options={famillesPresentes} />
+          <FilterSelect label="Statut" allLabel="Actifs et inactifs" value={fStatut} onChange={setFStatut} options={[{ value: "ACTIFS", label: "Actifs" }, { value: "INACTIFS", label: "Inactifs" }]} />
+        </FilterBar>
         <DataTable
+          emptyText="Aucun article ne correspond à ces filtres."
           columns={[
             { key: "c", label: "Code" },
             { key: "d", label: "Désignation" },
@@ -141,7 +178,7 @@ export default function ArticlesPage() {
             { key: "fisc", label: "Code fiscal" },
             { key: "ft", label: "Fiche technique" },
           ]}
-          rows={rows.map((a) => ({
+          rows={filtered.map((a) => ({
             c: a.code,
             d: a.designation,
             t: TYPE_ARTICLE_LABEL[a.type_article],

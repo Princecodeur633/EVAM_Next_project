@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, FilePlus2, Lock, Pencil, Plus, ScrollText, Search, Trash2, X } from "lucide-react";
+import { Segmented, matchSearch } from "@/components/Filters";
 import { Button, PageHeader, StatusBadge, inputClass } from "@/components/ui";
 import { actions } from "@/lib/api";
 import { STATUT_FT_LABEL, UNITE_LABEL } from "@/lib/labels";
@@ -24,6 +25,7 @@ export function FicheTechniqueWorkspace({ selectedId }: { selectedId: number | n
   const router = useRouter();
   const writable = canEditParam(BASE);
   const [query, setQuery] = useState("");
+  const [fStatut, setFStatut] = useState<"TOUS" | "BROUILLON" | "VALIDEE">("TOUS");
   const [creating, setCreating] = useState(false);
   const [newArticle, setNewArticle] = useState(0);
 
@@ -31,9 +33,9 @@ export function FicheTechniqueWorkspace({ selectedId }: { selectedId: number | n
     const q = query.trim().toLowerCase();
     const ordre = { BROUILLON: 0, VALIDEE: 1, ARCHIVEE: 2 } as const;
     return [...state.fichesTechniques]
-      .filter((f) => !q || articleName(f.article).toLowerCase().includes(q))
+      .filter((f) => matchSearch(q, articleName(f.article), `v${f.version}`) && (fStatut === "TOUS" || f.statut === fStatut))
       .sort((a, b) => ordre[a.statut] - ordre[b.statut] || articleName(a.article).localeCompare(articleName(b.article), "fr") || b.version - a.version);
-  }, [state.fichesTechniques, query, articleName]);
+  }, [state.fichesTechniques, query, fStatut, articleName]);
 
   const selected = state.fichesTechniques.find((f) => f.id === selectedId) ?? null;
   const brouillons = state.fichesTechniques.filter((f) => f.statut === "BROUILLON").length;
@@ -82,6 +84,11 @@ export function FicheTechniqueWorkspace({ selectedId }: { selectedId: number | n
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input className={cn(inputClass, "pl-8 h-8 text-[12.5px]")} placeholder="Rechercher un article…" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
+            <Segmented label="Statut" value={fStatut} onChange={setFStatut} options={[
+              { value: "TOUS", label: "Toutes", count: state.fichesTechniques.length },
+              { value: "BROUILLON", label: "Brouillons", count: brouillons },
+              { value: "VALIDEE", label: "Validées", count: state.fichesTechniques.filter((f) => f.statut === "VALIDEE").length },
+            ]} />
             {writable &&
               (creating ? (
                 <div className="rounded-[8px] border border-line bg-surface-2 p-2.5 space-y-2">
@@ -109,7 +116,7 @@ export function FicheTechniqueWorkspace({ selectedId }: { selectedId: number | n
               ))}
           </div>
           <ul className="max-h-[calc(100dvh-260px)] overflow-y-auto overscroll-contain">
-            {fiches.length === 0 && <li className="px-4 py-8 text-center text-[12.5px] text-muted">Aucune fiche.</li>}
+            {fiches.length === 0 && <li className="px-4 py-8 text-center text-[12.5px] text-muted">{state.fichesTechniques.length ? "Aucune fiche pour ces filtres." : "Aucune fiche."}</li>}
             {fiches.map((f) => {
               const active = f.id === selectedId;
               return (

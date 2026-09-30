@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { useStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { endpoints } from "@/lib/api/resources";
@@ -18,6 +19,17 @@ export default function FiscalitePage() {
   const [exonere, setExonere] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [fFamille, setFFamille] = useState("");
+  const [fStatut, setFStatut] = useState<"TOUS" | "ACTIFS" | "INACTIFS">("TOUS");
+  const [fExo, setFExo] = useState("");
+  const codesFiltres = state.codesFiscaux.filter(
+    (c) =>
+      matchSearch(q, c.code, familleFiscaleName(c.famille_fiscale)) &&
+      (!fFamille || String(c.famille_fiscale) === fFamille) &&
+      (fStatut === "TOUS" || (fStatut === "ACTIFS" ? c.actif : !c.actif)) &&
+      (!fExo || (fExo === "OUI" ? c.exonere : !c.exonere)),
+  );
 
   async function createCode() {
     setBusy(true);
@@ -111,8 +123,24 @@ export default function FiscalitePage() {
           </Button>
         </Panel>
       )}
-      <Panel>
+      <Panel className="overflow-hidden">
+        <FilterBar
+          shown={codesFiltres.length}
+          total={state.codesFiscaux.length}
+          active={!!q || !!fFamille || !!fExo || fStatut !== "TOUS"}
+          onReset={() => { setQ(""); setFFamille(""); setFExo(""); setFStatut("TOUS"); }}
+        >
+          <SearchInput value={q} onChange={setQ} placeholder="Code ou famille…" />
+          <Segmented label="Statut" value={fStatut} onChange={setFStatut} options={[
+            { value: "TOUS", label: "Tous" },
+            { value: "ACTIFS", label: "Actifs", count: state.codesFiscaux.filter((c) => c.actif).length },
+            { value: "INACTIFS", label: "Inactifs", count: state.codesFiscaux.filter((c) => !c.actif).length },
+          ]} />
+          <FilterSelect label="Famille fiscale" allLabel="Toutes les familles" value={fFamille} onChange={setFFamille} options={state.famillesFiscales.map((f) => ({ value: String(f.id), label: f.nom }))} />
+          <FilterSelect label="TVA" allLabel="TVA : tous" value={fExo} onChange={setFExo} options={[{ value: "OUI", label: "Exonérés de TVA" }, { value: "NON", label: "Soumis à TVA" }]} />
+        </FilterBar>
         <DataTable
+          emptyText="Aucun code fiscal ne correspond à ces filtres."
           columns={[
             { key: "c", label: "Code" },
             { key: "f", label: "Famille" },
@@ -122,7 +150,7 @@ export default function FiscalitePage() {
             { key: "e", label: "Exonéré" },
             { key: "x", label: "Actif" },
           ]}
-          rows={state.codesFiscaux.map((c) => ({
+          rows={codesFiltres.map((c) => ({
             c: c.code,
             f: familleFiscaleName(c.famille_fiscale),
             t: `${num(c.taux_tva)} %`,

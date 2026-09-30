@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { TYPE_CLIENT_LABEL } from "@/lib/labels";
+import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { useStore } from "@/lib/store";
 import type { TypeClient } from "@/lib/types";
 import { formatDa, num } from "@/lib/utils";
@@ -18,6 +19,15 @@ export default function ParamClientsPage() {
   const [adresse, setAdresse] = useState("");
   const [encours, setEncours] = useState(0);
   const [delai, setDelai] = useState(0);
+  const [q, setQ] = useState("");
+  const [fType, setFType] = useState("");
+  const [fStatut, setFStatut] = useState<"TOUS" | "ACTIFS" | "BLOQUES">("TOUS");
+  const filtered = state.clients.filter(
+    (c) =>
+      matchSearch(q, c.code, c.nom, c.telephone, c.adresse) &&
+      (!fType || c.type_client === fType) &&
+      (fStatut === "TOUS" || (fStatut === "BLOQUES" ? c.bloque : !c.bloque)),
+  );
   return (
     <div className="space-y-4">
       <PageHeader eyebrow="Référentiel" title="Clients" description="Répertoire des particuliers, sociétés et clients sous contrat. Cliquez sur une ligne pour voir la fiche complète." />
@@ -46,8 +56,18 @@ export default function ParamClientsPage() {
           </Button>
         </Panel>
       )}
-      <Panel>
+      <Panel className="overflow-hidden">
+        <FilterBar shown={filtered.length} total={state.clients.length} active={!!q || !!fType || fStatut !== "TOUS"} onReset={() => { setQ(""); setFType(""); setFStatut("TOUS"); }}>
+          <SearchInput value={q} onChange={setQ} placeholder="Nom, code, téléphone…" />
+          <Segmented label="Statut" value={fStatut} onChange={setFStatut} options={[
+            { value: "TOUS", label: "Tous" },
+            { value: "ACTIFS", label: "Actifs", count: state.clients.filter((c) => !c.bloque).length },
+            { value: "BLOQUES", label: "Bloqués", count: state.clients.filter((c) => c.bloque).length },
+          ]} />
+          <FilterSelect label="Type" allLabel="Tous les types" value={fType} onChange={setFType} options={(Object.keys(TYPE_CLIENT_LABEL) as TypeClient[]).map((t) => ({ value: t, label: TYPE_CLIENT_LABEL[t] }))} />
+        </FilterBar>
         <DataTable
+          emptyText="Aucun client ne correspond à ces filtres."
           columns={[
             { key: "c", label: "Code" },
             { key: "n", label: "Nom" },
@@ -57,7 +77,7 @@ export default function ParamClientsPage() {
             { key: "d", label: "Délai paiement" },
             { key: "b", label: "Statut" },
           ]}
-          rows={state.clients.map((c) => ({
+          rows={filtered.map((c) => ({
             c: c.code,
             n: c.nom,
             t: TYPE_CLIENT_LABEL[c.type_client] ?? c.type_client,

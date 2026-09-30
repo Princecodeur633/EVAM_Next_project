@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { KeyRound, Plus, Power, Search, UserCog, UserPlus, Wand2 } from "lucide-react";
+import { KeyRound, Plus, Power, UserCog, UserPlus, Wand2 } from "lucide-react";
 import { Drawer, DrawerSection } from "@/components/Drawer";
+import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { ACCENT_SOFT } from "@/components/icons";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { displayName, PROFIL_LABEL } from "@/lib/labels";
@@ -46,7 +47,7 @@ export default function UtilisateursPage() {
     return [...state.utilisateurs]
       .filter((u) => (filtre === "ACTIFS" ? u.actif : filtre === "INACTIFS" ? !u.actif : true))
       .filter((u) => !profilFiltre || u.profil === profilFiltre)
-      .filter((u) => !q || `${displayName(u)} ${u.username} ${u.email}`.toLowerCase().includes(q))
+      .filter((u) => matchSearch(q, displayName(u), u.username, u.email, u.telephone))
       .sort((a, b) => Number(b.actif) - Number(a.actif) || displayName(a).localeCompare(displayName(b), "fr"));
   }, [state.utilisateurs, query, filtre, profilFiltre]);
 
@@ -73,44 +74,35 @@ export default function UtilisateursPage() {
       />
 
       <Panel className="overflow-hidden">
-        {/* Barre de filtres */}
-        <div className="px-3 sm:px-4 py-3 border-b border-line flex flex-col lg:flex-row lg:items-center gap-2.5">
-          <div className="relative flex-1 min-w-0">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input className={cn(inputClass, "pl-8")} placeholder="Rechercher un nom, un identifiant…" value={query} onChange={(e) => setQuery(e.target.value)} />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-[7px] border border-line p-0.5 bg-surface-2">
-              {(
-                [
-                  ["TOUS", `Tous · ${state.utilisateurs.length}`],
-                  ["ACTIFS", `Actifs · ${nbActifs}`],
-                  ["INACTIFS", `Inactifs · ${state.utilisateurs.length - nbActifs}`],
-                ] as [Filtre, string][]
-              ).map(([k, label]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setFiltre(k)}
-                  className={cn(
-                    "h-7 px-2.5 rounded-[5px] text-[12px] font-medium transition-colors whitespace-nowrap",
-                    filtre === k ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <select className={cn(inputClass, "h-8 w-auto text-[12px]")} value={profilFiltre} onChange={(e) => setProfilFiltre(e.target.value as Profil | "")} aria-label="Filtrer par rôle">
-              <option value="">Tous les rôles</option>
-              {PROFILS.map((p) => (
-                <option key={p} value={p}>
-                  {PROFIL_LABEL[p]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <FilterBar
+          shown={rows.length}
+          total={state.utilisateurs.length}
+          active={!!query || !!profilFiltre || filtre !== "TOUS"}
+          onReset={() => {
+            setQuery("");
+            setProfilFiltre("");
+            setFiltre("TOUS");
+          }}
+        >
+          <SearchInput value={query} onChange={setQuery} placeholder="Nom, identifiant, e-mail, téléphone…" />
+          <Segmented
+            label="Statut"
+            value={filtre}
+            onChange={setFiltre}
+            options={[
+              { value: "TOUS", label: "Tous" },
+              { value: "ACTIFS", label: "Actifs", count: nbActifs },
+              { value: "INACTIFS", label: "Inactifs", count: state.utilisateurs.length - nbActifs },
+            ]}
+          />
+          <FilterSelect
+            label="Rôle"
+            allLabel="Tous les rôles"
+            value={profilFiltre}
+            onChange={(v) => setProfilFiltre(v as Profil | "")}
+            options={PROFILS.map((p) => ({ value: p, label: `${PROFIL_LABEL[p]} (${state.utilisateurs.filter((u) => u.profil === p).length})` }))}
+          />
+        </FilterBar>
 
         {rows.length === 0 ? (
           <p className="px-4 py-12 text-center text-[13px] text-muted">Aucun compte ne correspond à ces filtres.</p>
