@@ -80,6 +80,9 @@ export type StatutCommande = "BROUILLON" | "VALIDEE" | "EN_PREPARATION" | "LIVRE
 export type StatutFacture = "EMISE" | "PAYEE" | "PARTIELLEMENT_PAYEE" | "ANNULEE";
 export type ModePaiement = "ESPECES" | "MOBILE_MONEY" | "VIREMENT" | "CHEQUE";
 export type StatutSession = "OUVERTE" | "CLOTUREE";
+/** Circuit du décaissement : demande (caissier) -> autorisation (Direction/
+ * Comptabilité) -> sortie d'argent (caissier). Refusé et Effectué sont finaux. */
+export type StatutDecaissement = "EN_ATTENTE" | "AUTORISE" | "REFUSE" | "EFFECTUE";
 export type StatutPreparation = "A_PREPARER" | "EN_PREPARATION" | "PRETE" | "SORTIE_MAGASIN";
 export type StatutBL = "EN_LIVRAISON" | "LIVREE" | "PARTIELLEMENT_LIVREE" | "RETOURNEE";
 export type TypeAnomalie =
@@ -181,6 +184,9 @@ export interface Article {
   fiche_technique_brouillon?: number | null;
   /** Id de la fiche technique validée en vigueur (ou null). */
   fiche_technique_validee?: number | null;
+  /** Vrai dès que l'article figure dans un document (commande, stock, OF, lot...) :
+   * type, famille, parfum, format et unité de vente sont alors figés. */
+  est_verrouille?: boolean;
 }
 
 /** Un article pouvant entrer dans une composition (matière première ou
@@ -749,10 +755,17 @@ export interface Decaissement {
   montant: string;
   motif: string;
   beneficiaire: string;
-  /** Réservé à la Direction ou la Comptabilité/DAF — voir Autorisateur. */
-  autorise_par: number;
+  statut: StatutDecaissement;
+  /** Renseigné par l'action Autoriser / Refuser — jamais choisi à la demande. */
+  autorise_par: number | null;
+  autorise_par_nom?: string | null;
   effectue_par: number;
+  effectue_par_nom?: string;
+  caisse_nom?: string;
+  motif_refus: string;
   date_decaissement: string;
+  date_autorisation: string | null;
+  date_execution: string | null;
 }
 
 /** Une personne pouvant autoriser un décaissement (Direction ou

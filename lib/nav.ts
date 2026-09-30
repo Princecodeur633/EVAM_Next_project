@@ -99,6 +99,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   DIRECTION: [
     g("poste", "Menu", "home", [I.accueil]),
     g("pilotage", "Pilotage", "bar", [I.dashboard, I.couts, I.marges, I.anomalies]),
+    g("caisse", "Caisse", "banknote", [I.decaissements]),
   ],
   RESPONSABLE_PRODUCTION: [
     g("poste", "Menu", "home", [I.accueil]),

@@ -141,7 +141,10 @@ export type Action =
   | { type: "GENERER_LIGNES_FACTURE"; id: number }
   | { type: "CREATE_AVOIR"; client: number; montant: number; motif: string; facture_origine?: number }
   | { type: "UTILISER_AVOIR"; id: number; facture: number }
-  | { type: "CREATE_DECAISSEMENT"; session_caisse: number; montant: number; motif: string; autorise_par: number; beneficiaire?: string }
+  | { type: "CREATE_DECAISSEMENT"; session_caisse: number; montant: number; motif: string; beneficiaire?: string }
+  | { type: "AUTORISER_DECAISSEMENT"; id: number }
+  | { type: "REFUSER_DECAISSEMENT"; id: number; motif: string }
+  | { type: "EFFECTUER_DECAISSEMENT"; id: number }
   | { type: "CREATE_RECLAMATION"; client: number; article: number; quantite: number; type_probleme: string; description: string; bon_livraison?: number; facture?: number; produit_retourne?: boolean; prix_unitaire?: number }
   | { type: "CREATE_RETOUR_PHYSIQUE"; reclamation: number; quantite_retournee: number; lot?: number }
   | { type: "CREATE_CONTROLE_RETOUR"; retour_physique: number; resultat: string; observations?: string }
@@ -755,13 +758,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             await actions.utiliserAvoir(action.id, action.facture);
             break;
           case "CREATE_DECAISSEMENT":
+            // Le caissier ne fait que la DEMANDE : l'autorisation (Direction /
+            // Comptabilité) et l'exécution sont deux actions séparées.
             await api.post(endpoints.decaissements, {
               session_caisse: action.session_caisse,
               montant: action.montant,
               motif: action.motif,
               beneficiaire: action.beneficiaire ?? "",
-              autorise_par: action.autorise_par,
             });
+            break;
+          case "AUTORISER_DECAISSEMENT":
+            await actions.autoriserDecaissement(action.id);
+            break;
+          case "REFUSER_DECAISSEMENT":
+            await actions.refuserDecaissement(action.id, action.motif);
+            break;
+          case "EFFECTUER_DECAISSEMENT":
+            await actions.effectuerDecaissement(action.id);
             break;
           case "CREATE_RECLAMATION":
             await api.post(endpoints.reclamations, {

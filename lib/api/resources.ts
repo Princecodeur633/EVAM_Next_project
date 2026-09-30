@@ -5,7 +5,6 @@ import type {
   AnomalieDetectee,
   Article,
   ArticleFournisseur,
-  Autorisateur,
   Avoir,
   BesoinApprovisionnement,
   BesoinMatierePrevu,
@@ -265,6 +264,10 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "ofList",
     "utilisateurs",
     "encaissements",
+    "caisses",
+    "sessionsCaisse",
+    "decaissements",
+    "ecartsCaisse",
     "coutsMatieres",
     "coutsEnergie",
     "coutsMainOeuvre",
@@ -500,8 +503,15 @@ export const actions = {
   genererLignesFacture: (id: number) => api.post<Facture>(`${endpoints.factures}${id}/generer_lignes/`),
   utiliserAvoir: (id: number, facture: number) =>
     api.post<Avoir>(`${endpoints.avoirs}${id}/utiliser/`, { facture }),
-  /** Liste de choix du champ « Autorisé par » d'un décaissement : Direction et Comptabilité/DAF uniquement. */
-  autorisateursDecaissement: () => api.get<Autorisateur[]>(`${endpoints.decaissements}autorisateurs/`),
+  /**
+   * Circuit du décaissement : le caissier fait la demande (CREATE_DECAISSEMENT,
+   * sans autorise_par) ; la Direction ou la Comptabilité/DAF autorise ou
+   * refuse ; puis le caissier effectue la sortie d'argent.
+   */
+  decaissementsAAutoriser: () => api.get<Decaissement[]>(`${endpoints.decaissements}a_autoriser/`),
+  autoriserDecaissement: (id: number) => api.post<Decaissement>(`${endpoints.decaissements}${id}/autoriser/`),
+  refuserDecaissement: (id: number, motif: string) => api.post<Decaissement>(`${endpoints.decaissements}${id}/refuser/`, { motif }),
+  effectuerDecaissement: (id: number) => api.post<Decaissement>(`${endpoints.decaissements}${id}/effectuer/`),
   /** Annuaire léger (id, nom, profil) de tous les comptes — ouvert à tout utilisateur authentifié. */
   annuaire: () => api.get<AnnuaireEntry[]>("/comptes/annuaire/"),
   cloturerSession: (id: number, solde_compte: string, justification?: string) =>
