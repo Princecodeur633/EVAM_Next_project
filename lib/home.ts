@@ -31,7 +31,6 @@ import {
   TrendingDown,
   Truck,
   UserPlus,
-  UserX,
   Users,
   UserCog,
   Vault,
@@ -67,8 +66,8 @@ export type KpiTone = "default" | "warning" | "success" | "danger" | "teal";
 
 export type HomeKpi = { label: string; value: string | number; hint?: string; tone?: KpiTone; href?: string; icon: LucideIcon };
 export type HomeTask = { href: string; title: string; detail: string; badge?: { label: string; tone: Tone }; meta?: string };
-/** `pinned` : carte toujours affichée, même vide. */
-export type HomeSection = { id: string; title: string; icon: LucideIcon; href: string; total: number; items: HomeTask[]; empty: string; tone?: Tone; pinned?: boolean };
+/** `pinned` : carte toujours affichée, même vide. `wide` : carte sur toute la largeur. */
+export type HomeSection = { id: string; title: string; icon: LucideIcon; href: string; total: number; items: HomeTask[]; empty: string; tone?: Tone; pinned?: boolean; wide?: boolean };
 export type HomeChart = { title: string; subtitle?: string; href?: string; kind: "donut" | "hbar"; data: ChartPoint[]; centerLabel?: string };
 export type HomeAction = { href: string; label: string; icon: LucideIcon };
 /** Situation des caisses, affichée en tête de l’accueil caissier. */
@@ -93,6 +92,8 @@ export type HomeData = {
   chart?: HomeChart;
   cash?: HomeCash;
   priorities?: HomePriority[];
+  /** false : pas de colonne latérale (accès rapides, repères, graphique). */
+  aside?: boolean;
 };
 
 export type HomeHelpers = {
@@ -280,7 +281,6 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
   const actifs = state.utilisateurs.filter((u) => u.actif);
   const inactifs = state.utilisateurs.filter((u) => !u.actif);
   const journalToday = state.journal.filter((j) => sameDay(j.date_action));
-  const ftBrouillon = state.fichesTechniques.filter((f) => f.statut === "BROUILLON");
 
   const aUneCaisse = (id: number) => state.caisses.some((c) => c.caissier === id && !c.est_principale);
   const aUneFicheChauffeur = (id: number) => state.chauffeurs.some((c) => c.utilisateur === id);
@@ -289,7 +289,6 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
     .map((u) => {
       if (!u.profil || !PROFIL_LABEL[u.profil]) return { u, raison: "Sans rôle", href: "/admin/utilisateurs" };
       if (!loaded) return null;
-      if (u.profil === "CAISSIER" && !aUneCaisse(u.id)) return { u, raison: "Sans caisse", href: "/admin/caisses" };
       if (u.profil === "CHAUFFEUR" && !aUneFicheChauffeur(u.id)) return { u, raison: "Sans fiche chauffeur", href: "/admin/utilisateurs" };
       return null;
     })
@@ -337,7 +336,7 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
       done: caissiers.length - caissiersSansCaisse.length,
       total: caissiers.length,
       status: !loaded ? "loading" : caissiers.length === 0 || caissiersSansCaisse.length ? "todo" : "done",
-      missing: caissiersSansCaisse.map(displayName),
+      missing: [],
     },
     {
       title: "Valider la fiche technique de chaque produit fini",
@@ -354,31 +353,32 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
       done: produitsFinis.length - pfSansFiche.length,
       total: produitsFinis.length,
       status: !loaded ? "loading" : pfSansFiche.length ? "todo" : "done",
-      missing: pfSansFiche.map((a) => a.designation),
+      missing: [],
     },
   ];
 
+  const caissesOuvertes = state.caisses.filter((c) => !c.est_principale && c.session_ouverte != null).length;
+  const caissesActives = state.caisses.filter((c) => !c.est_principale && c.actif).length;
+
   return {
     priorities,
-    actions: [
-      { href: "/admin/utilisateurs", label: "Gérer les comptes", icon: UserPlus },
-      { href: "/admin/caisses", label: "Caisses", icon: Vault },
-    ],
+    aside: false,
+    // Pas de boutons d’en-tête : chaque étape des priorités porte déjà son action.
+    actions: [],
     kpis: [
-      { label: "Comptes actifs", value: actifs.length, hint: `${state.utilisateurs.length} au total · ${inactifs.length} inactif(s)`, icon: Users, href: "/admin/utilisateurs" },
-      { label: "Comptes à compléter", value: incomplets.length, hint: "Sans caisse ou sans rôle", tone: incomplets.length ? "warning" : "success", icon: UserCog, href: "/admin/utilisateurs" },
-      { label: "Fiches en brouillon", value: ftBrouillon.length, hint: "À valider", tone: ftBrouillon.length ? "warning" : "success", icon: ScrollText, href: "/parametrage/fiches-techniques" },
-      { label: "Actions aujourd’hui", value: journalToday.length, hint: "Journal d’audit", tone: "teal", icon: History, href: "/admin/audit" },
+      { label: "Comptes actifs", value: actifs.length, hint: inactifs.length ? `${inactifs.length} compte(s) désactivé(s)` : "Aucun compte désactivé", icon: Users, href: "/admin/utilisateurs" },
+      { label: "Sessions de caisse ouvertes", value: loaded ? caissesOuvertes : "…", hint: loaded ? `sur ${caissesActives} caisse(s) active(s)` : "Chargement…", tone: "teal", icon: Vault, href: "/admin/caisses" },
+      { label: "Actions aujourd’hui", value: journalToday.length, hint: "Journal d’audit", icon: History, href: "/admin/audit" },
     ],
     sections: [
       ftBrouillonSection(state, h, "Fiches techniques en brouillon", wait("Aucune fiche en brouillon.")),
       section({
         id: "incomplets",
-        title: "Comptes sans caisse/rôle",
+        title: "Comptes sans rôle",
         icon: UserCog,
         href: "/admin/utilisateurs",
         tone: "warning",
-        empty: wait("Tous les comptes actifs sont configurés."),
+        empty: wait("Tous les comptes actifs ont un rôle."),
         all: incomplets.map(({ u, raison, href }) => ({
           href,
           title: displayName(u),
@@ -421,6 +421,7 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
       section({
         id: "journal",
         title: "Activité récente",
+        wide: true,
         icon: History,
         href: "/admin/audit",
         empty: "Aucune action enregistrée.",
@@ -431,28 +432,7 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
           meta: formatDateTime(j.date_action),
         })),
       }),
-      section({
-        id: "inactifs",
-        title: "Comptes désactivés",
-        icon: UserX,
-        href: "/admin/utilisateurs",
-        empty: "Tous les comptes sont actifs.",
-        all: inactifs.map((u) => ({
-          href: "/admin/utilisateurs",
-          title: displayName(u),
-          detail: PROFIL_LABEL[u.profil],
-          meta: u.date_desactivation ? `depuis le ${formatDate(u.date_desactivation)}` : undefined,
-          badge: { label: "Inactif", tone: "neutral" },
-        })),
-      }),
     ],
-    chart: {
-      title: "Comptes par profil",
-      subtitle: "Utilisateurs actifs",
-      href: "/admin/utilisateurs",
-      kind: "hbar",
-      data: countBy(actifs, (u) => u.profil, (k) => PROFIL_LABEL[k as Profil] ?? k),
-    },
   };
 }
 

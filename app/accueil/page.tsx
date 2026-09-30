@@ -133,7 +133,7 @@ export default function AccueilPage() {
         })}
       </div>
 
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+      <div className={cn("grid gap-5 items-start", home.aside !== false && "xl:grid-cols-[minmax(0,1fr)_340px]")}>
         {/* Files de travail */}
         <div className="grid md:grid-cols-2 gap-4 items-start">
           {sections.map((s) => (
@@ -142,6 +142,7 @@ export default function AccueilPage() {
         </div>
 
         {/* Colonne latérale */}
+        {home.aside !== false && (
         <aside className="grid sm:grid-cols-2 xl:grid-cols-1 gap-4 items-start">
           {home.chart && <ChartCard chart={home.chart} href={home.chart.href && allowed(home.chart.href) ? home.chart.href : undefined} />}
 
@@ -187,6 +188,7 @@ export default function AccueilPage() {
             </div>
           )}
         </aside>
+        )}
       </div>
     </div>
   );
@@ -196,7 +198,7 @@ function SectionCard({ section: s }: { section: HomeSection }) {
   const Icon = s.icon;
   const more = s.total - s.items.length;
   return (
-    <section className="evam-card overflow-hidden flex flex-col min-w-0">
+    <section className={cn("evam-card overflow-hidden flex flex-col min-w-0", s.wide && "md:col-span-2")}>
       <header className="px-4 py-3 border-b border-line flex items-center gap-2.5">
         <span className={cn("h-7 w-7 shrink-0 rounded-[7px] flex items-center justify-center", TONE_CHIP[s.total > 0 ? s.tone ?? "info" : "neutral"])}>
           <Icon size={14} strokeWidth={1.8} />
