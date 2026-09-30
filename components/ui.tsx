@@ -254,13 +254,16 @@ export function DataTable({
   columns,
   rows,
   onRowClick,
+  emptyText = "Aucun enregistrement pour le moment.",
 }: {
   columns: { key: string; label: string; className?: string }[];
   rows: Record<string, ReactNode>[];
   onRowClick?: (row: Record<string, ReactNode>) => void;
+  /** Message affiché quand il n’y a aucune ligne (ex. « Aucun résultat pour ces filtres »). */
+  emptyText?: string;
 }) {
   const empty = (
-    <p className="px-3.5 py-12 text-center text-[13px] text-muted">Aucun enregistrement pour le moment.</p>
+    <p className="px-3.5 py-12 text-center text-[13px] text-muted">{emptyText}</p>
   );
 
   return (
@@ -326,7 +329,7 @@ export function DataTable({
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-3.5 py-12 text-center text-[13px] text-muted">
-                  Aucun enregistrement pour le moment.
+                  {emptyText}
                 </td>
               </tr>
             ) : (

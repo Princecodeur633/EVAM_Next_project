@@ -31,10 +31,11 @@ import {
   TrendingDown,
   Truck,
   UserPlus,
-  UserX,
   Users,
+  UserCog,
   Vault,
   Wallet,
+  Warehouse,
 } from "lucide-react";
 import type { ChartPoint } from "@/components/charts";
 import { stockDisponible } from "./engine";
@@ -65,12 +66,35 @@ export type KpiTone = "default" | "warning" | "success" | "danger" | "teal";
 
 export type HomeKpi = { label: string; value: string | number; hint?: string; tone?: KpiTone; href?: string; icon: LucideIcon };
 export type HomeTask = { href: string; title: string; detail: string; badge?: { label: string; tone: Tone }; meta?: string };
-export type HomeSection = { id: string; title: string; icon: LucideIcon; href: string; total: number; items: HomeTask[]; empty: string; tone?: Tone };
+/** `pinned` : carte toujours affichée, même vide. `wide` : carte sur toute la largeur. */
+export type HomeSection = { id: string; title: string; icon: LucideIcon; href: string; total: number; items: HomeTask[]; empty: string; tone?: Tone; pinned?: boolean; wide?: boolean };
 export type HomeChart = { title: string; subtitle?: string; href?: string; kind: "donut" | "hbar"; data: ChartPoint[]; centerLabel?: string };
 export type HomeAction = { href: string; label: string; icon: LucideIcon };
 /** Situation des caisses, affichée en tête de l’accueil caissier. */
 export type HomeCash = { principale?: Caisse; maCaisse?: Caisse; session?: SessionCaisse; caisses: Caisse[] };
-export type HomeData = { actions: HomeAction[]; kpis: HomeKpi[]; sections: HomeSection[]; chart?: HomeChart; cash?: HomeCash };
+/** Étape d’une feuille de route (priorités d’action de l’admin). */
+export type HomePriority = {
+  title: string;
+  detail: string;
+  href: string;
+  cta: string;
+  icon: LucideIcon;
+  done: number;
+  total: number;
+  status: "done" | "todo" | "loading";
+  /** Éléments restants, affichés en aperçu sous la barre de progression. */
+  missing: string[];
+};
+export type HomeData = {
+  actions: HomeAction[];
+  kpis: HomeKpi[];
+  sections: HomeSection[];
+  chart?: HomeChart;
+  cash?: HomeCash;
+  priorities?: HomePriority[];
+  /** false : pas de colonne latérale (accès rapides, repères, graphique). */
+  aside?: boolean;
+};
 
 export type HomeHelpers = {
   meId: number;
@@ -226,26 +250,178 @@ export function homeForRole(role: Profil, state: AppState, h: HomeHelpers): Home
   }
 }
 
+/** Fiches techniques encore en brouillon (partagé par l’admin et le responsable production). */
+function ftBrouillonSection(state: AppState, h: HomeHelpers, title: string, empty: string): HomeSection {
+  return section({
+    id: "ft",
+    title,
+    icon: ScrollText,
+    href: "/parametrage/fiches-techniques",
+    tone: "warning",
+    empty,
+    all: [...state.fichesTechniques]
+      .filter((f) => f.statut === "BROUILLON")
+      .sort(byDateDesc((f) => f.date_creation))
+      .map((f) => ({
+        href: `/parametrage/fiches-techniques/${f.id}`,
+        title: h.articleName(f.article),
+        detail: `Version ${f.version} · créée par ${h.userName(f.cree_par)}`,
+        meta: formatDate(f.date_creation),
+        badge: { label: "Brouillon", tone: "neutral" },
+      })),
+  });
+}
+
 function admin(state: AppState, h: HomeHelpers): HomeData {
+  // L’admin reçoit d’abord comptes + journal, le reste arrive en arrière-plan. La caisse
+  // principale et les dépôts système existant toujours, leur absence signifie « pas encore chargé ».
+  const loaded = state.depots.length > 0 || state.caisses.length > 0;
+  const wait = (msg: string) => (loaded ? msg : "Chargement…");
+
+  const actifs = state.utilisateurs.filter((u) => u.actif);
   const inactifs = state.utilisateurs.filter((u) => !u.actif);
-  const actifs = state.utilisateurs.length - inactifs.length;
   const journalToday = state.journal.filter((j) => sameDay(j.date_action));
-  const nouveaux = state.utilisateurs.filter((u) => withinDays(u.date_creation, 30));
+
+  const aUneCaisse = (id: number) => state.caisses.some((c) => c.caissier === id && !c.est_principale);
+  const aUneFicheChauffeur = (id: number) => state.chauffeurs.some((c) => c.utilisateur === id);
+  const caissiersSansCaisse = loaded ? actifs.filter((u) => u.profil === "CAISSIER" && !aUneCaisse(u.id)) : [];
+  const incomplets = actifs
+    .map((u) => {
+      if (!u.profil || !PROFIL_LABEL[u.profil]) return { u, raison: "Sans rôle", href: "/admin/utilisateurs" };
+      if (!loaded) return null;
+      if (u.profil === "CHAUFFEUR" && !aUneFicheChauffeur(u.id)) return { u, raison: "Sans fiche chauffeur", href: "/admin/utilisateurs" };
+      return null;
+    })
+    .filter((x): x is { u: (typeof actifs)[number]; raison: string; href: string } => x != null);
+
+  const depotsSysteme = state.depots.filter((d) => d.est_systeme);
+  const depotsKo = depotsSysteme.filter((d) => !d.actif).length + Math.max(0, 3 - depotsSysteme.length);
+
+  // Priorités d’action : comptes + rôle → caisses → fiches techniques des produits finis.
+  const profils = Object.keys(PROFIL_LABEL) as Profil[];
+  const profilsSansCompte = profils.filter((p) => p !== "ADMIN_SI" && !actifs.some((u) => u.profil === p));
+  const sansRole = actifs.filter((u) => !u.profil || !PROFIL_LABEL[u.profil]);
+  const caissiers = actifs.filter((u) => u.profil === "CAISSIER");
+  const produitsFinis = state.articles.filter((a) => a.type_article === "PRODUIT_FINI" && a.actif);
+  const avecFicheValidee = new Set(state.fichesTechniques.filter((f) => f.statut === "VALIDEE").map((f) => f.article));
+  const pfSansFiche = produitsFinis.filter((a) => !avecFicheValidee.has(a.id));
+  const priorities: HomePriority[] = [
+    {
+      title: "Créer les comptes et leur rôle",
+      detail: profilsSansCompte.length
+        ? `${profilsSansCompte.length} poste(s) sans compte actif${sansRole.length ? ` · ${sansRole.length} compte(s) sans rôle` : ""}`
+        : sansRole.length
+          ? `${sansRole.length} compte(s) sans rôle`
+          : "Chaque poste a au moins un compte.",
+      href: "/admin/utilisateurs",
+      cta: "Créer un compte",
+      icon: UserPlus,
+      done: profils.length - 1 - profilsSansCompte.length,
+      total: profils.length - 1,
+      status: profilsSansCompte.length || sansRole.length ? "todo" : "done",
+      missing: [...sansRole.map((u) => `${displayName(u)} (sans rôle)`), ...profilsSansCompte.map((p) => PROFIL_LABEL[p])],
+    },
+    {
+      title: "Créer et affecter chaque caisse",
+      detail: !loaded
+        ? "Chargement…"
+        : caissiers.length === 0
+          ? "Aucun caissier : créez d’abord un compte Caissier."
+          : caissiersSansCaisse.length
+            ? `${caissiersSansCaisse.length} caissier(s) sans caisse`
+            : "Chaque caissier a sa caisse.",
+      href: "/admin/caisses",
+      cta: "Affecter une caisse",
+      icon: Vault,
+      done: caissiers.length - caissiersSansCaisse.length,
+      total: caissiers.length,
+      status: !loaded ? "loading" : caissiers.length === 0 || caissiersSansCaisse.length ? "todo" : "done",
+      missing: [],
+    },
+    {
+      title: "Valider la fiche technique de chaque produit fini",
+      detail: !loaded
+        ? "Chargement…"
+        : produitsFinis.length === 0
+          ? "Aucun produit fini créé pour l’instant."
+          : pfSansFiche.length
+            ? `${pfSansFiche.length} produit(s) fini(s) sans fiche validée`
+            : "Tous les produits finis ont une fiche validée.",
+      href: "/parametrage/fiches-techniques",
+      cta: "Valider les fiches",
+      icon: ScrollText,
+      done: produitsFinis.length - pfSansFiche.length,
+      total: produitsFinis.length,
+      status: !loaded ? "loading" : pfSansFiche.length ? "todo" : "done",
+      missing: [],
+    },
+  ];
+
+  const caissesOuvertes = state.caisses.filter((c) => !c.est_principale && c.session_ouverte != null).length;
+  const caissesActives = state.caisses.filter((c) => !c.est_principale && c.actif).length;
+
   return {
-    actions: [
-      { href: "/admin/utilisateurs", label: "Gérer les comptes", icon: UserPlus },
-      { href: "/admin/audit", label: "Journal d’audit", icon: History },
-    ],
+    priorities,
+    aside: false,
+    // Pas de boutons d’en-tête : chaque étape des priorités porte déjà son action.
+    actions: [],
     kpis: [
-      { label: "Comptes actifs", value: actifs, hint: `${state.utilisateurs.length} au total`, icon: Users, href: "/admin/utilisateurs" },
-      { label: "Comptes inactifs", value: inactifs.length, tone: inactifs.length ? "warning" : "success", icon: UserX, href: "/admin/utilisateurs" },
-      { label: "Actions aujourd’hui", value: journalToday.length, hint: "Journal d’audit", tone: "teal", icon: History, href: "/admin/audit" },
-      { label: "Nouveaux comptes", value: nouveaux.length, hint: "30 derniers jours", icon: UserPlus, href: "/admin/utilisateurs" },
+      { label: "Comptes actifs", value: actifs.length, hint: inactifs.length ? `${inactifs.length} compte(s) désactivé(s)` : "Aucun compte désactivé", icon: Users, href: "/admin/utilisateurs" },
+      { label: "Sessions de caisse ouvertes", value: loaded ? caissesOuvertes : "…", hint: loaded ? `sur ${caissesActives} caisse(s) active(s)` : "Chargement…", tone: "teal", icon: Vault, href: "/admin/caisses" },
+      { label: "Actions aujourd’hui", value: journalToday.length, hint: "Journal d’audit", icon: History, href: "/admin/audit" },
     ],
     sections: [
+      ftBrouillonSection(state, h, "Fiches techniques en brouillon", wait("Aucune fiche en brouillon.")),
+      section({
+        id: "incomplets",
+        title: "Comptes sans rôle",
+        icon: UserCog,
+        href: "/admin/utilisateurs",
+        tone: "warning",
+        empty: wait("Tous les comptes actifs ont un rôle."),
+        all: incomplets.map(({ u, raison, href }) => ({
+          href,
+          title: displayName(u),
+          detail: PROFIL_LABEL[u.profil] ?? "Profil non renseigné",
+          badge: { label: raison, tone: "warning" },
+        })),
+      }),
+      section({
+        id: "caissiers",
+        title: "Caissiers sans caisse affectée",
+        icon: Vault,
+        href: "/admin/caisses",
+        tone: "danger",
+        empty: wait("Chaque caissier a sa caisse."),
+        all: caissiersSansCaisse.map((u) => ({
+          href: "/admin/caisses",
+          title: displayName(u),
+          detail: "Ne peut ouvrir aucune session de caisse",
+          badge: { label: "À affecter", tone: "danger" },
+        })),
+      }),
+      section({
+        id: "depots",
+        title: "Dépôts système",
+        pinned: true,
+        icon: Warehouse,
+        href: "/parametrage/depots",
+        tone: depotsKo ? "danger" : "teal",
+        empty: wait("Aucun dépôt système trouvé : vérifiez l’initialisation du backend."),
+        all: depotsSysteme.map((d) => {
+          const lignes = state.stock.filter((s) => s.depot === d.id && num(s.quantite_physique) > 0);
+          return {
+            href: "/parametrage/depots",
+            title: d.nom,
+            detail: `${d.role || "Dépôt système"} · ${lignes.length} article(s) · ${formatQty(sum(lignes, (s) => s.quantite_physique), 0)} en stock`,
+            badge: d.actif ? { label: "Actif", tone: "success" as const } : { label: "Inactif", tone: "danger" as const },
+          };
+        }),
+      }),
       section({
         id: "journal",
         title: "Activité récente",
+        wide: true,
         icon: History,
         href: "/admin/audit",
         empty: "Aucune action enregistrée.",
@@ -256,29 +432,7 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
           meta: formatDateTime(j.date_action),
         })),
       }),
-      section({
-        id: "inactifs",
-        title: "Comptes désactivés",
-        icon: UserX,
-        href: "/admin/utilisateurs",
-        tone: "warning",
-        empty: "Tous les comptes sont actifs.",
-        all: inactifs.map((u) => ({
-          href: "/admin/utilisateurs",
-          title: displayName(u),
-          detail: PROFIL_LABEL[u.profil],
-          meta: u.date_desactivation ? `depuis le ${formatDate(u.date_desactivation)}` : undefined,
-          badge: { label: "Inactif", tone: "neutral" },
-        })),
-      }),
     ],
-    chart: {
-      title: "Comptes par profil",
-      subtitle: "Utilisateurs actifs",
-      href: "/admin/utilisateurs",
-      kind: "hbar",
-      data: countBy(state.utilisateurs.filter((u) => u.actif), (u) => u.profil, (k) => PROFIL_LABEL[k as Profil] ?? k),
-    },
   };
 }
 
@@ -349,7 +503,6 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
   const plans = state.plans.filter((p) => p.statut === "A_CONVERTIR_EN_OF" || p.statut === "PREVISION");
   const matieres = state.demandesMatieres.filter((d) => d.statut === "A_PREPARER" || d.statut === "PARTIELLEMENT_PREPAREE" || d.statut === "PREPAREE");
   const pertesJour = state.pertes.filter((p) => sameDay(p.date_constat));
-  const ftBrouillon = state.fichesTechniques.filter((f) => f.statut === "BROUILLON");
   const ofOrder = (o: OrdreFabrication) => ["EN_PRODUCTION", "PRET", "MATIERES_EN_PREPARATION", "A_PREPARER", "BROUILLON", "PRODUCTION_TERMINEE", "EN_CONTROLE"].indexOf(o.statut);
   return {
     actions: [
@@ -399,19 +552,7 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
           badge: { label: STATUT_DEMANDE_MATIERE_LABEL[d.statut], tone: d.statut === "PREPAREE" ? "teal" : "info" },
         })),
       }),
-      section({
-        id: "ft",
-        title: "Fiches techniques à valider",
-        icon: ScrollText,
-        href: "/parametrage/fiches-techniques",
-        empty: "Toutes les fiches sont validées.",
-        all: ftBrouillon.map((f) => ({
-          href: `/parametrage/fiches-techniques/${f.id}`,
-          title: h.articleName(f.article),
-          detail: `Version ${f.version}`,
-          badge: { label: "Brouillon", tone: "neutral" },
-        })),
-      }),
+      ftBrouillonSection(state, h, "Fiches techniques à valider", "Toutes les fiches sont validées."),
     ],
     chart: ofDonut(state.ofList),
   };

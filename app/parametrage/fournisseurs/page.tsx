@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { useStore } from "@/lib/store";
 
 export default function FournisseursPage() {
@@ -13,6 +14,11 @@ export default function FournisseursPage() {
   const [telephone, setTelephone] = useState("");
   const [email, setEmail] = useState("");
   const [adresse, setAdresse] = useState("");
+  const [q, setQ] = useState("");
+  const [fStatut, setFStatut] = useState<"TOUS" | "ACTIFS" | "INACTIFS">("TOUS");
+  const filtered = state.fournisseurs.filter(
+    (f) => matchSearch(q, f.code, f.nom, f.contact, f.telephone, f.email) && (fStatut === "TOUS" || (fStatut === "ACTIFS" ? f.actif : !f.actif)),
+  );
   return (
     <div className="space-y-4">
       <PageHeader eyebrow="Référentiel" title="Fournisseurs" description="Fournisseurs de matières premières et d’emballages. Cliquez sur une ligne pour voir la fiche complète." />
@@ -34,8 +40,17 @@ export default function FournisseursPage() {
           </Button>
         </Panel>
       )}
-      <Panel>
+      <Panel className="overflow-hidden">
+        <FilterBar shown={filtered.length} total={state.fournisseurs.length} active={!!q || fStatut !== "TOUS"} onReset={() => { setQ(""); setFStatut("TOUS"); }}>
+          <SearchInput value={q} onChange={setQ} placeholder="Nom, code, contact, téléphone…" />
+          <Segmented label="Statut" value={fStatut} onChange={setFStatut} options={[
+            { value: "TOUS", label: "Tous" },
+            { value: "ACTIFS", label: "Actifs", count: state.fournisseurs.filter((f) => f.actif).length },
+            { value: "INACTIFS", label: "Inactifs", count: state.fournisseurs.filter((f) => !f.actif).length },
+          ]} />
+        </FilterBar>
         <DataTable
+          emptyText="Aucun fournisseur ne correspond à ces filtres."
           columns={[
             { key: "c", label: "Code" },
             { key: "n", label: "Nom" },
@@ -44,7 +59,7 @@ export default function FournisseursPage() {
             { key: "e", label: "Email" },
             { key: "a", label: "Statut" },
           ]}
-          rows={state.fournisseurs.map((f) => ({
+          rows={filtered.map((f) => ({
             c: f.code,
             n: f.nom,
             ct: f.contact || "—",

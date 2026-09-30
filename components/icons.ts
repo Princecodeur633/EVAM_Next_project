@@ -121,6 +121,7 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/parametrage/fournisseurs": Truck,
   "/parametrage/fiscalite": Percent,
   "/admin/utilisateurs": Users,
+  "/admin/caisses": Vault,
   "/admin/profils": UserCog,
   "/admin/droits": ShieldCheck,
   "/admin/audit": History,

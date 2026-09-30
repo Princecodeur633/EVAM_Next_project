@@ -6,7 +6,7 @@ import { ArrowRight, ArrowUpRight, CheckCircle2, CircleSlash, Eye, EyeOff, Info,
 import { DonutChart, KpiCard } from "@/components/charts";
 import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, ROLE_ICONS } from "@/components/icons";
 import { StatusBadge } from "@/components/ui";
-import { homeForRole, type HomeCash, type HomeChart, type HomeSection } from "@/lib/home";
+import { homeForRole, type HomeCash, type HomeChart, type HomePriority, type HomeSection } from "@/lib/home";
 import { canAccess, flattenNav } from "@/lib/nav";
 import { ROLE_PROFILES } from "@/lib/roles";
 import { useStore } from "@/lib/store";
@@ -36,7 +36,7 @@ export default function AccueilPage() {
   const sections = home.sections
     .map((s) => ({ ...s, href: allowed(s.href) ? s.href : "", items: s.items.filter((i) => allowed(i.href)) }))
     // Une section vide et secondaire n’apporte rien : on ne garde que celles qui ont du contenu ou qui sont prioritaires.
-    .filter((s, i) => s.total > 0 || s.tone === "warning" || s.tone === "danger" || i < 2);
+    .filter((s, i) => s.pinned || s.total > 0 || s.tone === "warning" || s.tone === "danger" || i < 2);
   const pending = sections.filter((s) => s.tone === "warning" || s.tone === "danger").reduce((a, s) => a + s.total, 0);
 
   const seen = new Set<string>();
@@ -111,6 +111,7 @@ export default function AccueilPage() {
       </section>
 
       {home.cash && <CashStrip cash={home.cash} />}
+      {home.priorities && <PriorityBoard priorities={home.priorities.filter((p) => allowed(p.href))} />}
 
       {/* Indicateurs clés */}
       <div className={cn("grid grid-cols-1 min-[420px]:grid-cols-2 gap-3", kpis.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4")}>
@@ -132,7 +133,7 @@ export default function AccueilPage() {
         })}
       </div>
 
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+      <div className={cn("grid gap-5 items-start", home.aside !== false && "xl:grid-cols-[minmax(0,1fr)_340px]")}>
         {/* Files de travail */}
         <div className="grid md:grid-cols-2 gap-4 items-start">
           {sections.map((s) => (
@@ -141,6 +142,7 @@ export default function AccueilPage() {
         </div>
 
         {/* Colonne latérale */}
+        {home.aside !== false && (
         <aside className="grid sm:grid-cols-2 xl:grid-cols-1 gap-4 items-start">
           {home.chart && <ChartCard chart={home.chart} href={home.chart.href && allowed(home.chart.href) ? home.chart.href : undefined} />}
 
@@ -186,6 +188,7 @@ export default function AccueilPage() {
             </div>
           )}
         </aside>
+        )}
       </div>
     </div>
   );
@@ -195,7 +198,7 @@ function SectionCard({ section: s }: { section: HomeSection }) {
   const Icon = s.icon;
   const more = s.total - s.items.length;
   return (
-    <section className="evam-card overflow-hidden flex flex-col min-w-0">
+    <section className={cn("evam-card overflow-hidden flex flex-col min-w-0", s.wide && "md:col-span-2")}>
       <header className="px-4 py-3 border-b border-line flex items-center gap-2.5">
         <span className={cn("h-7 w-7 shrink-0 rounded-[7px] flex items-center justify-center", TONE_CHIP[s.total > 0 ? s.tone ?? "info" : "neutral"])}>
           <Icon size={14} strokeWidth={1.8} />
@@ -358,6 +361,98 @@ function CashStrip({ cash }: { cash: HomeCash }) {
         )}
         {autres.length > 4 && <p className="text-[11px] text-muted">+ {autres.length - 4} autre(s) caisse(s)</p>}
       </div>
+    </section>
+  );
+}
+
+/** Feuille de route numérotée : l’étape en cours est mise en avant, les étapes faites passent au vert. */
+function PriorityBoard({ priorities }: { priorities: HomePriority[] }) {
+  if (priorities.length === 0) return null;
+  const current = priorities.findIndex((p) => p.status === "todo");
+  const doneCount = priorities.filter((p) => p.status === "done").length;
+  return (
+    <section className="evam-card overflow-hidden">
+      <header className="px-4 sm:px-5 py-3 border-b border-line flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-semibold">Priorités d’action</h2>
+          <p className="text-[11.5px] text-muted mt-0.5">À suivre dans l’ordre pour que l’usine puisse travailler.</p>
+        </div>
+        <span
+          className={cn(
+            "text-[11px] font-semibold num px-2 py-0.5 rounded-[5px] shrink-0",
+            doneCount === priorities.length ? "bg-success-soft text-success" : "bg-surface-2 text-muted",
+          )}
+        >
+          {doneCount}/{priorities.length} faites
+        </span>
+      </header>
+      <ol className="grid md:grid-cols-3 md:divide-x divide-y md:divide-y-0 divide-line">
+        {priorities.map((p, i) => {
+          const isCurrent = i === current;
+          const isDone = p.status === "done";
+          const pct = p.total ? Math.round((p.done / p.total) * 100) : isDone ? 100 : 0;
+          const Icon = p.icon;
+          return (
+            <li key={p.title} className={cn("relative p-4 sm:p-5 flex flex-col gap-3 min-w-0", isCurrent && "bg-primary-soft/40")}>
+              {isCurrent && <span className="absolute inset-x-0 top-0 h-[3px] bg-primary" />}
+              <div className="flex items-start gap-3">
+                <span
+                  className={cn(
+                    "h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold num",
+                    isDone ? "bg-success text-white" : isCurrent ? "bg-primary text-white" : "bg-surface-2 text-muted border border-line",
+                  )}
+                >
+                  {isDone ? <CheckCircle2 size={16} /> : i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-[13px] font-semibold leading-snug">{p.title}</p>
+                    {isCurrent && <span className="text-[10px] uppercase tracking-wide font-semibold text-primary">Prochaine étape</span>}
+                  </div>
+                  <p className={cn("text-[12px] mt-0.5", isDone ? "text-success" : "text-muted")}>{p.detail}</p>
+                </div>
+                <Icon size={16} strokeWidth={1.7} className="text-muted shrink-0 mt-1 hidden sm:block" />
+              </div>
+
+              {p.status !== "loading" && p.total > 0 && (
+                <div>
+                  <div className="flex justify-between text-[11px] text-muted mb-1 num">
+                    <span>
+                      {p.done}/{p.total}
+                    </span>
+                    <span>{pct} %</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                    <div className={cn("h-full rounded-full transition-all duration-700", isDone ? "bg-success" : "bg-primary")} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )}
+
+              {!isDone && p.missing.length > 0 && (
+                <ul className="flex flex-wrap gap-1.5">
+                  {p.missing.slice(0, 4).map((m) => (
+                    <li key={m} className="text-[11px] px-1.5 py-0.5 rounded-[4px] bg-surface-2 border border-line text-muted max-w-full truncate">
+                      {m}
+                    </li>
+                  ))}
+                  {p.missing.length > 4 && <li className="text-[11px] px-1.5 py-0.5 text-muted">+{p.missing.length - 4}</li>}
+                </ul>
+              )}
+
+              <Link
+                href={p.href}
+                className={cn(
+                  "mt-auto inline-flex items-center justify-center gap-1.5 h-8 px-3 text-[12.5px] font-medium rounded-[7px] transition-colors self-start",
+                  isCurrent ? "bg-primary text-white hover:bg-primary-hover" : "border border-line-strong bg-surface hover:bg-surface-2",
+                )}
+              >
+                {isDone ? "Ouvrir" : p.cta}
+                <ArrowRight size={13} />
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

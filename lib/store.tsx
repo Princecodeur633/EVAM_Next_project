@@ -176,6 +176,7 @@ export type Action =
   | { type: "CONFIRMER_BL"; id: number }
   | { type: "CREATE_USER"; username: string; password: string; profil: Profil; first_name?: string; last_name?: string; email?: string }
   | { type: "TOGGLE_USER"; id: number; actif: boolean }
+  | { type: "PATCH_USER"; id: number; first_name?: string; last_name?: string; email?: string; telephone?: string; profil?: Profil; password?: string }
   | { type: "RECALCULER_COUT"; id: number }
   | { type: "CREATE_EXPORT"; type_export: string; periode_debut: string; periode_fin: string }
   | { type: "CREATE_ANOMALIE"; type_anomalie: string; module_source: string; description: string }
@@ -325,7 +326,8 @@ type StoreValue = {
   state: AppState;
   currentUser: SessionUser | null;
   role: Profil | null;
-  dispatch: (action: Action) => Promise<void>;
+  /** Renvoie true si l’action a été enregistrée, false sinon (le message d’erreur est dans state.lastError). */
+  dispatch: (action: Action) => Promise<boolean>;
   can: (action: ActionName) => boolean;
   canEditParam: (href: string) => boolean;
   articleName: (id: number | null | undefined) => string;
@@ -408,37 +410,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const dispatch = useCallback(
-    async (action: Action) => {
+    async (action: Action): Promise<boolean> => {
       if (action.type === "CLEAR_ERROR") {
         setState((s) => ({ ...s, lastError: null }));
-        return;
+        return true;
       }
       if (action.type === "SET_DEPOT") {
         setState((s) => ({ ...s, depotId: action.depotId }));
-        return;
+        return true;
       }
       if (action.type === "LOGOUT") {
         apiLogout();
         setSession(null);
         setState(emptyState());
-        return;
+        return true;
       }
       if (action.type === "LOGIN") {
         try {
           const auth = await apiLogin(action.username, action.password);
           setSession(auth);
           await hydrate(auth, true);
+          return true;
         } catch (err) {
           fail(friendlyAuthError(err));
+          return false;
         }
-        return;
       }
       if (action.type === "REFRESH") {
         const auth = loadSession();
         await hydrate(auth);
-        return;
+        return true;
       }
-      if (busy.current) return;
+      if (busy.current) return false;
       busy.current = true;
       setState((s) => ({ ...s, lastError: null }));
       try {
@@ -971,6 +974,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           case "TOGGLE_USER":
             await api.post(`${detail(endpoints.utilisateurs, action.id)}${action.actif ? "activer" : "desactiver"}/`);
             break;
+          case "PATCH_USER": {
+            // PATCH partiel : seuls les champs fournis sont envoyés (le mot de passe est haché côté backend).
+            const { type: _type, id, ...champs } = action;
+            void _type;
+            const corps = Object.fromEntries(Object.entries(champs).filter(([, v]) => v !== undefined));
+            await api.patch(detail(endpoints.utilisateurs, id), corps);
+            break;
+          }
           case "RECALCULER_COUT":
             await actions.recalculerCout(action.id);
             break;
@@ -1022,8 +1033,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         const auth = loadSession();
         await hydrate(auth);
+        return true;
       } catch (err) {
         fail(err instanceof ApiError ? err.message : "Cette action n’a pas pu être enregistrée.");
+        return false;
       } finally {
         busy.current = false;
       }
