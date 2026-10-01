@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, ArrowUpRight, CheckCircle2, CircleSlash, Eye, EyeOff, Info, Landmark, Vault } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CheckCircle2, CircleSlash, Eye, EyeOff, Info, Landmark, Lock, Unlock, Vault } from "lucide-react";
 import { AgentHome } from "@/components/AgentHome";
 import { DonutChart, KpiCard } from "@/components/charts";
 import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, ROLE_ICONS } from "@/components/icons";
@@ -296,7 +296,9 @@ function ChartCard({ chart, href }: { chart: HomeChart; href?: string }) {
 
 /** Solde de la caisse principale (consolidé de toutes les caisses) + détail par caisse. */
 function CashStrip({ cash }: { cash: HomeCash }) {
+  const { dispatch, can } = useStore();
   const [visible, setVisible] = useState(true);
+  const [ouverture, setOuverture] = useState(false);
   const { principale, maCaisse, session, caisses } = cash;
   const ouvertes = caisses.filter((c) => c.session_ouverte != null).length;
   const mask = (v: string | number | null | undefined) => (visible ? formatDa(num(v)) : "••••••");
@@ -336,6 +338,29 @@ function CashStrip({ cash }: { cash: HomeCash }) {
       </div>
 
       <div className="p-4 sm:p-5 flex flex-col gap-3 min-w-0">
+        {!maCaisse && (
+          <div className="rounded-[9px] border border-danger/30 bg-danger-soft px-3.5 py-3 flex items-start gap-2.5" role="alert">
+            <Lock size={15} className="text-danger shrink-0 mt-0.5" />
+            <p className="text-[12.5px]">
+              <span className="font-semibold text-danger">Aucune caisse ne vous est affectée.</span>{" "}
+              <span className="text-ink/80">Vous ne pouvez ni ouvrir de session ni encaisser : contactez l’Admin SI.</span>
+            </p>
+          </div>
+        )}
+        {maCaisse && !session && can("CREATE_SESSION") && (
+          <button
+            type="button"
+            disabled={ouverture}
+            onClick={async () => {
+              setOuverture(true);
+              await dispatch({ type: "CREATE_SESSION" });
+              setOuverture(false);
+            }}
+            className="h-12 rounded-[9px] bg-primary text-white text-[15px] font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary-hover disabled:opacity-60 shadow-sm"
+          >
+            <Unlock size={17} /> {ouverture ? "Ouverture…" : "Ouvrir ma session"}
+          </button>
+        )}
         <div className="rounded-[9px] border border-primary/25 bg-primary-soft/50 px-3.5 py-3 flex items-center gap-3 min-w-0">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] uppercase tracking-[0.1em] text-muted font-medium">Ma caisse</p>

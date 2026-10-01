@@ -919,21 +919,14 @@ function caissier(state: AppState, h: HomeHelpers): HomeData {
   const factureNum = (id: number) => state.factures.find((f) => f.id === id)?.numero ?? `Facture n°${id}`;
   return {
     cash: { principale, maCaisse, session, caisses: state.caisses.filter((c) => c.actif && !c.est_principale) },
+    // Session fermée : le bouton unique « Ouvrir ma session » est dans le bandeau caisse.
     actions: session
       ? [
           { href: "/caisse", label: "Encaisser", icon: Wallet },
-          { href: "/caisse/cloture", label: "Clôturer la session", icon: Vault },
+          { href: "/caisse/cloture", label: "Ma session", icon: Vault },
         ]
-      : [{ href: "/caisse/cloture", label: "Ouvrir une session", icon: Vault }],
+      : [],
     kpis: [
-      {
-        label: "Session de caisse",
-        value: session ? "Ouverte" : "Fermée",
-        hint: session ? `Solde ${formatDa(num(session.solde_theorique_actuel ?? session.solde_ouverture))}` : "Ouvrez une session pour encaisser",
-        tone: session ? "success" : "warning",
-        icon: Vault,
-        href: "/caisse/cloture",
-      },
       { label: "Factures à encaisser", value: aEncaisser.length, hint: formatDa(sum(aEncaisser, (f) => f.montant_total)), tone: aEncaisser.length ? "warning" : "default", icon: Receipt, href: "/caisse" },
       { label: "Encaissé aujourd’hui", value: formatDa(sum(encJour, (e) => e.montant)), hint: `${encJour.length} encaissement(s)`, tone: "teal", icon: Wallet },
       { label: "Décaissé aujourd’hui", value: formatDa(sum(decJour, (d) => d.montant)), hint: `${decJour.length} sortie(s)`, icon: HandCoins, href: "/caisse/decaissements" },
@@ -947,7 +940,7 @@ function caissier(state: AppState, h: HomeHelpers): HomeData {
         tone: "warning",
         empty: "Aucune facture en attente.",
         all: [...aEncaisser].sort(byDateDesc((f) => f.date_emission)).map((f) => ({
-          href: `/caisse/encaissement/${f.id}`,
+          href: `/caisse?facture=${f.id}`,
           title: f.numero,
           detail: `${h.clientName(f.client)} · ${formatDa(num(f.montant_total))}`,
           badge: f.statut === "PARTIELLEMENT_PAYEE" ? { label: "Partiel", tone: "warning" } : undefined,
@@ -957,10 +950,10 @@ function caissier(state: AppState, h: HomeHelpers): HomeData {
         id: "enc",
         title: "Encaissements du jour",
         icon: Wallet,
-        href: "/caisse/cloture",
+        href: "/caisse",
         empty: "Aucun encaissement aujourd’hui.",
         all: [...encJour].sort(byDateDesc((e) => e.date_encaissement)).map((e) => ({
-          href: "/caisse/cloture",
+          href: `/caisse?facture=${e.facture}`,
           title: e.numero,
           detail: `${factureNum(e.facture)} · ${formatDa(num(e.montant))}`,
           badge: { label: MODE_PAIEMENT_LABEL[e.mode_paiement], tone: "teal" },

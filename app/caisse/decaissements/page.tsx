@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, CheckCircle2, X } from "lucide-react";
 import { Segmented } from "@/components/Filters";
-import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { Button, DataTable, Field, Guard, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
 import { actions } from "@/lib/api";
 import { cn, formatDateTime, formatMoney, num } from "@/lib/utils";
@@ -23,6 +23,112 @@ const STATUT_TONE: Record<StatutDecaissement, "warning" | "success" | "danger" |
 };
 
 export default function DecaissementsPage() {
+  const { role } = useStore();
+  return role === "CAISSIER" ? <DecaissementsCaissier /> : <DecaissementsGeneral />;
+}
+
+/** Caissier : à gauche la demande, à droite le suivi de ses demandes (sortie seulement sur les siennes, autorisées). */
+function DecaissementsCaissier() {
+  const { state, dispatch, can, userName, currentUser } = useStore();
+  const me = currentUser?.id;
+  const maSession = state.sessionsCaisse.find((s) => s.statut === "OUVERTE" && s.caissier === me);
+  const maCaisse = state.caisses.find((c) => c.caissier === me && !c.est_principale);
+  const mesSessions = new Set(state.sessionsCaisse.filter((s) => s.caissier === me).map((s) => s.id));
+  const mesDemandes = state.decaissements
+    .filter((d) => mesSessions.has(d.session_caisse))
+    .sort((a, b) => new Date(b.date_decaissement).getTime() - new Date(a.date_decaissement).getTime());
+  const [montant, setMontant] = useState("");
+  const [beneficiaire, setBeneficiaire] = useState("");
+  const [motif, setMotif] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function demander() {
+    if (!maSession) return;
+    setBusy("demande");
+    const ok = await dispatch({ type: "CREATE_DECAISSEMENT", session_caisse: maSession.id, montant: Number(montant), motif: motif.trim(), beneficiaire: beneficiaire.trim() });
+    setBusy(null);
+    if (ok) {
+      setMontant("");
+      setBeneficiaire("");
+      setMotif("");
+    }
+  }
+  async function effectuer(id: number) {
+    setBusy(`e${id}`);
+    await dispatch({ type: "EFFECTUER_DECAISSEMENT", id });
+    setBusy(null);
+  }
+
+  return (
+    <div className="space-y-4 max-w-[1440px]">
+      <PageHeader
+        eyebrow="Caisse"
+        title="Décaissements"
+        description="Vous demandez, la Direction ou la Comptabilité autorise ou refuse, puis vous effectuez la sortie d’argent."
+      />
+      <div className="grid lg:grid-cols-[minmax(300px,2fr)_minmax(0,3fr)] gap-4 items-start">
+        <Panel className="p-4 space-y-3 lg:sticky lg:top-[72px]">
+          <h2 className="text-[13px] font-semibold">Nouvelle demande</h2>
+          {!maCaisse ? (
+            <Guard variant="block" title="Aucune caisse affectée">
+              Contactez l’Admin SI.
+            </Guard>
+          ) : !maSession ? (
+            <Guard variant="warn" title="Session fermée">
+              Ouvrez votre session avant de demander un décaissement.
+            </Guard>
+          ) : null}
+          <Field label="Montant">
+            <input type="number" min="0" className={cn(inputClass, "h-11 text-[16px] font-semibold num text-right")} value={montant} onChange={(e) => setMontant(e.target.value)} disabled={!maSession} />
+          </Field>
+          <Field label="Bénéficiaire">
+            <input className={inputClass} value={beneficiaire} onChange={(e) => setBeneficiaire(e.target.value)} disabled={!maSession} />
+          </Field>
+          <Field label="Motif (obligatoire)">
+            <textarea className={cn(inputClass, "h-20 py-2 resize-none")} value={motif} onChange={(e) => setMotif(e.target.value)} disabled={!maSession} />
+          </Field>
+          <Button className="w-full h-11" disabled={!maSession || !can("CREATE_DECAISSEMENT") || !(Number(montant) > 0) || !motif.trim() || busy !== null} onClick={() => void demander()}>
+            {busy === "demande" ? "Envoi…" : "Demander l’autorisation"}
+          </Button>
+        </Panel>
+
+        <Panel className="overflow-hidden min-w-0">
+          <h2 className="px-4 py-3 border-b border-line text-[13px] font-semibold">Mes demandes</h2>
+          {mesDemandes.length === 0 ? (
+            <p className="px-4 py-12 text-center text-[13px] text-muted">Aucune demande de décaissement.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {mesDemandes.map((d) => (
+                <li key={d.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="num text-[13px] font-semibold">{d.numero}</span>
+                      <StatusBadge tone={STATUT_TONE[d.statut]}>{STATUT_LABEL[d.statut]}</StatusBadge>
+                    </div>
+                    <p className="text-[12.5px] text-muted mt-0.5 break-words">
+                      {d.statut === "REFUSE" ? `Refusé : ${d.motif_refus}` : d.motif}
+                      {d.beneficiaire ? ` · ${d.beneficiaire}` : ""}
+                      {d.autorise_par ? ` · ${d.statut === "REFUSE" ? "refusé" : "autorisé"} par ${userName(d.autorise_par)}` : ""}
+                    </p>
+                    <p className="text-[11px] text-muted">{formatDateTime(d.date_decaissement)}</p>
+                  </div>
+                  <span className="num text-[14px] font-semibold shrink-0">{formatMoney(num(d.montant))}</span>
+                  {d.statut === "AUTORISE" && can("EFFECTUER_DECAISSEMENT") && (
+                    <Button variant="success" className="h-9 shrink-0" disabled={busy !== null} onClick={() => void effectuer(d.id)}>
+                      {busy === `e${d.id}` ? "…" : "Effectuer la sortie"}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function DecaissementsGeneral() {
   const { state, dispatch, can, userName, currentUser } = useStore();
   // Le circuit est en 3 temps : le caissier DEMANDE (sur sa propre session
   // ouverte), la Direction/Comptabilité AUTORISE ou REFUSE, puis le caissier

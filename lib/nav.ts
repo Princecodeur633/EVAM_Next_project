@@ -254,9 +254,14 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.reclamations,
     ]),
   ],
+  // Menu à plat : 4 entrées (encaissement d’une facture et factures non soldées sont dans « Caisse »).
   CAISSIER: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("caisse", "Caisse", "banknote", [I.encaissements, I.sessions, I.decaissements]),
+    g("caisse", "Caisse", "banknote", [
+      I.accueil,
+      { href: "/caisse", label: "Caisse", hint: "Encaisser les factures" },
+      I.decaissements,
+      { href: "/caisse/cloture", label: "Ma session", hint: "Solde, clôture et écart" },
+    ]),
   ],
   RESPONSABLE_DISTRIBUTION: [
     g("poste", "Menu", "home", [I.accueil]),

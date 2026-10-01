@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { MaSession } from "@/components/MaSession";
 import { DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
 import { STATUT_SESSION_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import { formatDa, formatDateTime, num } from "@/lib/utils";
 
 export default function SessionsCaissePage() {
+  const { role } = useStore();
+  return role === "CAISSIER" ? <MaSession /> : <SessionsListe />;
+}
+
+/** Comptabilité / admin : toutes les sessions, clôture réservée à leur caissier. */
+function SessionsListe() {
   const { state, dispatch, can, userName, currentUser } = useStore();
   const [compte, setCompte] = useState<Record<number, string>>({});
   const [justif, setJustif] = useState<Record<number, string>>({});

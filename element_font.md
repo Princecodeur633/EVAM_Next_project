@@ -245,26 +245,24 @@ Accueil · Commandes · Facturation · Clients · Tarifs · Réclamations
 ### 2.9 Caissier (`CAISSIER`)
 **Carte d'identité**
 - Station : Caisse · Couleur : vert · Icône : billet
-- Mission : « Ouvrez une session, encaissez les factures, clôturez. Justifiez un écart, ne le supprimez jamais. »
+- Mission : « Ouvrez votre session, encaissez les factures, demandez un décaissement si besoin, puis clôturez en justifiant l'écart. »
 - Posture : « Le caissier ne modifie ni commande, ni prix, ni stock. »
-- Possède : Sessions de caisse, Encaissements, Écarts (justification)
-- Ne fait jamais : supprimer un écart, valider un BL, exporter la comptabilité
-- Règles : la clôture compare solde théorique et solde compté ; un écart doit être justifié
+- Fait : encaisser, demander un décaissement, clôturer
+- Ne fait pas : supprimer un écart, valider un BL, exporter · Ne voit pas : prix, stock, autres sessions
+- Priorités : 1) ouvrir la session ; 2) encaisser les factures ; 3) demander un décaissement si besoin ; 4) clôturer et justifier l'écart
+- Sans caisse affectée : bandeau bloquant « contactez l'Admin SI » (accueil, Caisse, Ma session, Décaissements).
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Caisse : Encaissements (`/caisse`), Sessions de caisse (`/caisse/cloture`), Décaissements
-- *Accès supplémentaire* : Commandes clients (`/commercial/commandes`, lecture).
-- Pas de Référentiel.
+**Menu (sidebar)** — un seul groupe « Caisse », 4 entrées (les anciens écrans « Encaissement » et « Factures non soldées » sont intégrés à Caisse) :
+Accueil · Caisse · Décaissements · Ma session
 
 **Page d'accueil**
-- Actions rapides : si session ouverte → Encaisser + Clôturer la session ; sinon → Ouvrir une session.
-- **Bandeau caisse** (bloc « cash », exclusif à ce poste) : solde de la caisse principale, solde de sa caisse personnelle et statut de session, autres caisses actives.
-- KPI : Session de caisse (ouverte/fermée), Factures à encaisser, Encaissé aujourd'hui, Décaissé aujourd'hui.
-- Files de travail : Factures à encaisser, Encaissements du jour, Écarts à justifier (si applicable).
-- Graphique : camembert « Encaissements du jour » par mode de paiement.
+- **Bandeau caisse en tête** : solde de la caisse principale (masquable), ma caisse, état de la session ; si la session est fermée, **bouton unique [Ouvrir ma session]**.
+- Actions rapides (session ouverte) : Encaisser, Ma session.
+- KPI : Factures à encaisser, Encaissé aujourd'hui, Décaissé aujourd'hui.
+- Files : Factures à encaisser (ouvrent la facture dans Caisse), Encaissements du jour, Écarts à justifier.
+- Graphique : camembert des encaissements du jour par mode de paiement.
 
-**Écrans accessibles** : Accueil · Factures et encaissements (`/caisse`) · Sessions de caisse / Clôture · Décaissements · Factures non soldées (`/caisse/suspendues`) · Commandes clients (lecture).
+**Écrans accessibles** : Accueil · Caisse · Décaissements · Ma session · Commandes (lecture, depuis une facture).
 
 ### 2.10 Responsable Distribution (`RESPONSABLE_DISTRIBUTION`)
 **Carte d'identité**
@@ -543,26 +541,23 @@ Bandeau d'alerte si un incident a été signalé par le chauffeur. Composant His
 Historique en bas.
 
 ### 3.9 Caisse
-#### Factures et encaissements — `/caisse`
-**Objectif :** ouvrir une session de caisse puis encaisser.
-**Tableau :** Facture, Client, Montant, Statut (badge), lien PDF, action d'encaissement.
-**Actions :** **« Ouvrir ma session »** (si aucune session ouverte, caisse affectée, droit `ENCAISSER`) ; par ligne de facture émise, sélecteur de mode de paiement (Espèces/Mobile money/Virement/Chèque) + bouton **« Encaisser »** (droit `ENCAISSER`, sur sa propre session ouverte uniquement).
+#### Caisse — `/caisse` (Caissier)
+- **Barre de session fixe en haut** : caisse, état (ouverte avec solde théorique / fermée avec solde repris) et **[Ouvrir ma session]** ou **[Clôturer]** (→ Ma session) ; bandeau rouge bloquant si aucune caisse n'est affectée.
+- **Gauche (60 %)** : factures en onglets **À encaisser** (émises) / **Non soldées** (partiellement payées), recherche par n° ou client ; chaque ligne affiche le restant dû et un lien « Voir la commande » (lecture).
+- **Droite (40 %, fixe)** : facture sélectionnée (`?facture=`), **restant dû** (total, déjà payé), **mode de paiement** en gros boutons (Espèces, Mobile money, Virement, Chèque), montant (pré-rempli, paiement partiel possible), grand bouton **[Encaisser]** en bas.
+- `/caisse/encaissement/[id]` redirige vers `/caisse?facture=id`.
 
-#### Sessions de caisse (Clôture) — `/caisse/cloture`
-**Objectif :** clôturer une session en saisissant le solde compté ; le solde théorique est calculé automatiquement.
-**Tableau :** Caisse, Caissier, Statut, Ouverture, Décaissements, Théorique, action.
-**Formulaire inline** (sur sa propre session ouverte, droit `CLOTURER_CAISSE`) : Solde compté, Justification (obligatoire en cas d'écart) → bouton **« Clôturer »**.
-**Panneau Écarts de caisse** : liste des écarts enregistrés avec leur justification (lecture seule).
+#### Ma session — `/caisse/cloture`
+**Caissier :** session ouverte avec le **solde théorique calculé** (ouverture + encaissements par mode − décaissements effectués) ; **solde compté** à saisir, **écart en direct**, **justification obligatoire si écart**, **[Clôturer]**. Session fermée : [Ouvrir ma session]. En dessous : mes sessions (théorique, compté, écart) et **mes écarts en lecture seule**.
+**Autres postes (Comptabilité, Admin) :** tableau de toutes les sessions et des écarts ; la clôture reste réservée au caissier de la session.
 
 #### Factures non soldées — `/caisse/suspendues`
-Tableau en lecture seule : N°, Client, Montant, Statut (Émise/Partiellement payée).
+Lecture : factures émises ou partiellement payées (N°, Client, Montant, Statut). Remplacé pour le caissier par l'onglet « Non soldées » de Caisse.
 
 #### Décaissements — `/caisse/decaissements`
-**Objectif :** sortie de caisse en 3 temps — demande, autorisation/refus, exécution.
-**Panneau « Nouvelle demande »** (droit `CREATE_DECAISSEMENT`, sur sa session ouverte) : Montant, Bénéficiaire, Motif → bouton « Demander ».
-**Vue Direction** (droit `AUTORISER_DECAISSEMENT` sans droit de demande) : deux colonnes — à gauche **« À autoriser »**, une carte par demande (montant en grand, motif, bénéficiaire, caisse, date, champ « Motif de refus », boutons **« Autoriser »** / **« Refuser »**, refus impossible sans motif) ; à droite **« Historique »** (liste filtrable Tous/Autorisés/Effectués/Refusés).
-**Panneau « À autoriser »** (autres postes ayant le droit, ex. Comptabilité) : par demande en attente — montant, motif, champ « Motif si refus », boutons « Autoriser » / « Refuser ».
-**Tableau général :** N°, Session, Montant, Bénéficiaire, Statut (badge : En attente d'autorisation/Autorisé/Refusé/Effectué), Autorisé/refusé par, Date, Motif, action **« Effectuer la sortie »** (droit `EFFECTUER_DECAISSEMENT`, réservée au caissier désigné, une fois Autorisé).
+**Caissier :** à gauche **Nouvelle demande** (montant, bénéficiaire, motif obligatoire ; sur sa session ouverte) ; à droite **ses demandes** avec leur statut, et **[Effectuer la sortie]** uniquement sur ses demandes autorisées.
+**Direction :** à autoriser à gauche, historique à droite (voir 2.2).
+**Comptabilité / Admin :** panneau « À autoriser » et tableau général.
 
 ### 3.10 Comptabilité
 #### Anomalies — `/comptabilite/brouillards`
