@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, Circle, LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { breadcrumbs, canAccess, flattenNav, isNavActive, navForRole } from "@/lib/nav";
+import { activeNavHref, breadcrumbs, canAccess, flattenNav, navForRole } from "@/lib/nav";
 import { ROLE_PROFILES } from "@/lib/roles";
 import { useStore } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { actions } from "@/lib/api";
 import type { AppNotification } from "@/lib/types";
 import { BrandLogo } from "./BrandLogo";
+import { HubTabs } from "./HubTabs";
 import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, NAV_ICONS, ROLE_ICONS } from "./icons";
 
 /** Écran où ouvrir une notification, selon le document qui l'a générée
@@ -100,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const groups = navForRole(currentUser.role);
   const crumbs = breadcrumbs(pathname);
   const IconRole = ROLE_ICONS[profile.icon];
-  const allHrefs = flattenNav(currentUser.role).map((i) => i.href);
+  const activeHref = activeNavHref(pathname, flattenNav(currentUser.role));
   const showDepot = ["MAGASINIER", "RESPONSABLE_PRODUCTION", "RESPONSABLE_ACHATS", "AGENT_PRODUCTION", "RESPONSABLE_QUALITE", "RESPONSABLE_DISTRIBUTION"].includes(
     currentUser.role,
   );
@@ -192,7 +193,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               {g.items.map((item) => {
                 const ItemIcon = itemIcon(item);
-                const active = isNavActive(pathname, item.href, allHrefs);
+                const active = item.href === activeHref;
                 return (
                   <Link
                     key={item.href + item.label}
@@ -450,7 +451,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="p-3 sm:p-6 lg:p-8 relative min-w-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="relative min-w-0 max-w-full">{children}</div>
+          <div className="relative min-w-0 max-w-full">
+            <HubTabs pathname={pathname} role={currentUser.role} />
+            {children}
+          </div>
         </main>
       </div>
 

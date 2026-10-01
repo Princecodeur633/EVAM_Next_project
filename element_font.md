@@ -97,27 +97,25 @@ Accueil · Utilisateurs & profils · Caisses · Fiches techniques · Référenti
 ### 2.2 PDG / Direction (`DIRECTION`)
 **Carte d'identité**
 - Station : Pilotage · Couleur : bleu marine · Icône : graphique
-- Mission : « Suivez la santé de l'usine : stocks, commandes, production et coûts. »
-- Posture : « Consultation. Les équipes métier saisissent, vous pilotez. »
-- Possède : Tableau de bord, Suivi des files, Coûts
-- Ne fait jamais : valider une clôture caisse ou un OF
-- Règles : seuls les lots libérés peuvent être vendus ; les coûts se consultent dans le module dédié
+- Mission : « Autorisez les décaissements, surveillez les alertes et lisez les marges et le rendement. »
+- Posture : « Tout en lecture : les équipes métier saisissent, vous pilotez. »
+- Fait : autoriser/refuser les décaissements, générer le rapport · Voit : tout en lecture
+- Ne fait pas : valider un OF ou une clôture, créer quoi que ce soit · Ne voit pas : le référentiel (aucun paramétrage)
+- Priorités : 1) autoriser/refuser les décaissements ; 2) surveiller les alertes (ruptures, écarts de caisse, anomalies) ; 3) lire marges et rendement
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Pilotage : Tableau de bord, Coûts réels, Coûts standards, Anomalies, Écritures, Valorisation du stock
-- Supervision (lecture, réutilise les écrans des métiers) : Commandes, Ordres de fabrication, Besoins d'achat, Commandes fournisseurs, Réceptions, Préparations, Bons de livraison, Mouvements, Inventaires
-- Caisse : Décaissements
-- *Accès supplémentaire sans entrée de menu dédiée* : Situation de stock (`/stocks`) et Lots qualité (`/production/qualite`), atteignables via les raccourcis de l'accueil ou le fil d'Ariane.
-- Pas de groupe Référentiel (aucun droit de paramétrage).
+**Menu (sidebar)** — un seul groupe « Pilotage », 6 entrées (au lieu de 17) :
+Accueil · Tableau de bord · Supervision · Coûts & marges · Anomalies & écritures · Décaissements
+- **Supervision** (hub à onglets, mêmes écrans que les métiers, sans bouton de création) : Commandes · Production (OF, Lots) · Achats (Besoins, Commandes fournisseurs, Réceptions) · Distribution (Préparations, Bons de livraison) · Stocks (Situation, Mouvements, Inventaires).
+- **Coûts & marges** (onglets) : Coûts réels · Coûts standards · Valorisation du stock.
+- **Anomalies & écritures** (onglets) : Anomalies · Écritures.
 
 **Page d'accueil**
-- Actions rapides : Tableau de bord, Coûts réels.
+- Bouton en tête **« Décaissements à autoriser (N) »**, affiché seulement s'il y a des demandes en attente.
 - KPI : Encaissé aujourd'hui (+ ce mois), OF en cours (+ en production), Lots en attente, Anomalies ouvertes.
-- Files de travail : Lots en attente de libération, OF en production, Articles sous le seuil, Anomalies ouvertes.
+- Files de travail : Lots à libérer, OF en production, Articles sous le seuil, Anomalies ouvertes.
 - Graphique : camembert « Ordres de fabrication » (répartition par étape du circuit).
 
-**Écrans accessibles** : Accueil · Tableau de bord · Coûts réels · Coûts standards et marges · Anomalies · Écritures comptables · Valorisation du stock · Décaissements · Commandes clients · Ordres de fabrication · Besoins d'achat · Commandes fournisseurs · Réceptions achat · Préparations · Bons de livraison · Mouvements de stock · Inventaires · Situation de stock · Lots qualité.
+**Écrans accessibles** : Accueil · Tableau de bord · Supervision (tous ses onglets) · Coûts & marges · Anomalies & écritures · Décaissements.
 
 ### 2.3 Responsable Production (`RESPONSABLE_PRODUCTION`)
 **Carte d'identité**
@@ -359,7 +357,7 @@ Accueil · Utilisateurs & profils · Caisses · Fiches techniques · Référenti
 **Rôles :** Direction et Comptabilité/DAF voient la version complète « pilotage » ; les autres postes y accédant voient une version restreinte (KPI simples + liste des OF).
 
 *Version Direction / Comptabilité/DAF (« ReportingDashboard »)* :
-- Bouton **Actualiser** (avec horodatage de dernière mise à jour).
+- En haut : bouton **Actualiser** et horodatage de dernière mise à jour.
 - 4 KPI : CA du jour (+ CA du mois), Encaissé aujourd'hui (+ écart de caisse), Rendement du jour (+ pertes), Valeur du stock (+ ruptures).
 - Widget **Production** : quantité conforme, jauges de rendement et de pertes, pour aujourd'hui et pour le mois.
 - Widget **Livraisons du jour** : graphique en barres (prévues / en cours / terminées / en retard) + taux de complétion.
@@ -367,8 +365,9 @@ Accueil · Utilisateurs & profils · Caisses · Fiches techniques · Référenti
 - Widget **Caisse** : encaissements, solde théorique, écart de caisse (+ nombre de non justifiés).
 - Widget **Commercial** : CA du mois, produit le plus vendu, client principal.
 - Widget **Rentabilité** : top 5 produits les plus rentables (marge, taux de marge) avec lien vers Coûts standards.
-- Widget **Alertes** : 4 blocs — matières manquantes, ruptures de stock, écarts de caisse non justifiés, anomalies comptables (lien vers Anomalies).
-- Tableau **Rapports générés** : colonnes Période, Date, Généré le ; bouton « Générer le rapport du jour » si droit `GENERER_RAPPORT`.
+- Mise en page : les 6 widgets (Production, Livraisons, Stock, Caisse, Commercial, Rentabilité) en grille de 2 colonnes ; **Alertes** dans une colonne droite fixe.
+- Widget **Alertes** : 4 blocs empilés — matières manquantes, ruptures de stock, écarts de caisse non justifiés, anomalies comptables (lien vers Anomalies).
+- En bas, tableau **Rapports générés** : colonnes Période, Date, Généré le ; bouton « Générer le rapport du jour » si droit `GENERER_RAPPORT`.
 
 *Version restreinte (autres postes)* :
 - 4 KPI : Stock disponible, Encaissements, OF ouverts, Lots en attente.
@@ -581,7 +580,8 @@ Tableau en lecture seule : N°, Client, Montant, Statut (Émise/Partiellement pa
 #### Décaissements — `/caisse/decaissements`
 **Objectif :** sortie de caisse en 3 temps — demande, autorisation/refus, exécution.
 **Panneau « Nouvelle demande »** (droit `CREATE_DECAISSEMENT`, sur sa session ouverte) : Montant, Bénéficiaire, Motif → bouton « Demander ».
-**Panneau « À autoriser »** (droit `AUTORISER_DECAISSEMENT`, pour Direction/Comptabilité) : par demande en attente — montant, motif, champ « Motif si refus », boutons **« Autoriser »** / **« Refuser »**.
+**Vue Direction** (droit `AUTORISER_DECAISSEMENT` sans droit de demande) : deux colonnes — à gauche **« À autoriser »**, une carte par demande (montant en grand, motif, bénéficiaire, caisse, date, champ « Motif de refus », boutons **« Autoriser »** / **« Refuser »**, refus impossible sans motif) ; à droite **« Historique »** (liste filtrable Tous/Autorisés/Effectués/Refusés).
+**Panneau « À autoriser »** (autres postes ayant le droit, ex. Comptabilité) : par demande en attente — montant, motif, champ « Motif si refus », boutons « Autoriser » / « Refuser ».
 **Tableau général :** N°, Session, Montant, Bénéficiaire, Statut (badge : En attente d'autorisation/Autorisé/Refusé/Effectué), Autorisé/refusé par, Date, Motif, action **« Effectuer la sortie »** (droit `EFFECTUER_DECAISSEMENT`, réservée au caissier désigné, une fois Autorisé).
 
 ### 3.10 Comptabilité
@@ -618,7 +618,7 @@ Tableau en lecture seule : N°, Client, Montant, Statut (Émise/Partiellement pa
 
 ### 3.12 Référentiel (Paramétrage)
 #### Hub — `/parametrage`
-Redirige vers le premier onglet accessible. Pour les postes dont le menu affiche l'entrée « Référentiel » (Admin SI), chaque page du référentiel s'ouvre sous un en-tête commun avec des **onglets** : Articles · Matières · Conditionnements · Dépôts · Clients · Fournisseurs · Codes fiscaux (filtrés selon les droits). Les codes générés automatiquement sont en lecture seule ; les champs de codification d'un article déjà utilisé sont verrouillés.
+Redirige vers le premier onglet accessible. Pour l'Admin SI (entrée « Référentiel » du menu, hub à onglets), chaque page du référentiel s'ouvre sous un en-tête commun avec des **onglets** : Articles · Matières · Conditionnements · Dépôts · Clients · Fournisseurs · Codes fiscaux (filtrés selon les droits). Les codes générés automatiquement sont en lecture seule ; les champs de codification d'un article déjà utilisé sont verrouillés.
 
 #### Articles — `/parametrage/produits` et fiche `/parametrage/produits/[id]`
 **Liste :** Code, Désignation, Type, Unité, Famille, Code fiscal, Fiche technique (badge Validée/Brouillon). Filtres : recherche, Fiche technique, Type, Famille, Statut.

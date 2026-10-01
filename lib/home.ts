@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ClipboardCheck,
   ClipboardList,
-  Coins,
   FilePlus2,
   FileOutput,
   FileText,
@@ -16,7 +15,6 @@ import {
   HandCoins,
   History,
   Inbox,
-  LayoutDashboard,
   ListChecks,
   ListTodo,
   Lock,
@@ -421,11 +419,10 @@ function direction(state: AppState, h: HomeHelpers): HomeData {
   const encJour = sum(state.encaissements.filter((e) => sameDay(e.date_encaissement)), (e) => e.montant);
   const encMois = sum(state.encaissements.filter((e) => sameMonth(e.date_encaissement)), (e) => e.montant);
   const anomalies = state.anomalies.filter((a) => a.statut === "DETECTEE" || a.statut === "EN_TRAITEMENT");
+  const decAutoriser = state.decaissements.filter((d) => d.statut === "EN_ATTENTE").length;
   return {
-    actions: [
-      { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-      { href: "/couts", label: "Coûts réels", icon: Coins },
-    ],
+    // Seule action en tête : les décaissements en attente, quand il y en a.
+    actions: decAutoriser ? [{ href: "/caisse/decaissements", label: `Décaissements à autoriser (${decAutoriser})`, icon: HandCoins }] : [],
     kpis: [
       { label: "Encaissé aujourd’hui", value: formatDa(encJour), hint: `${formatDa(encMois)} ce mois`, tone: "success", icon: Wallet },
       { label: "OF en cours", value: ofCours.length, hint: `${ofCours.filter((o) => o.statut === "EN_PRODUCTION").length} en production`, icon: ClipboardList },
@@ -435,7 +432,7 @@ function direction(state: AppState, h: HomeHelpers): HomeData {
     sections: [
       section({
         id: "lots",
-        title: "Lots en attente de libération",
+        title: "Lots à libérer",
         icon: FlaskConical,
         href: "/production/qualite",
         tone: "warning",
