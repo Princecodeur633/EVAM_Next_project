@@ -2,6 +2,8 @@ import { api, listAll } from "./client";
 import type {
   Amortissement,
   AnnuaireEntry,
+  AppNotification,
+  HistoriqueLigne,
   AnomalieDetectee,
   Article,
   ArticleFournisseur,
@@ -521,6 +523,14 @@ export const actions = {
   effectuerDecaissement: (id: number) => api.post<Decaissement>(`${endpoints.decaissements}${id}/effectuer/`),
   /** Annuaire léger (id, nom, profil) de tous les comptes — ouvert à tout utilisateur authentifié. */
   annuaire: () => api.get<AnnuaireEntry[]>("/comptes/annuaire/"),
+  /** Mes notifications « à faire » : générées automatiquement par le backend à chaque
+   * événement métier qui me concerne (voir apps/core/notifications.py). */
+  notifications: (nonLuesSeulement = false) => api.get<AppNotification[]>(`/notifications/${nonLuesSeulement ? "?lue=false" : ""}`),
+  notificationsNonLues: () => api.get<{ non_lues: number }>("/notifications/non_lues/"),
+  marquerNotificationLue: (id: number) => api.post<AppNotification>(`/notifications/${id}/lire/`),
+  marquerToutesNotificationsLues: () => api.post<{ marquees: number }>("/notifications/tout_lire/"),
+  /** Historique (création, changements de statut) d'un document — endpoint = base de collection (endpoints.xxx). */
+  historique: (endpoint: string, id: number) => api.get<HistoriqueLigne[]>(`${endpoint}${id}/historique/`),
   cloturerSession: (id: number, solde_compte: string, justification?: string) =>
     api.post<{ session: SessionCaisse }>(`${endpoints.sessionsCaisse}${id}/cloturer/`, {
       solde_compte,

@@ -4,6 +4,8 @@ import { useParams } from "next/navigation";
 import { BlBadge } from "@/components/badges";
 import { Button, Guard, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import { endpoints } from "@/lib/api";
+import { Historique } from "@/components/Historique";
 
 export default function BlDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,6 +55,7 @@ export default function BlDetailPage() {
         <p>Signature client : {bl.signature_client ? "Oui" : "Non"}</p>
         <p>Tournée : {tournee?.numero ?? "—"}</p>
       </Panel>
+      <Historique endpoint={endpoints.bonsLivraison} id={bl.id} />
     </div>
   );
 }

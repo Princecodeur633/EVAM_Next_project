@@ -91,6 +91,11 @@ export type TypeAnomalie =
   | "DEPASSEMENT_MATIERE"
   | "LOT_NON_LIBERE_VENDU"
   | "COMMANDE_CLIENT_BLOQUE"
+  | "IMPAYE"
+  | "STOCK_SOUS_MINIMUM"
+  | "LOT_PERIME"
+  | "SESSION_NON_CLOTUREE"
+  | "DECAISSEMENT_EN_ATTENTE"
   | "AUTRE";
 export type StatutAnomalie = "DETECTEE" | "EN_TRAITEMENT" | "TRAITEE" | "IGNOREE";
 export type TypeExport = "VENTES" | "ENCAISSEMENTS" | "ACHATS" | "JOURNAL";
@@ -1020,6 +1025,29 @@ export interface AnnuaireEntry {
   profil: Profil;
   profil_libelle: string;
   actif: boolean;
+}
+
+/** Une notification « à faire » (GET /notifications/) : générée automatiquement
+ * à la création ou au changement de statut d'un document qui vous concerne. */
+export interface AppNotification {
+  id: number;
+  titre: string;
+  message: string;
+  type_document: string;
+  document_id: number | null;
+  reference: string;
+  lue: boolean;
+  date: string;
+}
+
+/** Une ligne de l'historique d'un document (GET .../{id}/historique/) :
+ * création ou changement de statut, qui et quand. */
+export interface HistoriqueLigne {
+  date: string;
+  action: string;
+  ancien_statut: string;
+  nouveau_statut: string;
+  par: string;
 }
 
 export interface AppState {

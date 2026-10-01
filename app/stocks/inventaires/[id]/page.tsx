@@ -5,7 +5,9 @@ import { useState } from "react";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { STATUT_INV_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { endpoints } from "@/lib/api";
 import { formatDate, formatQty, num } from "@/lib/utils";
+import { Historique } from "@/components/Historique";
 
 export default function InventaireDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +56,7 @@ export default function InventaireDetailPage() {
           rows={lines.map((l) => ({ a: articleName(l.article), t: formatQty(num(l.quantite_theorique), 2), c: formatQty(num(l.quantite_comptee), 2) }))}
         />
       </Panel>
+      <Historique endpoint={endpoints.inventaires} id={inv.id} />
     </div>
   );
 }

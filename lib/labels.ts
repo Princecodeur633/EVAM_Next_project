@@ -323,6 +323,11 @@ export const TYPE_ANOMALIE_LABEL: Record<TypeAnomalie, string> = {
   DEPASSEMENT_MATIERE: "Dépassement matière",
   LOT_NON_LIBERE_VENDU: "Lot non libéré vendu",
   COMMANDE_CLIENT_BLOQUE: "Commande d’un client bloqué",
+  IMPAYE: "Facture échue impayée",
+  STOCK_SOUS_MINIMUM: "Stock sous le minimum",
+  LOT_PERIME: "Lot périmé ou proche de la péremption",
+  SESSION_NON_CLOTUREE: "Session de caisse non clôturée",
+  DECAISSEMENT_EN_ATTENTE: "Décaissement en attente d'autorisation",
   AUTRE: "Autre",
 };
 

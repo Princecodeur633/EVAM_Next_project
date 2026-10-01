@@ -9,8 +9,27 @@ import { ROLE_PROFILES } from "@/lib/roles";
 import { useStore } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { actions } from "@/lib/api";
+import type { AppNotification } from "@/lib/types";
 import { BrandLogo } from "./BrandLogo";
 import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, NAV_ICONS, ROLE_ICONS } from "./icons";
+
+/** Écran où ouvrir une notification, selon le document qui l'a générée
+ * (apps/core/notifications.py:REGLES_STATUT) — absent de la liste : non cliquable. */
+const ROUTE_PAR_DOCUMENT: Record<string, string> = {
+  "caisse.decaissement": "/caisse/decaissements",
+  "production.demandematiere": "/production/demandes-matieres",
+  "production.demandecomplementaire": "/production/demandes-matieres",
+  "achats.demandeachat": "/approvisionnement/demandes",
+  "achats.commandefournisseur": "/approvisionnement/commandes",
+  "commercial.commande": "/commercial/commandes",
+  "commercial.facture": "/caisse",
+  "distribution.preparationlivraison": "/distribution/preparations",
+  "distribution.bonlivraison": "/distribution/bl",
+  "qualite.lot": "/production/qualite",
+  "referentiel.fichetechnique": "/parametrage/fiches-techniques",
+  "production.ordrefabrication": "/production/of",
+};
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { state, currentUser, dispatch } = useStore();
@@ -24,6 +43,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
   const railTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [nonLues, setNonLues] = useState(0);
+
+  useEffect(() => {
+    let annule = false;
+    const rafraichir = () => {
+      void actions.notifications().then((items) => {
+        if (!annule) setNotifications(items);
+      });
+      void actions.notificationsNonLues().then(({ non_lues }) => {
+        if (!annule) setNonLues(non_lues);
+      });
+    };
+    rafraichir();
+    const intervalle = setInterval(rafraichir, 45_000);
+    return () => {
+      annule = true;
+      clearInterval(intervalle);
+    };
+  }, []);
 
   // Petits délais : évite d'ouvrir la barre quand le curseur ne fait que la traverser.
   const openRail = () => {
@@ -66,22 +105,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     currentUser.role,
   );
 
-  const notifs = (
-    [
-      state.lots.some((l) => l.statut === "EN_ATTENTE") && {
-        text: `${state.lots.filter((l) => l.statut === "EN_ATTENTE").length} lot(s) en attente de contrôle`,
-        href: "/production/qualite",
-      },
-      state.factures.some((i) => i.statut === "EMISE") && {
-        text: `${state.factures.filter((i) => i.statut === "EMISE").length} facture(s) émise(s) à encaisser`,
-        href: "/caisse",
-      },
-      state.demandesAchat.some((d) => d.statut === "EN_ATTENTE") && {
-        text: `${state.demandesAchat.filter((d) => d.statut === "EN_ATTENTE").length} demande(s) d'achat en attente`,
-        href: "/approvisionnement/demandes",
-      },
-    ].filter(Boolean) as { text: string; href: string }[]
-  ).filter((n) => canAccess(currentUser.role, n.href));
+  const ouvrirNotification = (n: AppNotification) => {
+    if (!n.lue) {
+      void actions.marquerNotificationLue(n.id);
+      setNotifications((items) => items.map((i) => (i.id === n.id ? { ...i, lue: true } : i)));
+      setNonLues((v) => Math.max(0, v - 1));
+    }
+    const href = ROUTE_PAR_DOCUMENT[n.type_document];
+    if (href && canAccess(currentUser.role, href)) {
+      router.push(href);
+      setOpenNotif(false);
+    }
+  };
+  const toutMarquerLu = () => {
+    void actions.marquerToutesNotificationsLues();
+    setNotifications((items) => items.map((i) => ({ ...i, lue: true })));
+    setNonLues(0);
+  };
 
   const jumpItems = flattenNav(currentUser.role).filter(
     (i) =>
@@ -309,25 +349,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="h-8 w-8 flex items-center justify-center border border-line rounded-[7px] text-muted hover:text-ink bg-surface"
               >
                 <Bell size={15} strokeWidth={1.5} />
-                {notifs.length > 0 && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 bg-danger rounded-full" />}
+                {nonLues > 0 && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 bg-danger rounded-full" />}
               </button>
               {openNotif && (
-                <div className="absolute right-0 top-10 w-[min(20rem,calc(100vw-1rem))] bg-surface border border-line rounded-[10px] z-40 overflow-hidden shadow-[var(--shadow)]">
-                  <p className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted border-b border-line bg-surface-2">Alertes</p>
-                  {notifs.length === 0 ? (
-                    <p className="text-[12px] text-muted px-3 py-4">Aucune alerte</p>
-                  ) : (
-                    notifs.map((n) => (
-                      <Link
-                        key={n.text}
-                        href={n.href}
-                        onClick={() => setOpenNotif(false)}
-                        className="block text-[12px] px-3 py-2.5 border-b border-line last:border-0 hover:bg-primary-soft"
-                      >
-                        {n.text}
-                      </Link>
-                    ))
-                  )}
+                <div className="absolute right-0 top-10 w-[min(22rem,calc(100vw-1rem))] bg-surface border border-line rounded-[10px] z-40 overflow-hidden shadow-[var(--shadow)]">
+                  <div className="px-3 py-2 flex items-center justify-between border-b border-line bg-surface-2">
+                    <p className="text-[11px] uppercase tracking-wide text-muted">
+                      Notifications{nonLues > 0 ? ` (${nonLues})` : ""}
+                    </p>
+                    {nonLues > 0 && (
+                      <button className="text-[11px] text-primary font-medium" onClick={toutMarquerLu}>
+                        Tout marquer lu
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-[22rem] overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="text-[12px] text-muted px-3 py-4">Aucune notification</p>
+                    ) : (
+                      notifications.slice(0, 20).map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => ouvrirNotification(n)}
+                          className={cn(
+                            "w-full text-left text-[12px] px-3 py-2.5 border-b border-line last:border-0 hover:bg-primary-soft",
+                            !n.lue && "bg-primary-soft/40",
+                          )}
+                        >
+                          <span className={cn("block", !n.lue && "font-medium")}>{n.titre}</span>
+                          {n.message && <span className="block text-muted mt-0.5">{n.message}</span>}
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
             </div>

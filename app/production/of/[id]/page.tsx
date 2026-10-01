@@ -5,9 +5,10 @@ import { useParams } from "next/navigation";
 import { OfBadge } from "@/components/badges";
 import { Button, Guard, OF_STEPS, PageHeader, Panel, StatusStepper } from "@/components/ui";
 import { nextOfStatut, useStore } from "@/lib/store";
-import { actions } from "@/lib/api";
+import { actions, endpoints } from "@/lib/api";
 import { formatDateTime, formatQty, num } from "@/lib/utils";
 import { ETAPE_LABEL, MOTIF_PERTE_LABEL, STATUT_LOT_LABEL, STATUT_OF_LABEL, TYPE_SORTIE_LABEL } from "@/lib/labels";
+import { Historique } from "@/components/Historique";
 
 export default function OfDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -148,6 +149,8 @@ export default function OfDetailPage() {
           <p key={l.id} className="text-[13px]">{l.numero_lot} · {STATUT_LOT_LABEL[l.statut] ?? l.statut}</p>
         ))}
       </Panel>
+
+      <Historique endpoint={endpoints.ofList} id={of.id} />
     </div>
   );
 }

@@ -12,8 +12,10 @@ import {
   TYPE_SOLUTION_LABEL,
 } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { endpoints } from "@/lib/api";
 import { formatDateTime, formatQty, num } from "@/lib/utils";
 import type { ResultatControleRetour, TypeSolution } from "@/lib/types";
+import { Historique } from "@/components/Historique";
 
 export default function ReclamationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -180,6 +182,8 @@ export default function ReclamationDetailPage() {
           La réclamation est clôturée automatiquement à l’enregistrement de la solution.
         </Guard>
       )}
+
+      <Historique endpoint={endpoints.reclamations} id={reclamation.id} />
     </div>
   );
 }
