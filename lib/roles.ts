@@ -37,13 +37,13 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
   ADMIN_SI: {
     role: "ADMIN_SI",
     label: "Administrateur SI",
-    station: "Administration",
-    mission: "Gérez les comptes, les accès et le journal d’activité.",
+    station: "Configuration",
+    mission: "Créez les comptes et les caisses, validez les fiches techniques et tenez le référentiel à jour.",
     posture: "Vous configurez EVAM. L’atelier, la caisse et les ventes restent aux métiers.",
-    owns: ["Utilisateurs", "Droits d’accès", "Journal d’audit", "Référentiel"],
+    owns: ["Comptes", "Caisses", "Fiches techniques", "Référentiel"],
     never: [
+      "Modifier les dépôts système",
       "Voir les commandes, factures, encaissements ou tarifs",
-      "Modifier le nom ou le statut d’un dépôt système",
     ],
     rules: [
       "Un compte inactif ne peut plus se connecter.",

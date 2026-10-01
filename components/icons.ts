@@ -27,11 +27,10 @@ import {
   Receipt,
   Route,
   ScrollText,
-  ShieldCheck,
+  Settings2,
   Tag,
   TrendingDown,
   Undo2,
-  UserCog,
   Users,
   Vault,
   Wallet,
@@ -122,8 +121,7 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/parametrage/fiscalite": Percent,
   "/admin/utilisateurs": Users,
   "/admin/caisses": Vault,
-  "/admin/profils": UserCog,
-  "/admin/droits": ShieldCheck,
+  "/admin/parametres": Settings2,
   "/admin/audit": History,
 };
 

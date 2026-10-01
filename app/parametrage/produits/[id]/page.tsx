@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { MOMENT_CONTROLE_LABEL, TYPE_ARTICLE_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import type { MomentControle } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export default function ProduitDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -75,7 +77,14 @@ export default function ProduitDetailPage() {
       />
 
       <Panel className="p-4 space-y-3">
-        <h2 className="text-[13px] font-semibold">Identité</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-[13px] font-semibold">Identité</h2>
+          {codeVerrouille && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-[5px] bg-surface-2 border border-line text-muted">
+              <Lock size={11} /> Article utilisé · codification verrouillée
+            </span>
+          )}
+        </div>
         {article.type_article === "PRODUIT_FINI" && (
           <p className="text-[12px] text-muted">
             {codeVerrouille
@@ -84,6 +93,9 @@ export default function ProduitDetailPage() {
           </p>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <Field label="Code (automatique)">
+            <input className={cn(inputClass, "font-mono")} disabled value={article.code} title="Généré par EVAM, non modifiable" />
+          </Field>
           <Field label="Désignation">
             <input className={inputClass} disabled={!canEditFiche} value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} />
           </Field>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { AlertTriangle, Landmark, Lock, Plus, Vault } from "lucide-react";
+import { AlertTriangle, Landmark, Lock, Plus, Vault, Zap } from "lucide-react";
 import { DrawerSection, SidePanel, SplitLayout } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
@@ -42,8 +42,35 @@ export default function CaissesPage() {
 
   return (
     <div className="space-y-4 max-w-[1440px]">
+      {caissiersSansCaisse.length > 0 && (
+        <div className="rounded-[10px] border border-danger/30 bg-danger-soft overflow-hidden flex" role="alert">
+          <span className="w-1 shrink-0 bg-danger" />
+          <div className="px-4 py-3 flex flex-col md:flex-row md:items-center gap-3 flex-1 min-w-0">
+            <AlertTriangle size={18} className="text-danger shrink-0 hidden md:block" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-danger">
+                {caissiersSansCaisse.length} caissier{caissiersSansCaisse.length > 1 ? "s" : ""} sans caisse
+              </p>
+              <p className="text-[12px] text-danger/80 mt-0.5">
+                {caissiersSansCaisse.map((u) => displayName(u)).join(", ")} : aucune session ni encaissement possible tant qu’une caisse n’est pas attribuée.
+              </p>
+            </div>
+            {writable && (
+              <Button
+                variant="danger"
+                className="shrink-0"
+                title={`Nouvelle caisse pour ${displayName(caissiersSansCaisse[0])}`}
+                onClick={() => setEdition({ mode: "create", caissier: caissiersSansCaisse[0].id })}
+              >
+                <Zap size={14} /> Affecter une caisse
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       <PageHeader
-        eyebrow="Administration"
+        eyebrow="Configuration"
         title="Caisses"
         description="Une caisse par caissier : sans caisse affectée, il ne peut ouvrir aucune session. La caisse principale consolide automatiquement toutes les caisses."
         actions={
@@ -54,35 +81,6 @@ export default function CaissesPage() {
           ) : null
         }
       />
-
-      {caissiersSansCaisse.length > 0 && (
-        <div className="rounded-[10px] border border-danger/30 bg-danger-soft px-4 py-3 flex flex-col sm:flex-row sm:items-start gap-3" role="alert">
-          <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-danger">
-              {caissiersSansCaisse.length} caissier{caissiersSansCaisse.length > 1 ? "s" : ""} sans caisse affectée
-            </p>
-            <p className="text-[12px] text-danger/80 mt-0.5">Ils ne peuvent ni ouvrir de session ni encaisser tant qu’une caisse ne leur est pas attribuée.</p>
-            <ul className="flex flex-wrap gap-2 mt-2.5">
-              {caissiersSansCaisse.map((u) => (
-                <li key={u.id}>
-                  {writable ? (
-                    <button
-                      type="button"
-                      onClick={() => setEdition({ mode: "create", caissier: u.id })}
-                      className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] bg-surface border border-danger/30 text-[12px] font-medium text-danger hover:bg-danger hover:text-white transition-colors"
-                    >
-                      {displayName(u)} · Affecter
-                    </button>
-                  ) : (
-                    <span className="inline-flex h-7 px-2.5 items-center rounded-[6px] bg-surface border border-danger/30 text-[12px] text-danger">{displayName(u)}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
 
       <SplitLayout>
       <Panel className="overflow-hidden">

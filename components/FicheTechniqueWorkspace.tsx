@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, FilePlus2, Lock, Pencil, Plus, ScrollText, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, FilePlus2, Lock, Plus, ScrollText, Search, Trash2, X } from "lucide-react";
 import { Segmented, matchSearch } from "@/components/Filters";
 import { Button, PageHeader, StatusBadge, inputClass } from "@/components/ui";
 import { actions } from "@/lib/api";
@@ -168,8 +168,6 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
   const [adding, setAdding] = useState(false);
   const [matiere, setMatiere] = useState(0);
   const [qty, setQty] = useState("");
-  const [editId, setEditId] = useState<number | null>(null);
-  const [editQty, setEditQty] = useState("");
   const [validating, setValidating] = useState(false);
 
   // Liste de choix calculée par le backend (matières actives, pas encore dans la fiche, jamais de
@@ -197,9 +195,8 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
       setAdding(false);
     }
   }
-  async function saveQty(id: number) {
-    const ok = await dispatch({ type: "PATCH_COMPOSITION", id, quantite_necessaire: Number(editQty) });
-    if (ok) setEditId(null);
+  async function saveQty(id: number, quantite: number) {
+    return dispatch({ type: "PATCH_COMPOSITION", id, quantite_necessaire: quantite });
   }
   async function validate() {
     setValidating(true);
@@ -279,7 +276,7 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
                 <tr className="bg-surface-2 border-b border-line text-[11px] uppercase tracking-[0.08em] text-muted">
                   <th className="px-3 py-2 font-medium">Matière</th>
                   <th className="px-3 py-2 font-medium text-right">Quantité / unité</th>
-                  {editable && <th className="px-3 py-2 w-[88px]" />}
+                  {editable && <th className="px-3 py-2 w-[52px]" />}
                 </tr>
               </thead>
               <tbody>
@@ -289,21 +286,9 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
                       <p className="text-[13px] font-medium">{c.matiere_designation ?? articleName(c.matiere)}</p>
                       {c.matiere_code && <p className="text-[11.5px] text-muted">{c.matiere_code}</p>}
                     </td>
-                    <td className="px-3 py-2.5 text-right">
-                      {editId === c.id ? (
-                        <input
-                          className="h-8 w-28 border border-primary rounded-[6px] px-2 text-[12.5px] text-right num bg-surface"
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={editQty}
-                          onChange={(e) => setEditQty(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") void saveQty(c.id);
-                            if (e.key === "Escape") setEditId(null);
-                          }}
-                          autoFocus
-                        />
+                    <td className="px-3 py-2 text-right">
+                      {editable ? (
+                        <QtyInput value={num(c.quantite_necessaire)} unite={c.unite_mesure ? UNITE_LABEL[c.unite_mesure] : undefined} onSave={(q) => saveQty(c.id, q)} />
                       ) : (
                         <span className="text-[13px] num">
                           {formatQty(num(c.quantite_necessaire), 4)}
@@ -312,34 +297,10 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
                       )}
                     </td>
                     {editable && (
-                      <td className="px-3 py-2.5">
-                        <div className="flex justify-end gap-1">
-                          {editId === c.id ? (
-                            <>
-                              <IconBtn label="Enregistrer" onClick={() => void saveQty(c.id)} disabled={!(Number(editQty) > 0)}>
-                                <Check size={14} />
-                              </IconBtn>
-                              <IconBtn label="Annuler" onClick={() => setEditId(null)}>
-                                <X size={14} />
-                              </IconBtn>
-                            </>
-                          ) : (
-                            <>
-                              <IconBtn
-                                label="Modifier la quantité"
-                                onClick={() => {
-                                  setEditId(c.id);
-                                  setEditQty(String(num(c.quantite_necessaire)));
-                                }}
-                              >
-                                <Pencil size={13} />
-                              </IconBtn>
-                              <IconBtn label="Retirer" danger onClick={() => void dispatch({ type: "DELETE_COMPOSITION", id: c.id })}>
-                                <Trash2 size={13} />
-                              </IconBtn>
-                            </>
-                          )}
-                        </div>
+                      <td className="px-3 py-2 text-right">
+                        <IconBtn label="Retirer" danger onClick={() => void dispatch({ type: "DELETE_COMPOSITION", id: c.id })}>
+                          <Trash2 size={13} />
+                        </IconBtn>
                       </td>
                     )}
                   </tr>
@@ -365,6 +326,58 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
           <Lock size={13} /> Fiche {STATUT_FT_LABEL[ft.statut].toLowerCase()} : la composition n’est plus modifiable.
         </footer>
       ) : null}
+    </div>
+  );
+}
+
+/** Quantité modifiable directement dans le tableau : enregistrée à la sortie du champ ou sur Entrée. */
+function QtyInput({ value, unite, onSave }: { value: number; unite?: string; onSave: (q: number) => Promise<boolean> }) {
+  const [draft, setDraft] = useState(String(value));
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  useEffect(() => setDraft(String(value)), [value]);
+
+  async function commit() {
+    const q = Number(draft);
+    if (!(q > 0)) {
+      setDraft(String(value));
+      setState("error");
+      return;
+    }
+    if (q === value) return;
+    setState("saving");
+    const ok = await onSave(q);
+    setState(ok ? "saved" : "error");
+    if (!ok) setDraft(String(value));
+  }
+
+  return (
+    <div className="inline-flex items-center justify-end gap-1.5">
+      {state === "saved" && <Check size={13} className="text-success" aria-label="Enregistré" />}
+      <input
+        className={cn(
+          "h-8 w-28 rounded-[6px] px-2 text-[12.5px] text-right num bg-surface border transition-colors outline-none",
+          state === "error" ? "border-danger" : "border-line-strong hover:border-primary/50 focus:border-primary",
+          state === "saving" && "opacity-60",
+        )}
+        type="number"
+        min="0"
+        step="any"
+        value={draft}
+        aria-label="Quantité par unité"
+        onChange={(e) => {
+          setDraft(e.target.value);
+          setState("idle");
+        }}
+        onBlur={() => void commit()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setDraft(String(value));
+            setState("idle");
+          }
+        }}
+      />
+      {unite && <span className="text-[12px] text-muted w-8 text-left">{unite}</span>}
     </div>
   );
 }

@@ -1,73 +1,21 @@
 "use client";
 
-import Link from "next/link";
-import { PageHeader, Panel } from "@/components/ui";
-import { ROLE_PROFILES } from "@/lib/roles";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { REF_TABS } from "@/lib/nav";
+import { canReadParam } from "@/lib/roles";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 
-const GROUPS = [
-  {
-    title: "Référentiel articles",
-    items: [
-      ["Articles", "/parametrage/produits", "Eau, jus, yaourts"],
-      ["Matières", "/parametrage/matieres", "Matières premières"],
-      ["Conditionnements", "/parametrage/conditionnements", "Cartons et palettes"],
-      ["Fiches techniques", "/parametrage/fiches-techniques", "Recettes de fabrication"],
-    ],
-  },
-  {
-    title: "Stocks & tiers",
-    items: [
-      ["Dépôts", "/parametrage/depots", "Magasins"],
-      ["Clients", "/parametrage/clients", "Fiches clients"],
-      ["Tarifs", "/parametrage/tarifs", "Prix de vente"],
-      ["Fournisseurs", "/parametrage/fournisseurs", "Fournisseurs matières"],
-    ],
-  },
-  {
-    title: "Fiscalité",
-    items: [
-      ["Codes fiscaux", "/parametrage/fiscalite", "TVA, accises, centimes"],
-    ],
-  },
-];
-
+/** Le hub ouvre directement le premier onglet accessible au poste. */
 export default function ParametrageHubPage() {
-  const { currentUser, canEditParam } = useStore();
-  const allow = currentUser ? ROLE_PROFILES[currentUser.role].paramAllow : [];
-  const read = currentUser ? ROLE_PROFILES[currentUser.role].paramRead ?? [] : [];
-  const all = allow.includes("*");
+  const router = useRouter();
+  const { currentUser } = useStore();
+  const role = currentUser?.role ?? null;
+  const first = REF_TABS.find((t) => canReadParam(role, t.href));
 
-  function visible(href: string) {
-    if (all) return true;
-    if (allow.some((p) => href === p || href.startsWith(p + "/"))) return true;
-    if (read.some((p) => href === p || href.startsWith(p + "/"))) return true;
-    return canEditParam(href);
-  }
+  useEffect(() => {
+    if (role) router.replace(first?.href ?? "/403");
+  }, [role, first, router]);
 
-  const groups = GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => visible(i[1])) })).filter((g) => g.items.length > 0);
-
-  return (
-    <div>
-      <PageHeader eyebrow="Référentiel" title="Paramétrage" description="Articles, matières, fiches techniques, dépôts, clients, tarifs et fournisseurs." />
-      <div className="grid md:grid-cols-2 gap-4">
-        {groups.map((g) => (
-          <Panel key={g.title} className="p-5">
-            <h2 className="text-[14px] font-semibold">{g.title}</h2>
-            <ul className="space-y-1 mt-3">
-              {g.items.map(([label, href, hint]) => (
-                <li key={href}>
-                  <Link href={href} className={cn("flex items-baseline justify-between gap-3 rounded-[6px] px-2 py-2 -mx-2 hover:bg-primary-soft")}>
-                    <span className="text-[13px] font-medium text-primary">{label}</span>
-                    <span className="text-[12px] text-muted truncate">{hint}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-        ))}
-      </div>
-    </div>
-  );
+  return null;
 }

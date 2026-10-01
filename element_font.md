@@ -75,24 +75,24 @@ Pour chaque poste : sa carte d'identité (telle que définie dans le code), son 
 
 ### 2.1 Administrateur SI (`ADMIN_SI`)
 **Carte d'identité**
-- Station : Administration · Couleur d'accent : bleu marine (navy) · Icône : bouclier
-- Mission : « Gérez les comptes, les accès et le journal d'activité. »
+- Station : Configuration · Couleur d'accent : bleu marine (navy) · Icône : bouclier
+- Mission : « Créez les comptes et les caisses, validez les fiches techniques et tenez le référentiel à jour. »
 - Posture : « Vous configurez EVAM. L'atelier, la caisse et les ventes restent aux métiers. »
-- Possède : Utilisateurs, Droits d'accès, Journal d'audit, Référentiel
-- Ne fait jamais : voir les commandes/factures/encaissements/tarifs ; modifier le nom ou le statut d'un dépôt système
+- Fait : Comptes, Caisses, Fiches techniques, Référentiel
+- Ne fait pas : modifier les dépôts système · Ne voit pas : commandes, factures, encaissements, tarifs
 - Règles : un compte inactif ne peut plus se connecter ; un utilisateur a un profil unique ; ce poste crée/modifie/désactive les comptes et valide les fiches techniques
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Référentiel : Articles, Matières, Conditionnements, Fiches techniques (lecture/écriture), Dépôts, Clients, Fournisseurs, Codes fiscaux, Motifs de pertes, Motifs de suspension, Motifs de réclamation, Numérotation, Paramètres généraux, Modes de paiement (tout le référentiel **sauf** les Tarifs, volontairement exclus du périmètre Admin SI)
-- Administration : Utilisateurs, Caisses, Profils, Profils & accès, Journal d'audit
+**Menu (sidebar)** — un seul groupe « Configuration », 7 entrées (au lieu de 20) :
+Accueil · Utilisateurs & profils · Caisses · Fiches techniques · Référentiel · Paramètres · Journal d'audit
 
-**Page d'accueil**
-- Pas de boutons d'action rapide ni de colonne latérale (ni graphique, ni accès rapides, ni repères du poste) — remplacés par une **feuille de route numérotée en 3 étapes** : 1) Créer les comptes et leur rôle (combien de postes sans compte actif / comptes sans rôle) → `/admin/utilisateurs` ; 2) Créer et affecter chaque caisse (combien de caissiers sans caisse) → `/admin/caisses` ; 3) Valider la fiche technique de chaque produit fini (combien de produits finis sans fiche validée) → `/parametrage/fiches-techniques`.
-- KPI : Comptes actifs (+ comptes désactivés), Sessions de caisse ouvertes, Actions aujourd'hui (journal d'audit du jour).
-- Files de travail : Fiches techniques en brouillon, Comptes sans rôle, Caissiers sans caisse affectée, Dépôts système (toujours affichée), Activité récente (pleine largeur, dernières lignes du journal d'audit).
+**Page d'accueil** (de haut en bas)
+- **Feuille de route en 3 étapes** avec barre de progression : 1) Créer les comptes et leur rôle → `/admin/utilisateurs` ; 2) Créer et affecter chaque caisse → `/admin/caisses` ; 3) Valider la fiche technique de chaque produit fini → `/parametrage/fiches-techniques`.
+- KPI : Comptes actifs, Sessions de caisse ouvertes, Actions aujourd'hui.
+- Files (3 colonnes) : Fiches techniques en brouillon, Comptes sans rôle, Caissiers sans caisse.
+- Activité récente (pleine largeur, dernières lignes du journal d'audit).
+- Pas de boutons d'action rapide ni de colonne latérale.
 
-**Écrans accessibles** : Accueil · Administration (Utilisateurs, Caisses, Profils, Profils & accès, Journal d'audit) · Référentiel (Articles, Matières, Conditionnements, Fiches techniques, Dépôts, Clients, Fournisseurs, Codes fiscaux, Motifs de pertes, Motifs de suspension, Motifs de réclamation, Numérotation, Paramètres généraux, Modes de paiement).
+**Écrans accessibles** : Accueil · Utilisateurs & profils (onglets Comptes, Profils & accès) · Caisses · Fiches techniques · Référentiel (onglets Articles, Matières, Conditionnements, Dépôts, Clients, Fournisseurs, Codes fiscaux) · Paramètres (onglets Listes fixes, Numérotation, Généraux) · Journal d'audit.
 
 ### 2.2 PDG / Direction (`DIRECTION`)
 **Carte d'identité**
@@ -618,7 +618,7 @@ Tableau en lecture seule : N°, Client, Montant, Statut (Émise/Partiellement pa
 
 ### 3.12 Référentiel (Paramétrage)
 #### Hub — `/parametrage`
-Page d'accueil du module : 3 panneaux de liens groupés — « Référentiel articles » (Articles, Matières, Conditionnements, Fiches techniques), « Stocks & tiers » (Dépôts, Clients, Tarifs, Fournisseurs), « Fiscalité » (Codes fiscaux). Chaque lien n'apparaît que si le poste y a droit.
+Redirige vers le premier onglet accessible. Pour les postes dont le menu affiche l'entrée « Référentiel » (Admin SI), chaque page du référentiel s'ouvre sous un en-tête commun avec des **onglets** : Articles · Matières · Conditionnements · Dépôts · Clients · Fournisseurs · Codes fiscaux (filtrés selon les droits). Les codes générés automatiquement sont en lecture seule ; les champs de codification d'un article déjà utilisé sont verrouillés.
 
 #### Articles — `/parametrage/produits` et fiche `/parametrage/produits/[id]`
 **Liste :** Code, Désignation, Type, Unité, Famille, Code fiscal, Fiche technique (badge Validée/Brouillon). Filtres : recherche, Fiche technique, Type, Famille, Statut.
@@ -637,7 +637,7 @@ Page d'accueil du module : 3 panneaux de liens groupés — « Référentiel art
 **Objectif :** composition (recette) d'un produit fini, qui alimente le calcul des besoins matières des OF une fois validée.
 **Disposition :** liste des fiches à gauche (filtrable par statut), éditeur à droite.
 **Création** (droit `CREATE_FT`, réservé Admin SI) : choix d'un produit fini sans brouillon en cours → « Créer le brouillon » (version calculée automatiquement).
-**Éditeur de composition** (si Brouillon) : ajout d'un composant (Matière, Quantité/unité), édition inline de la quantité, suppression de ligne.
+**Éditeur de composition** (si Brouillon) : ajout d'un composant (Matière, Quantité/unité), quantité modifiable directement dans le tableau (enregistrée à la sortie du champ ou sur Entrée), suppression de ligne.
 **Action :** « Valider la fiche » (droit `VALIDER_FT`, si au moins un composant) — fige définitivement la composition.
 
 #### Dépôts — `/parametrage/depots`
@@ -673,17 +673,15 @@ Page d'accueil du module : 3 panneaux de liens groupés — « Référentiel art
 - **Exports vers la comptabilité** (`/parametrage/sage`) : renvoie vers `/comptabilite/export-sage`.
 - **Seuils d'alerte** (`/parametrage/seuils`) : renvoie vers `/stocks`.
 
-### 3.13 Administration (réservé à l'Administrateur SI)
-#### Utilisateurs — `/admin/utilisateurs`
-**Tableau :** Nom (avatar + identifiant), Rôle (badge coloré), Statut (Actif/Inactif). Filtres : recherche, Statut, Rôle (avec compteurs).
-**Panneau « Nouvel utilisateur »** (droit `ADMIN_USERS`) : Prénom, Nom, Identifiant de connexion, E-mail, Rôle (les 12 profils, avec aperçu de la station/mission du profil choisi), Mot de passe provisoire (généré automatiquement, regénérable). Bouton **« Créer le compte »**.
-**Panneau de détail/édition :** Identité, Rôle (non modifiable sur son propre compte), section Accès (activer/désactiver le compte, bloqué sur son propre compte), section **Réinitialiser le mot de passe** (génération automatique + bouton « Réinitialiser »).
+### 3.13 Configuration (réservé à l'Administrateur SI)
+#### Utilisateurs & profils — `/admin/utilisateurs`
+**Onglet Comptes :** tableau Nom (avatar + identifiant), Rôle (badge coloré), Statut. Filtres : recherche, Statut, Rôle (avec compteurs).
+**Panneau droit « Nouvel utilisateur »** (droit `ADMIN_USERS`) : Prénom, Nom, Identifiant de connexion, E-mail, Rôle (aperçu de la station/mission), Mot de passe provisoire (généré, regénérable). Bouton **« Créer le compte »** fixe en bas du panneau.
+**Panneau de détail/édition :** Identité, Rôle (non modifiable sur son propre compte), Accès (activer/désactiver), Réinitialiser le mot de passe.
+**Onglet Profils & accès** (lecture seule) : une carte par profil — station, mission, nombre de comptes actifs, ce qu'il fait, ce qu'il ne fait pas.
 
-#### Profils métier — `/admin/profils`
-Tableau en lecture seule des 12 profils : Profil, Station, Mission. Page purement informative (dérivée du code), sans action.
-
-#### Profils & accès — `/admin/droits`
-Tableau en lecture seule : Profil, Poste, Possède (`owns`), Ne fait pas (`never`), Référentiel (accès paramétrage : Tout / liste des chemins / « — »). Documentation visuelle de la matrice de droits fixée dans le code (il n'existe plus de table de droits modifiable côté serveur).
+#### Paramètres — `/admin/parametres`
+Onglets en lecture seule : **Listes fixes** (motifs de pertes, modes de paiement, motifs de retour, problèmes de livraison) · **Numérotation** (préfixes des documents générés par le backend : OF-, LOT-, CMD-, FACT-, ENC-, BL-…) · **Généraux** (société, fuseau, devise, langue).
 
 #### Journal des actions — `/admin/audit`
 **Tableau :** Date, Utilisateur, Module (badge), Action, Document. Filtres : recherche libre, période (Aujourd'hui/7 jours/30 jours/Tout), Utilisateur, Module — avec compteur « affichés/total ». Lecture seule.
@@ -691,7 +689,7 @@ Tableau en lecture seule : Profil, Poste, Possède (`owns`), Ne fait pas (`never
 #### Caisses — `/admin/caisses`
 **Objectif :** gérer les caisses physiques, affecter un caissier, superviser la caisse principale qui consolide automatiquement tous les soldes.
 **Tableau :** Caisse, Caissier affecté, Statut.
-**Bandeau d'alerte** si des caissiers actifs n'ont pas de caisse, avec bouton d'affectation rapide par caissier concerné.
+**Bandeau rouge en haut de page** si des caissiers actifs n'ont pas de caisse (« N caissiers sans caisse », noms listés), avec bouton **« Affecter une caisse »** qui ouvre le panneau pré-rempli.
 **Panneau de création/édition** (droit `ADMIN_USERS`) : Nom, Emplacement, Caissier affecté (verrouillé si une session est ouverte), case « Caisse active » (verrouillée si session ouverte).
 **Fiche caisse principale** (lecture seule) : solde consolidé, détail par caisse (session ouverte/fermée, caissier, solde).
 
