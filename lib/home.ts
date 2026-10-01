@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
-  ArrowLeftRight,
   BadgeAlert,
   Ban,
   CalendarClock,
@@ -670,7 +669,7 @@ function magasinier(state: AppState, h: HomeHelpers): HomeData {
   return {
     actions: [
       { href: "/production/demandes-matieres", label: "Servir l’atelier", icon: PackageMinus },
-      { href: "/stocks/mouvements", label: "Mouvements", icon: ArrowLeftRight },
+      { href: "/approvisionnement/receptions", label: "Réceptionner", icon: Truck },
     ],
     kpis: [
       { label: "Matières à servir", value: aServir.length, tone: aServir.length ? "warning" : "success", icon: PackageMinus, href: "/production/demandes-matieres" },
@@ -698,6 +697,7 @@ function magasinier(state: AppState, h: HomeHelpers): HomeData {
         title: "Préparations de commandes",
         icon: PackageOpen,
         href: "/distribution/preparations",
+        tone: "warning",
         empty: "Aucune préparation en cours.",
         all: preps.map((p) => ({
           href: `/distribution/preparations/${p.id}`,
@@ -713,7 +713,7 @@ function magasinier(state: AppState, h: HomeHelpers): HomeData {
         href: "/approvisionnement/receptions",
         empty: "Aucune livraison attendue.",
         all: attendues.map((c) => ({
-          href: "/approvisionnement/receptions",
+          href: `/approvisionnement/receptions?cf=${c.id}`,
           title: c.numero,
           detail: `Commandée le ${formatDate(c.date_commande)}`,
           badge: { label: STATUT_CF_LABEL[c.statut], tone: c.statut === "PARTIELLEMENT_RECUE" ? "warning" : "info" },

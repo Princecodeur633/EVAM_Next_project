@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Check, PackageMinus, PackagePlus, Plus, Undo2, X } from "lucide-react";
 import { Drawer, DrawerSection } from "@/components/Drawer";
-import { FilterBar, SearchInput, matchSearch } from "@/components/Filters";
+import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { ComplementDrawer } from "@/components/production";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
@@ -30,8 +30,10 @@ const COMPLEMENT_TONE: Record<StatutDemandeComplementaire, "warning" | "success"
 };
 
 export default function MatieresAtelierPage() {
-  const { state, dispatch, articleName, ofNumero, can } = useStore();
+  const { state, dispatch, articleName, ofNumero, can, role } = useStore();
+  const magasin = role === "MAGASINIER";
   const [onglet, setOnglet] = useState<Onglet>("demandes");
+  const [aServir, setAServir] = useState(true);
   const [form, setForm] = useState<Formulaire>(null);
   const [q, setQ] = useState("");
   const [livraison, setLivraison] = useState<Record<number, string>>({});
@@ -43,11 +45,16 @@ export default function MatieresAtelierPage() {
   );
   const match = (of: number, matiere: number, ...autres: unknown[]) => matchSearch(q, ofNumero(of), articleName(matiere), ...autres);
 
+  const ouverte = (statut: string) => statut !== "LIVREE_A_LA_PRODUCTION" && statut !== "ANNULEE";
   const demandes = useMemo(
-    () => state.demandesMatieres.filter((d) => match(d.ordre_fabrication, d.matiere, d.numero)).sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime()),
+    () =>
+      state.demandesMatieres
+        .filter((d) => (!aServir || ouverte(d.statut)) && match(d.ordre_fabrication, d.matiere, d.numero))
+        .sort((a, b) => new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.demandesMatieres, q],
+    [state.demandesMatieres, q, aServir],
   );
+  const reste = (d: (typeof demandes)[number]) => Math.max(0, num(d.quantite_demandee) - num(d.quantite_livree));
   const complements = state.demandesComplementaires.filter((d) => match(d.ordre_fabrication, d.matiere, d.numero, d.motif));
   const sorties = state.sortiesMatieres.filter((s) => match(s.ordre_fabrication, s.matiere, s.motif));
   const retours = state.retoursMatieres.filter((r) => match(r.ordre_fabrication, r.matiere));
@@ -69,8 +76,12 @@ export default function MatieresAtelierPage() {
     <div className="space-y-4 max-w-[1440px]">
       <PageHeader
         eyebrow="Production"
-        title="Matières atelier"
-        description="Suivi des demandes au magasin, des compléments, des sorties et des retours. Les demandes se créent depuis la fiche de l’OF (onglet Besoins matières)."
+        title={magasin ? "Servir l’atelier" : "Matières atelier"}
+        description={
+          magasin
+            ? "Livrez les matières demandées par l’atelier : la quantité à livrer est pré-remplie avec le reste dû, une livraison partielle est possible."
+            : "Suivi des demandes au magasin, des compléments, des sorties et des retours. Les demandes se créent depuis la fiche de l’OF (onglet Besoins matières)."
+        }
         actions={
           action?.droit ? (
             <Button onClick={() => setForm(action.form)}>
@@ -93,8 +104,19 @@ export default function MatieresAtelierPage() {
       />
 
       <Panel className="overflow-hidden">
-        <FilterBar shown={shown} total={total} active={!!q} onReset={() => setQ("")}>
+        <FilterBar shown={shown} total={total} active={!!q || (onglet === "demandes" && !aServir)} onReset={() => { setQ(""); setAServir(true); }}>
           <SearchInput value={q} onChange={setQ} placeholder="OF, matière, numéro…" />
+          {onglet === "demandes" && (
+            <Segmented
+              label="Demandes"
+              value={aServir ? "SERVIR" : "TOUTES"}
+              onChange={(v) => setAServir(v === "SERVIR")}
+              options={[
+                { value: "SERVIR", label: "À servir", count: enCours },
+                { value: "TOUTES", label: "Toutes" },
+              ]}
+            />
+          )}
         </FilterBar>
 
         {onglet === "demandes" && (
@@ -107,7 +129,7 @@ export default function MatieresAtelierPage() {
               { key: "q", label: "Demandée", className: "text-right" },
               { key: "ql", label: "Livrée", className: "text-right" },
               { key: "s", label: "Statut" },
-              { key: "a", label: "" },
+              ...(can("LIVRER_DEMANDE_MATIERE") ? [{ key: "a", label: "Qté à livrer", className: "text-right" }] : []),
             ]}
             rows={demandes.map((d) => ({
               n: d.numero,
@@ -121,17 +143,26 @@ export default function MatieresAtelierPage() {
                   <span className="flex gap-2 items-center justify-end">
                     <input
                       type="number"
-                      placeholder={`${num(d.quantite_demandee)}`}
-                      aria-label="Quantité livrée"
-                      className="h-8 w-24 border border-line-strong rounded-[6px] px-2 text-[12px] text-right num bg-surface"
-                      value={livraison[d.id] ?? ""}
+                      min="0"
+                      step="any"
+                      aria-label="Quantité à livrer"
+                      className="h-8 w-28 border border-line-strong rounded-[6px] px-2 text-[12.5px] text-right num bg-surface focus:border-primary outline-none"
+                      value={livraison[d.id] ?? String(reste(d))}
                       onChange={(e) => setLivraison((m) => ({ ...m, [d.id]: e.target.value }))}
                     />
                     <Button
-                      className="h-8 px-2.5 text-[12px]"
+                      className="h-8 px-3 text-[12px]"
+                      disabled={!(Number(livraison[d.id] ?? reste(d)) > 0)}
                       onClick={() => {
-                        const saisie = livraison[d.id];
-                        void dispatch({ type: "LIVRER_DEMANDE_MATIERE", id: d.id, quantite_livree: saisie ? Number(saisie) : undefined });
+                        const saisie = Number(livraison[d.id] ?? reste(d));
+                        void dispatch({ type: "LIVRER_DEMANDE_MATIERE", id: d.id, quantite_livree: saisie }).then((ok) => {
+                          if (!ok) return;
+                          setLivraison((m) => {
+                            const suite = { ...m };
+                            delete suite[d.id];
+                            return suite;
+                          });
+                        });
                       }}
                     >
                       Livrer

@@ -182,26 +182,24 @@ Accueil · Lots qualité · Réclamations · Stock · Fiches
 
 ### 2.6 Magasinier (`MAGASINIER`)
 **Carte d'identité**
-- Station : Magasin · Couleur : ambre · Icône : boîtes
-- Mission : « Sorties matières, mouvements, inventaires, réceptions et préparations. »
+- Station : Magasin et quai · Couleur : ambre · Icône : boîtes
+- Mission : « Livrez les matières à l'atelier, sortez les commandes préparées, réceptionnez les fournisseurs et tenez les inventaires. »
 - Posture : « Chaque mouvement a une origine. Disponible = physique − bloquée − réservée. »
-- Possède : Stock, Mouvements, Inventaires, Sorties matières, Réceptions, Préparations
-- Ne fait jamais : modifier un prix de vente, encaisser
-- Règles : un mouvement met à jour le stock immédiatement ; on confirme la préparation puis la sortie magasin
+- Fait : livraisons matières, sorties, réceptions, inventaires, dépôts
+- Ne fait pas : prix, encaissement · Ne voit pas : factures, caisse, coûts
+- Priorités : 1) livrer les matières à l'atelier (partiel possible) ; 2) confirmer la préparation puis la sortie magasin ; 3) réceptionner ; 4) inventaires
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Magasin : Matières atelier, Situation, Mouvements, Inventaires, Demandes d'achat
-- Réceptions & quai : Réceptions, Préparations, Réclamations
-- Référentiel : Dépôts (écriture) + Fiches techniques (lecture)
+**Menu (sidebar)** — un seul groupe « Magasin », 6 entrées (au lieu de 11) :
+Accueil · Servir l'atelier · Préparations · Réceptions · Stock · Réclamations
+- **Stock** (hub à onglets) : Situation · Mouvements · Inventaires · Dépôts.
 
 **Page d'accueil**
-- Actions rapides : Servir l'atelier, Mouvements.
+- Actions rapides : Servir l'atelier, Réceptionner.
 - KPI : Matières à servir, Préparations clients, Réceptions attendues, Articles sous seuil.
-- Files de travail : Matières à servir à l'atelier, Préparations de commandes, Livraisons fournisseurs attendues, Articles sous le seuil, Inventaires en cours (si au moins un en cours).
+- Files dans l'ordre d'urgence : Matières à servir, Préparations, Livraisons fournisseurs attendues (ouvre directement le tiroir de réception), Articles sous le seuil, puis Inventaires en cours s'il y en a.
 - Graphique : camembert « Mouvements de stock » (7 derniers jours).
 
-**Écrans accessibles** : Accueil · Matières atelier · Situation de stock · Mouvements de stock · Inventaires (liste + détail) · Demandes d'achat (lecture) · Réceptions achat (liste + détail) · Préparations (liste + détail) · Réclamations · Référentiel : Dépôts, Fiches techniques (lecture).
+**Écrans accessibles** : Accueil · Servir l'atelier · Préparations (liste + fiche) · Réceptions · Stock (Situation, Mouvements, Inventaires, Dépôts) · Réclamations.
 
 ### 2.7 Responsable Achat (`RESPONSABLE_ACHATS`)
 **Carte d'identité**
@@ -433,14 +431,14 @@ Accueil · Lots qualité · Réclamations · Stock · Fiches
 
 ### 3.4 Stocks
 #### Situation de stock — `/stocks`
-**Objectif :** stock disponible par article et dépôt. Tableau : Article, Dépôt, Physique, Bloquée, Réservée, Disponible. Ligne cliquable → fiche article.
+**Objectif :** stock disponible par article et dépôt. Filtres : recherche, dépôt, « Sous seuil ». Tableau : Article, Dépôt, Physique, Bloquée, Réservée, Disponible (rouge si nul, orange sous le minimum). Ligne cliquable → fiche article.
 
 #### Fiche stock d'un article — `/stocks/article/[id]`
 En-tête = code/désignation/type/unité de l'article. Tableau par dépôt : Dépôt, Physique, Disponible. Lecture seule.
 
 #### Inventaires — `/stocks/inventaires`
-**Tableau :** Dépôt, Date, Statut (En cours/Clôturé), Créé par. Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_INVENTAIRE`) : Dépôt, Date. Bouton « Ouvrir ».
+**Tableau :** Dépôt, Date, Statut (badge), Ouvert par ; inventaires en cours en tête. Ligne cliquable → détail.
+**[+ Ouvrir un inventaire]** (droit `CREATE_INVENTAIRE`) → tiroir : Dépôt, Date du comptage.
 
 #### Détail d'un inventaire — `/stocks/inventaires/[id]`
 **En-tête :** dépôt, statut, date, créateur ; bouton **« Clôturer »** (droit `CLOTURER_INVENTAIRE`, si en cours).
@@ -449,8 +447,8 @@ En-tête = code/désignation/type/unité de l'article. Tableau par dépôt : Dé
 Composant Historique en bas de page.
 
 #### Mouvements de stock — `/stocks/mouvements`
-**Tableau :** N°, Type, Article, Dépôt, Qté, Saisi par, Date.
-**Formulaire** (droit `CREATE_MVT`) : Article, Dépôt, Type (Entrée/Sortie/Transfert/Ajustement/Retour), Quantité. Bouton « Créer ».
+**Tableau :** N°, Type (badge), Article, Dépôt, Quantité, Origine / motif, Saisi par, Date. Filtres : recherche, type, dépôt.
+**[+ Mouvement manuel]** (droit `CREATE_MVT`) → tiroir limité à **Ajustement** ou **Transfert**, avec Article, Dépôt, Quantité et **motif obligatoire** (les autres mouvements naissent des documents).
 
 #### Valorisation du stock (CMUP) — `/stocks/valorisation`
 **Objectif :** valeur du stock au coût moyen unitaire pondéré, recalculé automatiquement à chaque entrée en stock.
@@ -474,9 +472,9 @@ Composant Historique en bas de page.
 **Formulaires** (droit `CREATE_CF`) : 1) Création de commande — Fournisseur, Demande d'achat d'origine (optionnelle, limitée aux DA approuvées) ; 2) Ajout de ligne — Commande, Article, Quantité, Prix.
 **Actions :** « Créer commande », « Ajouter ligne », « Envoyer » (droit `ENVOYER_CF`, si Brouillon).
 
-#### Réceptions achat — `/approvisionnement/receptions`
-**Tableau :** Commande, Réceptionnée par, Conforme (Oui/Non), Date. Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_RECEPTION`) : Commande fournisseur. Bouton « Créer réception ».
+#### Réceptions — `/approvisionnement/receptions`
+**Onglets :** À réceptionner (commandes fournisseurs envoyées ou partiellement reçues, lignes restantes, bouton **« Réceptionner »**) · Réceptions effectuées (commande, réceptionnée par, conformité, date ; ligne cliquable → détail).
+**Tiroir unique de réception** (droit `CREATE_RECEPTION`, ouvrable par `?cf=`) : lignes de la commande (article, commandé, déjà reçu, reste dû), colonne **« Qté reçue »** pré-remplie avec le reste dû, **écart calculé en direct** (✓, manque en orange, excédent en rouge), observations ; conformité déduite des écarts ; **[Valider la réception]** en bas (crée la réception et ses lignes en une fois).
 
 #### Détail d'une réception — `/approvisionnement/receptions/[id]`
 **Tableau :** Article, Qté reçue.
@@ -511,12 +509,13 @@ Composant Historique en bas de page.
 
 ### 3.7 Distribution
 #### Préparations (liste) — `/distribution/preparations`
-**Tableau :** #, Commande, Statut, action. Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_PREP`) : Commande à préparer. Bouton « Lancer ».
-**Actions par ligne :** « Confirmer préparation » (droit `PREP_CONFIRMER`, si « À préparer »), « Confirmer sortie » (droit `PREP_SORTIE`, si « En préparation »).
+**Tableau :** Commande, Client, Statut (badge), Lancée le, Préparée par. Filtres : recherche, À traiter / Sorties / Toutes. Ligne cliquable → fiche.
+**[+ Lancer une préparation]** (droit `CREATE_PREP`) → tiroir : commandes validées sans préparation.
 
 #### Détail préparation — `/distribution/preparations/[id]`
-**En-tête :** numéro de commande liée, statut, client. Boutons **« Confirmer préparation »** et **« Confirmer sortie magasin »** selon statut et droits. Panneau « Lancée par / Préparée par ». Composant Historique.
+Stepper (À préparer → En préparation → Sortie magasin), synthèse, articles à sortir avec disponible (si les lignes sont transmises au poste), Historique.
+**Barre fixe en bas :** **[Confirmer préparation]** (droit `PREP_CONFIRMER`) puis **[Confirmer sortie]** (droit `PREP_SORTIE`).
+**Erreur « stock insuffisant »** : affichée en Guard rouge avec l'article, le dépôt, la quantité demandée et le **disponible réel** ; aucune sortie n'est enregistrée (tout ou rien).
 
 #### Bons de livraison (liste) — `/distribution/bl`
 **Tableau :** N°, Commande, Statut (badge), Signature (Oui/Non). Ligne cliquable → détail.

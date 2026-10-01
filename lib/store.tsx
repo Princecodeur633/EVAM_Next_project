@@ -166,6 +166,8 @@ export type Action =
   | { type: "ENVOYER_CF"; id: number }
   | { type: "CREATE_RECEPTION"; commande: number; conforme?: boolean; observations?: string }
   | { type: "ADD_LIGNE_RECEPTION"; reception: number; ligne_commande: number; quantite_recue: number }
+  /** Réception complète en une fois : en-tête puis une ligne par article reçu. */
+  | { type: "RECEVOIR_COMMANDE"; commande: number; lignes: { ligne_commande: number; quantite_recue: number }[]; conforme: boolean; observations?: string }
   | { type: "CREATE_FOURNISSEUR"; nom: string; contact?: string; telephone?: string; email?: string; adresse?: string }
   | { type: "CREATE_MVT"; article: number; depot: number; type_mouvement: string; quantite: number; motif?: string; document_origine?: string }
   | { type: "CREATE_INVENTAIRE"; depot: number; date_inventaire: string }
@@ -918,6 +920,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               observations: action.observations ?? "",
             });
             break;
+          case "RECEVOIR_COMMANDE": {
+            const reception = await api.post<{ id: number }>(endpoints.receptions, {
+              commande: action.commande,
+              conforme: action.conforme,
+              observations: action.observations ?? "",
+            });
+            for (const l of action.lignes) {
+              await api.post(endpoints.lignesReception, { reception: reception.id, ligne_commande: l.ligne_commande, quantite_recue: l.quantite_recue });
+            }
+            break;
+          }
           case "ADD_LIGNE_RECEPTION":
             await api.post(endpoints.lignesReception, {
               reception: action.reception,

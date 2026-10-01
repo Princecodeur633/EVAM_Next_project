@@ -146,6 +146,14 @@ export const REF_TABS: NavItem[] = [
   { href: "/parametrage/fiscalite", label: "Codes fiscaux" },
 ];
 
+/** Hub « Stock » du Magasinier. */
+const STOCK_MAGASIN: NavItem[] = [
+  { href: "/stocks", label: "Situation" },
+  { href: "/stocks/mouvements", label: "Mouvements" },
+  { href: "/stocks/inventaires", label: "Inventaires" },
+  { href: "/parametrage/depots", label: "Dépôts" },
+];
+
 /** « Fiches » du Responsable Qualité : articles et fiches techniques en lecture. */
 const QUALITE_FICHES: NavItem[] = [
   { href: "/parametrage/produits", label: "Articles" },
@@ -209,10 +217,16 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/parametrage/produits", label: "Fiches", hint: "Articles et fiches techniques (lecture)", hub: QUALITE_FICHES },
     ]),
   ],
+  // Menu à plat : 6 entrées ; mouvements, inventaires et dépôts sont des onglets de « Stock ».
   MAGASINIER: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("magasin", "Magasin", "boxes", [I.sorties, I.stock, I.mvt, I.inv, I.da]),
-    g("rec", "Réceptions & quai", "cart", [I.rec, I.prep, I.reclamations]),
+    g("magasin", "Magasin", "boxes", [
+      I.accueil,
+      { ...I.sorties, label: "Servir l’atelier", hint: "Livrer les matières demandées" },
+      I.prep,
+      I.rec,
+      { ...I.stock, label: "Stock", hint: "Situation, mouvements, inventaires, dépôts", hub: STOCK_MAGASIN },
+      I.reclamations,
+    ]),
   ],
   RESPONSABLE_ACHATS: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -249,9 +263,9 @@ export const BOTTOM_NAV_ROLES: Profil[] = ["AGENT_PRODUCTION"];
 
 export function navForRole(role: Profil): NavGroup[] {
   const base = ROLE_MENU[role];
-  const used = new Set(base.flatMap((group) => group.items.map((i) => i.href)));
-  // Le hub « Référentiel » (onglets) remplace la liste des pages.
-  if (used.has("/parametrage")) return base;
+  // Menus à plat (un seul groupe) : le référentiel utile est déjà dans une entrée à onglets.
+  if (base.length === 1) return base;
+  const used = new Set(base.flatMap((group) => group.items.flatMap(itemPatterns)));
   const refItems = PARAM_PAGES.filter((p) => !used.has(p.href) && (canReadParam(role, p.href) || canEditParam(role, p.href)));
   if (refItems.length === 0) return base;
   const ref = g("ref", "Référentiel", "sliders", refItems);
