@@ -572,46 +572,63 @@ function agentProduction(state: AppState, h: HomeHelpers): HomeData {
 
 function qualite(state: AppState, h: HomeHelpers): HomeData {
   const lotsWait = state.lots.filter((l) => l.statut === "EN_ATTENTE");
-  const ofRecus = state.ofList.filter((o) => o.statut === "PRODUCTION_TERMINEE" || o.statut === "EN_CONTROLE");
+  // OF terminés pas encore transformés en lot.
+  const ofRecus = state.ofList.filter(
+    (o) => (o.statut === "PRODUCTION_TERMINEE" || o.statut === "EN_CONTROLE") && !state.lots.some((l) => l.ordre_fabrication === o.id),
+  );
   const bloques = state.lots.filter((l) => l.statut === "BLOQUE" || l.statut === "NON_CONFORME");
   const controlesJour = state.controles.filter((c) => sameDay(c.date_controle));
   const quarantaine = state.retoursPhysiques.filter((r) => r.statut === "EN_QUARANTAINE");
+  const lots = "/production/qualite";
   return {
     actions: [
-      { href: "/production/qualite/of", label: "OF reçus", icon: Inbox },
-      { href: "/production/qualite", label: "Lots qualité", icon: FlaskConical },
+      { href: `${lots}?tab=creer`, label: "Créer les lots", icon: Inbox },
+      { href: `${lots}?tab=controler`, label: "Contrôler", icon: FlaskConical },
     ],
     kpis: [
-      { label: "Lots en attente", value: lotsWait.length, tone: lotsWait.length ? "warning" : "success", icon: FlaskConical, href: "/production/qualite" },
-      { label: "OF à contrôler", value: ofRecus.length, icon: Inbox, href: "/production/qualite/of" },
+      { label: "Lots en attente", value: lotsWait.length, tone: lotsWait.length ? "warning" : "success", icon: FlaskConical, href: `${lots}?tab=controler` },
+      { label: "OF à contrôler", value: ofRecus.length, hint: "Lot à créer", tone: ofRecus.length ? "warning" : "default", icon: Inbox, href: `${lots}?tab=creer` },
       { label: "Contrôles du jour", value: controlesJour.length, hint: `${controlesJour.filter((c) => c.resultat === "CONFORME").length} conforme(s)`, tone: "teal", icon: ClipboardCheck },
-      { label: "Lots bloqués", value: bloques.length, hint: "Bloqués ou non conformes", tone: bloques.length ? "danger" : "success", icon: Ban, href: "/production/qualite" },
+      { label: "Lots bloqués", value: bloques.length, hint: "Bloqués ou non conformes", tone: bloques.length ? "danger" : "success", icon: Ban, href: `${lots}?tab=bloques` },
     ],
     sections: [
+      section({
+        id: "of",
+        title: "OF reçus",
+        icon: Inbox,
+        href: `${lots}?tab=creer`,
+        tone: "warning",
+        empty: "Aucun OF en attente de lot.",
+        all: ofRecus.map((o) => ({
+          href: `${lots}?tab=creer`,
+          title: o.numero,
+          detail: `${h.articleName(o.article)} · ${formatQty(num(o.quantite_a_produire), 0)}`,
+          badge: { label: "Lot à créer", tone: "warning" },
+        })),
+      }),
       section({
         id: "lots",
         title: "Lots à contrôler",
         icon: FlaskConical,
-        href: "/production/qualite",
+        href: `${lots}?tab=controler`,
         tone: "warning",
         empty: "Aucun lot en attente.",
         all: lotsWait.map((l) => ({
-          href: `/production/qualite/${l.id}`,
+          href: `${lots}/${l.id}`,
           title: l.numero_lot,
           detail: `${h.articleName(l.article)} · ${formatQty(num(l.quantite), 0)}`,
           meta: formatDate(l.date_production),
         })),
       }),
-      section({ id: "of", title: "OF reçus de la production", icon: Inbox, href: "/production/qualite/of", empty: "Aucun OF à contrôler.", all: ofRecus.map((o) => ofTask(o, h)) }),
       section({
         id: "bloques",
-        title: "Lots bloqués ou non conformes",
+        title: "Lots bloqués",
         icon: Ban,
-        href: "/production/qualite",
+        href: `${lots}?tab=bloques`,
         tone: "danger",
         empty: "Aucun lot bloqué.",
         all: bloques.map((l) => ({
-          href: `/production/qualite/${l.id}`,
+          href: `${lots}/${l.id}`,
           title: l.numero_lot,
           detail: h.articleName(l.article),
           badge: { label: STATUT_LOT_LABEL[l.statut], tone: "danger" },
@@ -619,9 +636,10 @@ function qualite(state: AppState, h: HomeHelpers): HomeData {
       }),
       section({
         id: "retours",
-        title: "Retours clients en quarantaine",
+        title: "Retours en quarantaine",
         icon: MessageSquareWarning,
         href: "/reclamations",
+        tone: "warning",
         empty: "Aucun retour en quarantaine.",
         all: quarantaine.map((r) => ({
           href: `/reclamations/${r.reclamation}`,
@@ -633,7 +651,7 @@ function qualite(state: AppState, h: HomeHelpers): HomeData {
     ],
     chart: {
       title: "Lots par statut",
-      href: "/production/qualite",
+      href: lots,
       kind: "donut",
       centerLabel: "lots",
       data: countBy(state.lots, (l) => l.statut, (k) => STATUT_LOT_LABEL[k as keyof typeof STATUT_LOT_LABEL] ?? k),

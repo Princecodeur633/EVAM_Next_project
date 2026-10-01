@@ -160,26 +160,25 @@ Mes OF · Saisir · Accueil
 
 ### 2.5 Responsable Qualité (`RESPONSABLE_QUALITE`)
 **Carte d'identité**
-- Station : Laboratoire / lots · Couleur : vert · Icône : coche
-- Mission : « Contrôlez les lots. Seuls les lots libérés peuvent être vendus. »
+- Station : Contrôle et libération · Couleur : vert · Icône : coche
+- Mission : « Transformez chaque OF terminé en lot, contrôlez-le, puis libérez-le ou bloquez-le. Seuls les lots libérés se vendent. »
 - Posture : « Contrôle conforme ou non conforme, puis libération ou blocage. »
-- Possède : Lots, Contrôles qualité, Libération / blocage
-- Ne fait jamais : modifier le planning, vendre un lot en attente
-- Règles : un contrôle met à jour le statut du lot ; on ne libère un lot que s'il est conforme
+- Fait : lots, contrôles, libération, blocage, contrôle des retours
+- Ne fait pas : modifier le planning, vendre un lot en attente · Ne voit pas : commandes, prix, caisse
+- Priorités : 1) transformer chaque OF terminé en lot ; 2) contrôler (Conforme / Non conforme) ; 3) libérer ou bloquer ; 4) traiter les retours clients
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Qualité : OF reçus, Lots qualité, Fiches techniques (lecture), Réclamations
-- Référentiel : Articles (lecture seule — Fiches techniques déjà dans le menu Qualité)
-- *Accès supplémentaire* : Situation de stock (`/stocks`, lecture).
+**Menu (sidebar)** — un seul groupe « Qualité », 5 entrées (au lieu de 6) :
+Accueil · Lots qualité · Réclamations · Stock · Fiches
+- **Fiches** (hub à onglets, lecture) : Articles · Fiches techniques.
+- L'ancien écran « OF reçus » devient l'onglet « À créer » des lots (`/production/qualite/of` redirige).
 
 **Page d'accueil**
-- Actions rapides : OF reçus, Lots qualité.
-- KPI : Lots en attente, OF à contrôler, Contrôles du jour (+ conformes), Lots bloqués.
-- Files de travail : Lots à contrôler, OF reçus de la production, Lots bloqués ou non conformes, Retours clients en quarantaine.
+- Actions rapides : Créer les lots, Contrôler.
+- KPI : Lots en attente, OF à contrôler (lot à créer), Contrôles du jour (+ conformes), Lots bloqués.
+- Files de travail : OF reçus, Lots à contrôler, Lots bloqués, Retours en quarantaine.
 - Graphique : camembert « Lots par statut ».
 
-**Écrans accessibles** : Accueil · Lots qualité (liste + détail) · OF reçus · Fiches techniques (lecture) · Réclamations (liste + détail) · Situation de stock (lecture) · Référentiel : Articles (lecture).
+**Écrans accessibles** : Accueil · Lots qualité (onglets + fiche lot) · Réclamations (liste + détail) · Situation de stock · Fiches (Articles, Fiches techniques en lecture).
 
 ### 2.6 Magasinier (`MAGASINIER`)
 **Carte d'identité**
@@ -422,23 +421,15 @@ Mes OF · Saisir · Accueil
 **Formulaires en tiroir** (bouton d'en-tête selon l'onglet) : Demande complémentaire (`CREATE_COMPLEMENT`), Sortie manuelle (`CREATE_SORTIE`, motif obligatoire si complémentaire), Retour matière (`CREATE_RETOUR_MAT`).
 
 ### 3.3 Qualité
-#### Lots — `/production/qualite`
-**Objectif :** enregistrer un lot, le contrôler, puis le libérer.
-**Tableau :** Lot, Article, OF, Qté, Statut (badge), Date de production. Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_LOT`) : Article, Quantité, Date de production, OF d'origine (optionnel), Péremption (optionnelle). Bouton « Créer le lot ».
+#### Lots qualité — `/production/qualite`
+**Onglets avec compteurs** (`?tab=`) : **À créer** (OF terminés ou en contrôle sans lot ; bouton **« Créer le lot »** en fin de ligne → tiroir : quantité pré-remplie, date de production, péremption) · **À contrôler** (En attente) · **À libérer** (Conforme) · **Libérés** · **Bloqués** (Bloqué ou Non conforme). Recherche commune ; ligne de lot cliquable → fiche.
+*La Direction (Supervision) voit les mêmes onglets sans « À créer ».*
 
-#### OF reçus — `/production/qualite/of`
-**Objectif :** file d'attente des OF dont la production est terminée, à transformer en lot. Écran de consultation : Numéro, Article, Quantité produite, Responsable, Statut OF, Lot (« Créé » ou lien « À créer → »), Fin de production.
-
-#### Détail d'un lot — `/production/qualite/[id]`
-**En-tête :** numéro, badge de statut, description (article, OF, quantité, date).
-**Contenu :**
-- Panneau **Résultat du contrôle** (droit `CREATE_CONTROLE`) : champ Observations, boutons **« Conforme »** / **« Non conforme »**.
-- Une fois contrôlé : résultat affiché en lecture seule.
-- Bouton **« Libérer le lot »** (droit `LIBERER_LOT`, si statut Conforme).
-- Bouton **« Bloquer »** (droit `BLOQUER_LOT`, avec motif = champ Observations).
-- Bandeaux d'alerte : « Lot libéré — vendable » (vert) ou « Lot bloqué — non vendable » (rouge).
-- Composant Historique.
+#### Fiche lot — `/production/qualite/[id]` (gabarit B)
+- **Gauche :** bandeau d'état (« Lot libéré — vendable » vert, « Lot bloqué — non vendable » rouge, sinon « non vendable pour l'instant ») + synthèse (article, OF, quantité, production, péremption).
+- **Droite :** panneau **Résultat du contrôle** (contrôleur, date, observations) avec champ Observations, qui sert aussi de motif de blocage.
+- **Barre fixe en bas :** **[Non conforme] [Conforme]** (droit `CREATE_CONTROLE`, lot en attente), puis **[Libérer le lot]** (droit `LIBERER_LOT`, lot conforme) ou **[Bloquer]** (droit `BLOQUER_LOT`, motif obligatoire).
+- Historique.
 
 ### 3.4 Stocks
 #### Situation de stock — `/stocks`
@@ -549,13 +540,13 @@ Bandeau d'alerte si un incident a été signalé par le chauffeur. Composant His
 **Formulaire** (droit `CREATE_RECLAMATION`) : Client, Article, Quantité, Type de problème (Produit défectueux / manquant / Erreur de référence / Emballage endommagé / Produit périmé / Autre), Description, case « Produit retourné ».
 
 #### Détail réclamation — `/reclamations/[id]`
-Parcours séquentiel, chaque étape n'apparaissant que lorsque la précédente est franchie :
-1. Récapitulatif (lecture seule).
-2. **Retour physique** (droit `CREATE_RETOUR_PHYSIQUE`) : Quantité retournée → « Réceptionner en quarantaine ».
-3. **Contrôle retour** (droit `CREATE_CONTROLE_RETOUR`) : Résultat (Récupérable direct / avec intervention / Non récupérable), Observations → « Enregistrer le contrôle » (la décision — réintégration, reconditionnement ou rebut — s'applique automatiquement).
-4. **Reconditionnement** (si applicable, droit `TERMINER_RECONDITIONNEMENT`) : Quantité reconditionnée → « Terminer & réintégrer ».
-5. **Solution client** (droit `CREATE_SOLUTION`) : Type (Remplacement / Avoir / Remboursement), Montant → « Appliquer la solution » (clôture automatiquement la réclamation).
-Composant Historique.
+**Parcours vertical** : seules les étapes franchies (pastille verte, date) et l'étape courante (surlignée, « Étape en cours », avec son formulaire) sont visibles :
+1. Réclamation enregistrée (récapitulatif).
+2. **Retour physique en quarantaine** (si produit retourné ; droit `CREATE_RETOUR_PHYSIQUE`) : quantité → « Réceptionner en quarantaine ».
+3. **Contrôle du retour** (droit `CREATE_CONTROLE_RETOUR`) : résultat en boutons (Récupérable directement / avec intervention / Non récupérable), observations → « Enregistrer le contrôle » ; la décision s'applique automatiquement.
+4. **Reconditionnement** (si créé ; droit `TERMINER_RECONDITIONNEMENT`) : quantité → « Terminer & réintégrer ».
+5. **Solution client et clôture** (droit `CREATE_SOLUTION`) : type, montant (avoir / remboursement) → « Appliquer la solution ».
+Historique en bas.
 
 ### 3.9 Caisse
 #### Factures et encaissements — `/caisse`

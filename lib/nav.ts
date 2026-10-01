@@ -43,7 +43,6 @@ const I = {
   suiviEau: { href: "/production/suivi-eau", label: "Suivi eau", hint: "Captage et embouteillage" },
   pertes: { href: "/production/pertes", label: "Pertes", hint: "Pertes et rebuts" },
   qualite: { href: "/production/qualite", label: "Lots qualité", hint: "Contrôle et libération" },
-  ofRecus: { href: "/production/qualite/of", label: "OF reçus", hint: "Production terminée, à contrôler" },
   besoinsOf: { href: "/production/besoins", label: "Besoins matières", hint: "Besoins théoriques" },
   sorties: { href: "/production/demandes-matieres", label: "Matières atelier", hint: "Sorties et retours" },
   stock: { href: "/stocks", label: "Situation", hint: "Stock disponible" },
@@ -147,6 +146,12 @@ export const REF_TABS: NavItem[] = [
   { href: "/parametrage/fiscalite", label: "Codes fiscaux" },
 ];
 
+/** « Fiches » du Responsable Qualité : articles et fiches techniques en lecture. */
+const QUALITE_FICHES: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles" },
+  { href: "/parametrage/fiches-techniques", label: "Fiches techniques" },
+];
+
 /** Référentiel du Responsable Production (fiches techniques en lecture). */
 const PROD_REF_TABS: NavItem[] = [
   { href: "/parametrage/produits", label: "Articles" },
@@ -194,9 +199,15 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.accueil,
     ]),
   ],
+  // Menu à plat : 5 entrées ; les « OF reçus » deviennent l’onglet « À créer » des lots.
   RESPONSABLE_QUALITE: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("qualite", "Qualité", "check", [I.ofRecus, I.qualite, I.ft, I.reclamations]),
+    g("qualite", "Qualité", "check", [
+      I.accueil,
+      I.qualite,
+      I.reclamations,
+      { ...I.stock, label: "Stock" },
+      { href: "/parametrage/produits", label: "Fiches", hint: "Articles et fiches techniques (lecture)", hub: QUALITE_FICHES },
+    ]),
   ],
   MAGASINIER: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -289,14 +300,14 @@ function matchesExtra(href: string, extra: string) {
 }
 
 const EXTRA_ACCESS: Partial<Record<Profil, string[]>> = {
-  RESPONSABLE_QUALITE: ["/stocks"],
   COMMERCIAL: ["/stocks"],
   RESPONSABLE_DISTRIBUTION: ["/commercial/commandes"],
   CAISSIER: ["/commercial/commandes"],
   RESPONSABLE_PRODUCTION: ["/production/qualite"],
 };
 
-export function canAccess(role: Profil, href: string) {
+export function canAccess(role: Profil, url: string) {
+  const href = url.split(/[?#]/)[0];
   if (["/403", "/login", "/", "/accueil"].includes(href)) return true;
   if (flattenNav(role).some((i) => itemPatterns(i).some((p) => matchesItem(href, p)))) return true;
   const extra = EXTRA_ACCESS[role] ?? [];
