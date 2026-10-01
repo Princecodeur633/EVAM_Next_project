@@ -565,7 +565,7 @@ export const actions = {
   annuaire: () => api.get<AnnuaireEntry[]>("/comptes/annuaire/"),
   /** Mes notifications « à faire » : générées automatiquement par le backend à chaque
    * événement métier qui me concerne (voir apps/core/notifications.py). */
-  notifications: (nonLuesSeulement = false) => api.get<AppNotification[]>(`/notifications/${nonLuesSeulement ? "?lue=false" : ""}`),
+  notifications: (nonLuesSeulement = false) => listAll<AppNotification>("/notifications/", nonLuesSeulement ? { lue: false } : undefined),
   notificationsNonLues: () => api.get<{ non_lues: number }>("/notifications/non_lues/"),
   marquerNotificationLue: (id: number) => api.post<AppNotification>(`/notifications/${id}/lire/`),
   marquerToutesNotificationsLues: () => api.post<{ marquees: number }>("/notifications/tout_lire/"),
