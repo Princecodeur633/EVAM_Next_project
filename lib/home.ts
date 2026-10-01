@@ -35,7 +35,6 @@ import {
   UserCog,
   Vault,
   Wallet,
-  Warehouse,
 } from "lucide-react";
 import type { ChartPoint } from "@/components/charts";
 import { stockDisponible } from "./engine";
@@ -294,9 +293,6 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
     })
     .filter((x): x is { u: (typeof actifs)[number]; raison: string; href: string } => x != null);
 
-  const depotsSysteme = state.depots.filter((d) => d.est_systeme);
-  const depotsKo = depotsSysteme.filter((d) => !d.actif).length + Math.max(0, 3 - depotsSysteme.length);
-
   // Priorités d’action : comptes + rôle → caisses → fiches techniques des produits finis.
   const profils = Object.keys(PROFIL_LABEL) as Profil[];
   const profilsSansCompte = profils.filter((p) => p !== "ADMIN_SI" && !actifs.some((u) => u.profil === p));
@@ -388,7 +384,7 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
       }),
       section({
         id: "caissiers",
-        title: "Caissiers sans caisse affectée",
+        title: "Caissiers sans caisse",
         icon: Vault,
         href: "/admin/caisses",
         tone: "danger",
@@ -401,27 +397,10 @@ function admin(state: AppState, h: HomeHelpers): HomeData {
         })),
       }),
       section({
-        id: "depots",
-        title: "Dépôts système",
-        pinned: true,
-        icon: Warehouse,
-        href: "/parametrage/depots",
-        tone: depotsKo ? "danger" : "teal",
-        empty: wait("Aucun dépôt système trouvé : vérifiez l’initialisation du backend."),
-        all: depotsSysteme.map((d) => {
-          const lignes = state.stock.filter((s) => s.depot === d.id && num(s.quantite_physique) > 0);
-          return {
-            href: "/parametrage/depots",
-            title: d.nom,
-            detail: `${d.role || "Dépôt système"} · ${lignes.length} article(s) · ${formatQty(sum(lignes, (s) => s.quantite_physique), 0)} en stock`,
-            badge: d.actif ? { label: "Actif", tone: "success" as const } : { label: "Inactif", tone: "danger" as const },
-          };
-        }),
-      }),
-      section({
         id: "journal",
         title: "Activité récente",
         wide: true,
+        pinned: true,
         icon: History,
         href: "/admin/audit",
         empty: "Aucune action enregistrée.",

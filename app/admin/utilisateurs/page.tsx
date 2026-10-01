@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { KeyRound, Plus, Power, UserCog, UserPlus, Wand2 } from "lucide-react";
+import { CircleSlash, KeyRound, Lock, Plus, Power, ShieldCheck, UserCog, UserPlus, Users, Wand2 } from "lucide-react";
 import { DrawerSection, SidePanel, SplitLayout } from "@/components/Drawer";
 import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
-import { ACCENT_SOFT } from "@/components/icons";
+import { ACCENT_CLASS, ACCENT_SOFT, ROLE_ICONS } from "@/components/icons";
+import { Tabs } from "@/components/Tabs";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { displayName, PROFIL_LABEL } from "@/lib/labels";
 import { ROLE_PROFILES } from "@/lib/roles";
@@ -14,6 +15,7 @@ import { cn, formatDate } from "@/lib/utils";
 
 const PROFILS = Object.keys(PROFIL_LABEL) as Profil[];
 type Filtre = "TOUS" | "ACTIFS" | "INACTIFS";
+type Onglet = "comptes" | "profils";
 
 /** Mot de passe provisoire lisible (sans caractères ambigus), à communiquer à l’utilisateur. */
 function motDePasseProvisoire() {
@@ -41,6 +43,7 @@ export default function UtilisateursPage() {
   const [profilFiltre, setProfilFiltre] = useState<Profil | "">("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
+  const [onglet, setOnglet] = useState<Onglet>("comptes");
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -61,23 +64,36 @@ export default function UtilisateursPage() {
   return (
     <div className="space-y-4 max-w-[1440px]">
       <PageHeader
-        eyebrow="Administration"
-        title="Utilisateurs"
+        eyebrow="Configuration"
+        title="Utilisateurs & profils"
         description="Créez les comptes de l’usine, attribuez un rôle et gérez l’accès de chacun."
         actions={
-          writable ? (
+          writable && onglet === "comptes" ? (
             <Button
               onClick={() => {
                 setSelectedId(null);
                 setCreating(true);
               }}
             >
-              <Plus size={15} /> Utilisateur
+              <Plus size={15} /> Nouvel utilisateur
             </Button>
           ) : null
         }
       />
 
+      <Tabs
+        label="Utilisateurs et profils"
+        value={onglet}
+        onChange={setOnglet}
+        items={[
+          { value: "comptes", label: "Comptes", icon: Users, count: state.utilisateurs.length },
+          { value: "profils", label: "Profils & accès", icon: ShieldCheck, count: PROFILS.length },
+        ]}
+      />
+
+      {onglet === "profils" ? (
+        <ProfilsAcces />
+      ) : (
       <SplitLayout>
       <Panel className="overflow-hidden">
         <FilterBar
@@ -200,6 +216,62 @@ export default function UtilisateursPage() {
         </SidePanel>
       )}
       </SplitLayout>
+      )}
+    </div>
+  );
+}
+
+/** Onglet « Profils & accès » : fiche de chaque poste, en lecture seule (droits fixés dans le code). */
+function ProfilsAcces() {
+  const { state } = useStore();
+  return (
+    <div className="space-y-3">
+      <p className="text-[12.5px] text-muted flex items-center gap-1.5">
+        <Lock size={13} className="shrink-0" /> Lecture seule : les droits de chaque profil sont fixés par l’application.
+      </p>
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+        {PROFILS.map((k) => {
+          const p = ROLE_PROFILES[k];
+          const Icon = ROLE_ICONS[p.icon];
+          const comptes = state.utilisateurs.filter((u) => u.profil === k && u.actif).length;
+          return (
+            <Panel key={k} className="p-4 flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                <span className={cn("h-9 w-9 shrink-0 rounded-[8px] text-white flex items-center justify-center", ACCENT_CLASS[p.accent])}>
+                  <Icon size={17} strokeWidth={1.7} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13.5px] font-semibold leading-tight">{p.label}</p>
+                  <p className="text-[11.5px] text-muted mt-0.5">{p.station}</p>
+                </div>
+                <span className={cn("text-[11px] num font-medium px-1.5 py-0.5 rounded-[5px] shrink-0", comptes ? "bg-success-soft text-success" : "bg-warning-soft text-warning")}>
+                  {comptes} compte{comptes > 1 ? "s" : ""}
+                </span>
+              </div>
+              <p className="text-[12.5px] leading-snug">{p.mission}</p>
+              {p.owns.length > 0 && (
+                <ul className="flex flex-wrap gap-1.5">
+                  {p.owns.map((o) => (
+                    <li key={o} className={cn("text-[11px] px-1.5 py-0.5 rounded-[4px] font-medium", ACCENT_SOFT[p.accent])}>
+                      {o}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {p.never.length > 0 && (
+                <ul className="space-y-1 pt-2 border-t border-line mt-auto">
+                  {p.never.map((n) => (
+                    <li key={n} className="flex gap-1.5 text-[11.5px] text-muted leading-snug">
+                      <CircleSlash size={12} className="text-danger/70 shrink-0 mt-[2px]" />
+                      <span>{n}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          );
+        })}
+      </div>
     </div>
   );
 }

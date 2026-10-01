@@ -67,10 +67,11 @@ const I = {
   parametresCompta: { href: "/comptabilite/parametres", label: "Paramètres comptables", hint: "Plan de comptes, seuils" },
   valorisation: { href: "/stocks/valorisation", label: "Valorisation du stock", hint: "Coût moyen pondéré (CMUP)" },
   ft: { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Consultation recettes" },
-  users: { href: "/admin/utilisateurs", label: "Utilisateurs" },
-  profils: { href: "/admin/profils", label: "Profils" },
-  droits: { href: "/admin/droits", label: "Profils & accès" },
-  audit: { href: "/admin/audit", label: "Journal d'audit" },
+  users: { href: "/admin/utilisateurs", label: "Utilisateurs & profils", hint: "Comptes, rôles et accès" },
+  ftAdmin: { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Composer et valider les recettes" },
+  referentiel: { href: "/parametrage", label: "Référentiel", hint: "Articles, matières, tiers, fiscalité" },
+  parametres: { href: "/admin/parametres", label: "Paramètres", hint: "Listes fixes, numérotation" },
+  audit: { href: "/admin/audit", label: "Journal d'audit", hint: "Historique des actions" },
   caisses: { href: "/admin/caisses", label: "Caisses", hint: "Créer et affecter les caisses" },
   reclamations: { href: "/reclamations", label: "Réclamations", hint: "Retours clients" },
   avoirs: { href: "/commercial/avoirs", label: "Avoirs", hint: "Crédits clients" },
@@ -96,8 +97,8 @@ function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup 
 
 export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ADMIN_SI: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("admin", "Administration", "shield", [I.users, I.caisses, I.profils, I.droits, I.audit]),
+    // Menu à plat : 7 entrées, le référentiel est regroupé derrière un hub à onglets.
+    g("config", "Configuration", "shield", [I.accueil, I.users, I.caisses, I.ftAdmin, I.referentiel, I.parametres, I.audit]),
   ],
   DIRECTION: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -156,6 +157,8 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
 export function navForRole(role: Profil): NavGroup[] {
   const base = ROLE_MENU[role];
   const used = new Set(base.flatMap((group) => group.items.map((i) => i.href)));
+  // Le hub « Référentiel » (onglets) remplace la liste des pages.
+  if (used.has("/parametrage")) return base;
   const refItems = PARAM_PAGES.filter((p) => !used.has(p.href) && (canReadParam(role, p.href) || canEditParam(role, p.href)));
   if (refItems.length === 0) return base;
   const ref = g("ref", "Référentiel", "sliders", refItems);
@@ -299,9 +302,8 @@ export function breadcrumbs(pathname: string) {
     general: "Référentiel",
     encaissement: "Caisse",
     admin: "Administration",
-    utilisateurs: "Utilisateurs",
-    profils: "Profils",
-    droits: "Droits",
+    utilisateurs: "Utilisateurs & profils",
+    parametres: "Paramètres",
     audit: "Journal",
   };
   const parts = pathname.split("/").filter(Boolean);
@@ -313,3 +315,14 @@ export function breadcrumbs(pathname: string) {
   });
   return crumbs.filter((c, i, a) => i === 0 || c.label !== a[i - 1]?.label);
 }
+
+/** Onglets du hub « Référentiel » (postes dont le menu pointe sur /parametrage, ex. Admin SI). */
+export const REF_TABS: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles" },
+  { href: "/parametrage/matieres", label: "Matières" },
+  { href: "/parametrage/conditionnements", label: "Conditionnements" },
+  { href: "/parametrage/depots", label: "Dépôts" },
+  { href: "/parametrage/clients", label: "Clients" },
+  { href: "/parametrage/fournisseurs", label: "Fournisseurs" },
+  { href: "/parametrage/fiscalite", label: "Codes fiscaux" },
+];

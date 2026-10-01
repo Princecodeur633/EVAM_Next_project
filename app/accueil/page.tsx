@@ -37,6 +37,8 @@ export default function AccueilPage() {
     .map((s) => ({ ...s, href: allowed(s.href) ? s.href : "", items: s.items.filter((i) => allowed(i.href)) }))
     // Une section vide et secondaire n’apporte rien : on ne garde que celles qui ont du contenu ou qui sont prioritaires.
     .filter((s, i) => s.pinned || s.total > 0 || s.tone === "warning" || s.tone === "danger" || i < 2);
+  // Trois files côte à côte (ex. Admin SI), les sections « larges » passent en dessous sur toute la largeur.
+  const queues = sections.filter((s) => !s.wide).length;
   const pending = sections.filter((s) => s.tone === "warning" || s.tone === "danger").reduce((a, s) => a + s.total, 0);
 
   const seen = new Set<string>();
@@ -135,7 +137,7 @@ export default function AccueilPage() {
 
       <div className={cn("grid gap-5 items-start", home.aside !== false && "xl:grid-cols-[minmax(0,1fr)_340px]")}>
         {/* Files de travail */}
-        <div className="grid md:grid-cols-2 gap-4 items-start">
+        <div className={cn("grid md:grid-cols-2 gap-4 items-start", home.aside === false && queues === 3 && "lg:grid-cols-3")}>
           {sections.map((s) => (
             <SectionCard key={s.id} section={s} />
           ))}
@@ -198,7 +200,7 @@ function SectionCard({ section: s }: { section: HomeSection }) {
   const Icon = s.icon;
   const more = s.total - s.items.length;
   return (
-    <section className={cn("evam-card overflow-hidden flex flex-col min-w-0", s.wide && "md:col-span-2")}>
+    <section className={cn("evam-card overflow-hidden flex flex-col min-w-0", s.wide && "col-span-full")}>
       <header className="px-4 py-3 border-b border-line flex items-center gap-2.5">
         <span className={cn("h-7 w-7 shrink-0 rounded-[7px] flex items-center justify-center", TONE_CHIP[s.total > 0 ? s.tone ?? "info" : "neutral"])}>
           <Icon size={14} strokeWidth={1.8} />
