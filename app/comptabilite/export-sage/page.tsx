@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { TYPE_EXPORT_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { actions } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { TypeExport } from "@/lib/types";
 
@@ -32,11 +33,19 @@ export default function ExportsPage() {
       )}
       <Panel>
         <DataTable
-          columns={[{ key: "t", label: "Type" }, { key: "p", label: "Période" }, { key: "d", label: "Généré" }]}
+          columns={[{ key: "t", label: "Type" }, { key: "p", label: "Période" }, { key: "d", label: "Généré" }, { key: "act", label: "" }]}
           rows={state.exportsComptables.map((e) => ({
             t: TYPE_EXPORT_LABEL[e.type_export] ?? e.type_export,
             p: `${formatDate(e.periode_debut)} → ${formatDate(e.periode_fin)}`,
             d: formatDate(e.date_generation),
+            act: (
+              <button
+                className="text-primary text-[12px]"
+                onClick={() => void actions.telechargerExport(e.id, `export_${e.type_export.toLowerCase()}_${e.periode_debut}_${e.periode_fin}.csv`)}
+              >
+                Télécharger CSV
+              </button>
+            ),
           }))}
         />
       </Panel>

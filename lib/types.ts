@@ -975,8 +975,13 @@ export interface AnomalieDetectee {
   description: string;
   statut: StatutAnomalie;
   traite_par: number | null;
+  traite_par_nom?: string | null;
   date_detection: string;
   date_traitement: string | null;
+  commentaire_traitement: string;
+  type_document: string;
+  document_id: number | null;
+  reference: string;
 }
 
 export interface ExportComptable {
@@ -995,6 +1000,70 @@ export interface Cloture {
   type_cloture: TypeCloture;
   valide_par: number;
   date_cloture: string;
+}
+
+/** Rôle d'un compte général utilisé par les écritures automatiques (plan SYSCOHADA par défaut). */
+export type CleCompte =
+  | "CLIENTS" | "FOURNISSEURS" | "VENTES_PRODUITS_FINIS" | "TVA_COLLECTEE" | "ACCISES"
+  | "CENTIMES_ADDITIONNELS" | "RABAIS_ACCORDES" | "ACHATS_MATIERES" | "CAISSE" | "BANQUE"
+  | "MOBILE_MONEY" | "CHARGES_DIVERSES";
+
+export interface CompteParametre {
+  id: number;
+  cle: CleCompte;
+  role: string;
+  numero: string;
+}
+
+export type CleControle = "TOLERANCE_DEPASSEMENT_MATIERE" | "DELAI_ALERTE_PEREMPTION_JOURS" | "DELAI_DECAISSEMENT_EN_ATTENTE_JOURS";
+
+export interface ParametreControle {
+  id: number;
+  cle: CleControle;
+  libelle: string;
+  valeur: string;
+  minimum: number;
+  maximum: number;
+  modifie_par_nom: string | null;
+  date_modification: string;
+}
+
+export type Journal = "VT" | "AC" | "CA" | "OD";
+
+export interface LigneEcriture {
+  compte: string;
+  compte_tiers: string;
+  libelle: string;
+  debit: string;
+  credit: string;
+}
+
+/** Une ligne de GET /stocks/valorisation/ : valeur du stock au coût moyen pondéré (CMUP). */
+export interface LigneValorisation {
+  article: string;
+  designation: string;
+  type_article: TypeArticle;
+  depot: string;
+  quantite: string;
+  cout_unitaire_moyen: string;
+  valeur: string;
+}
+
+export interface ValorisationStock {
+  valeur_totale: string;
+  lignes: LigneValorisation[];
+}
+
+export interface EcritureComptable {
+  id: number;
+  numero: string;
+  journal: Journal;
+  journal_libelle: string;
+  date: string;
+  piece: string;
+  libelle: string;
+  exportee_le: string | null;
+  lignes: LigneEcriture[];
 }
 
 export interface RapportGenere {
@@ -1131,6 +1200,9 @@ export interface AppState {
   anomalies: AnomalieDetectee[];
   exportsComptables: ExportComptable[];
   clotures: Cloture[];
+  comptesParametres: CompteParametre[];
+  seuilsControles: ParametreControle[];
+  ecrituresComptables: EcritureComptable[];
   rapports: RapportGenere[];
   lastError: string | null;
   loading: boolean;

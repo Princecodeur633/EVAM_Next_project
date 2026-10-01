@@ -15,6 +15,10 @@ import type {
   Chauffeur,
   Client,
   Cloture,
+  CompteParametre,
+  ParametreControle,
+  EcritureComptable,
+  ValorisationStock,
   CodeFiscal,
   FamilleArticle,
   FamilleFiscale,
@@ -163,6 +167,9 @@ export const endpoints = {
   anomalies: "/comptabilite/anomalies/",
   exportsComptables: "/comptabilite/exports/",
   clotures: "/comptabilite/clotures/",
+  comptesParametres: "/comptabilite/comptes/",
+  seuilsControles: "/comptabilite/seuils-controles/",
+  ecrituresComptables: "/comptabilite/ecritures/",
   rapports: "/reporting/rapports/",
 } as const;
 
@@ -246,6 +253,9 @@ export const catalog = {
   anomalies: () => listAll<AnomalieDetectee>(endpoints.anomalies),
   exportsComptables: () => listAll<ExportComptable>(endpoints.exportsComptables),
   clotures: () => listAll<Cloture>(endpoints.clotures),
+  comptesParametres: () => listAll<CompteParametre>(endpoints.comptesParametres),
+  seuilsControles: () => listAll<ParametreControle>(endpoints.seuilsControles),
+  ecrituresComptables: () => listAll<EcritureComptable>(endpoints.ecrituresComptables),
   rapports: () => listAll<RapportGenere>(endpoints.rapports),
 };
 
@@ -264,6 +274,30 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "lots",
     "journal",
     "ofList",
+    "plans",
+    "besoinsMatieres",
+    "demandesMatieres",
+    "controles",
+    "depots",
+    "mouvements",
+    "inventaires",
+    "lignesInventaire",
+    "clients",
+    "tarifs",
+    "commandes",
+    "lignesCommande",
+    "factures",
+    "lignesFacture",
+    "fournisseurs",
+    "besoinsAchat",
+    "demandesAchat",
+    "commandesFournisseur",
+    "lignesCommandeFournisseur",
+    "receptions",
+    "lignesReception",
+    "preparations",
+    "bonsLivraison",
+    "tournees",
     "utilisateurs",
     "encaissements",
     "caisses",
@@ -277,6 +311,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "coutsStandards",
     "coutsReels",
     "anomalies",
+    "ecrituresComptables",
+    "exportsComptables",
+    "clotures",
     "rapports",
   ],
   RESPONSABLE_PRODUCTION: [
@@ -452,6 +489,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "anomalies",
     "exportsComptables",
     "clotures",
+    "comptesParametres",
+    "seuilsControles",
+    "ecrituresComptables",
     "codesFiscaux",
     "coutsRetours",
     "rapports",
@@ -529,8 +569,34 @@ export const actions = {
   notificationsNonLues: () => api.get<{ non_lues: number }>("/notifications/non_lues/"),
   marquerNotificationLue: (id: number) => api.post<AppNotification>(`/notifications/${id}/lire/`),
   marquerToutesNotificationsLues: () => api.post<{ marquees: number }>("/notifications/tout_lire/"),
+  /** Valeur du stock au coût moyen pondéré (CMUP), article par article — Comptabilité/DAF, Direction, Admin SI. */
+  valorisationStock: (params?: { depot?: number; type_article?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.depot) q.set("depot", String(params.depot));
+    if (params?.type_article) q.set("type_article", params.type_article);
+    const suffixe = q.toString() ? `?${q}` : "";
+    return api.get<ValorisationStock>(`/stocks/valorisation/${suffixe}`);
+  },
   /** Historique (création, changements de statut) d'un document — endpoint = base de collection (endpoints.xxx). */
   historique: (endpoint: string, id: number) => api.get<HistoriqueLigne[]>(`${endpoint}${id}/historique/`),
+  /** Les anomalies sont détectées par le système : plus de PATCH direct, seulement ces actions. */
+  prendreEnChargeAnomalie: (id: number) => api.post<AnomalieDetectee>(`${endpoints.anomalies}${id}/prendre_en_charge/`),
+  resoudreAnomalie: (id: number, commentaire: string) => api.post<AnomalieDetectee>(`${endpoints.anomalies}${id}/resoudre/`, { commentaire }),
+  ignorerAnomalie: (id: number, commentaire: string) => api.post<AnomalieDetectee>(`${endpoints.anomalies}${id}/ignorer/`, { commentaire }),
+  detecterAnomalies: () => api.post<{ detectees: number; resolues_automatiquement: number }>(`${endpoints.anomalies}detecter/`),
+  /**
+   * Le CSV Sage exige le jeton d'authentification (un lien <a> brut ne
+   * l'enverrait pas) : on le récupère en texte, puis on déclenche le
+   * téléchargement nous-mêmes.
+   */
+  telechargerExport: async (id: number, nomFichier: string) => {
+    const csv = await api.get<string>(`${endpoints.exportsComptables}${id}/telecharger/`);
+    const lien = document.createElement("a");
+    lien.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    lien.download = nomFichier;
+    lien.click();
+    URL.revokeObjectURL(lien.href);
+  },
   cloturerSession: (id: number, solde_compte: string, justification?: string) =>
     api.post<{ session: SessionCaisse }>(`${endpoints.sessionsCaisse}${id}/cloturer/`, {
       solde_compte,

@@ -63,6 +63,9 @@ const I = {
   anomalies: { href: "/comptabilite/brouillards", label: "Anomalies", hint: "Écarts à traiter" },
   exports: { href: "/comptabilite/export-sage", label: "Exports comptables", hint: "Exports de période" },
   clotures: { href: "/comptabilite/clotures", label: "Clôtures", hint: "Périodes comptables" },
+  ecritures: { href: "/comptabilite/ecritures", label: "Écritures", hint: "Journal comptable" },
+  parametresCompta: { href: "/comptabilite/parametres", label: "Paramètres comptables", hint: "Plan de comptes, seuils" },
+  valorisation: { href: "/stocks/valorisation", label: "Valorisation du stock", hint: "Coût moyen pondéré (CMUP)" },
   ft: { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Consultation recettes" },
   users: { href: "/admin/utilisateurs", label: "Utilisateurs" },
   profils: { href: "/admin/profils", label: "Profils" },
@@ -98,7 +101,8 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   DIRECTION: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("pilotage", "Pilotage", "bar", [I.dashboard, I.couts, I.marges, I.anomalies]),
+    g("pilotage", "Pilotage", "bar", [I.dashboard, I.couts, I.marges, I.anomalies, I.ecritures, I.valorisation]),
+    g("supervision", "Supervision", "handshake", [I.cmd, I.of, I.apBesoins, I.cf, I.rec, I.prep, I.bl, I.mvt, I.inv]),
     g("caisse", "Caisse", "banknote", [I.decaissements]),
   ],
   RESPONSABLE_PRODUCTION: [
@@ -143,8 +147,8 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ],
   COMPTABILITE_DAF: [
     g("poste", "Menu", "home", [I.accueil]),
-    g("fin", "Comptabilité", "ledger", [I.anomalies, I.exports, I.clotures, I.audit, I.impayes]),
-    g("couts", "Coûts", "coins", [I.couts, I.marges]),
+    g("fin", "Comptabilité", "ledger", [I.anomalies, I.ecritures, I.exports, I.clotures, I.parametresCompta, I.audit, I.impayes]),
+    g("couts", "Coûts", "coins", [I.couts, I.marges, I.valorisation]),
     g("caisse", "Caisse", "banknote", [I.sessions, I.decaissements]),
   ],
 };

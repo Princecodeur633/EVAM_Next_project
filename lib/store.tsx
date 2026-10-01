@@ -187,8 +187,13 @@ export type Action =
   | { type: "RECALCULER_COUT"; id: number }
   | { type: "CREATE_EXPORT"; type_export: string; periode_debut: string; periode_fin: string }
   | { type: "CREATE_ANOMALIE"; type_anomalie: string; module_source: string; description: string }
-  | { type: "TRAITER_ANOMALIE"; id: number; statut: "TRAITEE" | "IGNOREE" | "EN_TRAITEMENT" }
+  | { type: "PRENDRE_EN_CHARGE_ANOMALIE"; id: number }
+  | { type: "RESOUDRE_ANOMALIE"; id: number; commentaire: string }
+  | { type: "IGNORER_ANOMALIE"; id: number; commentaire: string }
+  | { type: "DETECTER_ANOMALIES" }
   | { type: "CREATE_CLOTURE"; periode: string; type_cloture: string }
+  | { type: "PATCH_COMPTE_PARAMETRE"; id: number; numero: string }
+  | { type: "PATCH_SEUIL_CONTROLE"; id: number; valeur: number }
   | { type: "GENERER_RAPPORT"; periode: "JOURNALIER" | "MENSUEL" }
   | { type: "CREATE_VALEUR_LISTE"; liste: ListeValeurs; valeur: string }
   | { type: "TOGGLE_VALEUR_LISTE"; liste: ListeValeurs; id: number; actif: boolean }
@@ -276,6 +281,9 @@ function emptyState(): AppState {
     anomalies: [],
     exportsComptables: [],
     clotures: [],
+    comptesParametres: [],
+    seuilsControles: [],
+    ecrituresComptables: [],
     rapports: [],
     lastError: null,
     loading: false,
@@ -1036,18 +1044,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               description: action.description,
             });
             break;
-          case "TRAITER_ANOMALIE":
-            await api.patch(detail(endpoints.anomalies, action.id), {
-              statut: action.statut,
-              traite_par: userId ?? null,
-              date_traitement: action.statut === "EN_TRAITEMENT" ? null : new Date().toISOString(),
-            });
+          case "PRENDRE_EN_CHARGE_ANOMALIE":
+            await actions.prendreEnChargeAnomalie(action.id);
+            break;
+          case "RESOUDRE_ANOMALIE":
+            await actions.resoudreAnomalie(action.id, action.commentaire);
+            break;
+          case "IGNORER_ANOMALIE":
+            await actions.ignorerAnomalie(action.id, action.commentaire);
+            break;
+          case "DETECTER_ANOMALIES":
+            await actions.detecterAnomalies();
             break;
           case "CREATE_CLOTURE":
             await api.post(endpoints.clotures, {
               periode: action.periode,
               type_cloture: action.type_cloture,
             });
+            break;
+          case "PATCH_COMPTE_PARAMETRE":
+            await api.patch(detail(endpoints.comptesParametres, action.id), { numero: action.numero });
+            break;
+          case "PATCH_SEUIL_CONTROLE":
+            await api.patch(detail(endpoints.seuilsControles, action.id), { valeur: action.valeur });
             break;
           case "CREATE_VALEUR_LISTE": {
             const cfg = LISTE_CONFIG[action.liste];
