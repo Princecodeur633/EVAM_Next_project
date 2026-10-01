@@ -263,10 +263,14 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/caisse/cloture", label: "Ma session", hint: "Solde, clôture et écart" },
     ]),
   ],
+  // Menu à plat : 4 entrées ; préparations et BL sont des étapes du « Circuit de livraison ».
   RESPONSABLE_DISTRIBUTION: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("liv", "Distribution", "truck", [I.prep, I.bl, I.tournees, I.reclamations]),
-    g("vente", "Commandes", "handshake", [I.cmd]),
+    g("liv", "Logistique", "truck", [
+      I.accueil,
+      { href: "/distribution", label: "Circuit de livraison", hint: "Commandes → préparations → BL → livrées" },
+      { href: "/distribution/tournees", label: "Tournées & flotte", hint: "Tournées, véhicules, chauffeurs" },
+      I.reclamations,
+    ]),
   ],
   CHAUFFEUR: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -437,7 +441,7 @@ export function breadcrumbs(pathname: string) {
     cloture: "Sessions",
     decaissements: "Décaissements",
     impayes: "Impayés",
-    distribution: "Distribution",
+    distribution: "Circuit de livraison",
     preparations: "Préparations",
     bl: "Bons de livraison",
     tournees: "Tournées",

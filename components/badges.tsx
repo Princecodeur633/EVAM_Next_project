@@ -3,10 +3,11 @@ import {
   STATUT_BL_LABEL,
   STATUT_CMD_LABEL,
   STATUT_DA_LABEL,
+  STATUT_FACTURE_LABEL,
   STATUT_LOT_LABEL,
   STATUT_OF_LABEL,
 } from "@/lib/labels";
-import type { StatutBL, StatutCommande, StatutDemandeAchat, StatutLot, StatutOF } from "@/lib/types";
+import type { Facture, StatutBL, StatutCommande, StatutDemandeAchat, StatutLot, StatutOF } from "@/lib/types";
 
 const TONE = {
   neutral: "neutral",
@@ -79,4 +80,11 @@ export function LotBadge({ status }: { status: StatutLot }) {
 
 export function ClaimBadge({ status }: { status: string }) {
   return <StatusBadge tone="neutral">{status}</StatusBadge>;
+}
+
+/** Statut de paiement de la facture d’une commande (badge). */
+export function PaiementBadge({ facture }: { facture?: Facture }) {
+  if (!facture) return <StatusBadge tone="neutral">Non facturée</StatusBadge>;
+  const tone = facture.statut === "PAYEE" ? "success" : facture.statut === "ANNULEE" ? "danger" : facture.statut === "PARTIELLEMENT_PAYEE" ? "warning" : "danger";
+  return <StatusBadge tone={tone}>{STATUT_FACTURE_LABEL[facture.statut]}</StatusBadge>;
 }

@@ -136,6 +136,8 @@ export const LABEL_ICONS: Record<string, LucideIcon> = {
   Supervision: Binoculars,
   Approvisionnement: ShoppingCart,
   Caisse: Wallet,
+  "Circuit de livraison": Truck,
+  "Tournées & flotte": Route,
   "Mes OF": ClipboardList,
   Saisir: PencilLine,
 };

@@ -267,25 +267,22 @@ Accueil · Caisse · Décaissements · Ma session
 ### 2.10 Responsable Distribution (`RESPONSABLE_DISTRIBUTION`)
 **Carte d'identité**
 - Station : Logistique · Couleur : teal · Icône : camion
-- Mission : « Véhicules, chauffeurs, tournées, préparations et livraisons. »
-- Posture : « Circuit : commande → préparation → sortie magasin → bon de livraison → signature client. »
-- Possède : Tournées, Véhicules, Chauffeurs, Préparations, Bons de livraison
-- Ne fait jamais : encaisser, modifier le stock hors transfert
-- Règles : confirmer une livraison enregistre la signature du client
+- Mission : « Lancez la préparation des commandes validées, créez les BL, affectez-les aux tournées et confirmez les livraisons. »
+- Posture : « Circuit : commande → préparation → sortie magasin → bon de livraison → livraison confirmée. »
+- Fait : préparations, BL, tournées, véhicules, chauffeurs · Voit : commandes en lecture
+- Ne fait pas : encaisser, modifier le stock hors transfert
+- Priorités : 1) lancer la préparation des commandes validées ; 2) créer le BL et l'affecter à une tournée ; 3) confirmer la livraison une fois le paiement soldé
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Distribution : Préparations, Bons de livraison, Tournées, Réclamations
-- Commandes : Commandes (lecture/consultation des commandes à préparer)
-- Pas de Référentiel.
+**Menu (sidebar)** — un seul groupe « Logistique », 4 entrées (au lieu de 6) :
+Accueil · Circuit de livraison · Tournées & flotte · Réclamations
 
 **Page d'accueil**
-- Actions rapides : Préparations, Tournées.
-- KPI : Commandes à lancer, Préparations en cours, Prêtes à sortir, En livraison.
-- Files de travail : Commandes validées à préparer, Préparations, Livraisons en cours, Tournées du jour, Réclamations ouvertes (si existantes).
+- Actions rapides : Circuit de livraison, Tournées & flotte.
+- KPI : Commandes à lancer, Préparations en cours, Prêtes à sortir, En livraison (chacun ouvre l'étape du circuit).
+- Files : Commandes validées à préparer, Livraisons en cours, Tournées du jour.
 - Graphique : camembert « Bons de livraison » par statut.
 
-**Écrans accessibles** : Accueil · Préparations (liste + détail) · Bons de livraison (liste + détail) · Tournées · Réclamations (liste + détail) · Commandes clients (lecture).
+**Écrans accessibles** : Accueil · Circuit de livraison (+ fiches préparation et BL) · Tournées & flotte · Réclamations · Commandes (lecture).
 
 ### 2.11 Chauffeur / Livreur (`CHAUFFEUR`)
 **Carte d'identité**
@@ -510,20 +507,28 @@ Stepper (À préparer → En préparation → Sortie magasin), synthèse, articl
 **Barre fixe en bas :** **[Confirmer préparation]** (droit `PREP_CONFIRMER`) puis **[Confirmer sortie]** (droit `PREP_SORTIE`).
 **Erreur « stock insuffisant »** : affichée en Guard rouge avec l'article, le dépôt, la quantité demandée et le **disponible réel** ; aucune sortie n'est enregistrée (tout ou rien).
 
+#### Circuit de livraison — `/distribution` (Responsable Distribution)
+**Frise** avec compteurs : Commandes à servir → Préparations → Bons de livraison → Livrées ; chaque étape est un onglet (`?etape=`), recherche commune.
+- Commandes à servir (validées sans préparation) : statut de paiement, **[Lancer la préparation]**.
+- Préparations (au magasin) : ligne → fiche préparation.
+- Bons de livraison : préparations sorties sans BL avec **[Créer le BL]** (tiroir : tournée du jour ou à venir) + BL en livraison (tournée, paiement, incident) → fiche BL.
+- Livrées : BL terminés.
+
 #### Bons de livraison (liste) — `/distribution/bl`
-**Tableau :** N°, Commande, Statut (badge), Signature (Oui/Non). Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_BL`) : Commande, Tournée (optionnelle). Bouton « Créer BL ».
+**Tableau :** N°, Commande, Statut (badge), Signature (Oui/Non). Ligne cliquable → détail. (Écran du chauffeur ; le Responsable Distribution passe par le circuit.)
 
-#### Détail bon de livraison — `/distribution/bl/[id]`
-**En-tête :** numéro, badge de statut, commande liée. Boutons :
-- **« Marquer remis au client »** (droit `LIVRER_BL`, si En livraison, sans signature déjà enregistrée).
-- **« Signaler un problème »** (droit `SIGNALER_PROBLEME_BL`, saisie du motif via une invite de saisie, obligatoire) — réservé notamment au Chauffeur.
-- **« Confirmer la livraison »** (droit `CONFIRMER_BL`, si pas encore Livrée) — réservé au Responsable Distribution.
-Bandeau d'alerte si un incident a été signalé par le chauffeur. Composant Historique.
+#### Fiche bon de livraison — `/distribution/bl/[id]` (gabarit B)
+- **Statut de paiement de la facture en évidence** (montant, badge, règle comptant / contrat) — masqué pour le chauffeur.
+- Résumé : commande, client, type, tournée, chauffeur / véhicule, signature, génération ; articles livrés.
+- **Guard orange « Incident signalé par le chauffeur »** ; Guard vert une fois la livraison confirmée.
+- **Barre fixe :** **[Confirmer la livraison]** (droit `CONFIRMER_BL`), **grisé « Facture non soldée »** si la commande est au comptant et la facture pas payée ; pour le chauffeur : « Remis au client » et « Signaler un problème » (tiroir avec motif).
+- Historique.
 
-#### Tournées — `/distribution/tournees`
-**Tableau :** N°, Chauffeur, Véhicule, Date.
-**Formulaires :** « Véhicule » (droit `CREATE_VEHICULE` : Immatriculation, Type) ; « Chauffeur » (droit `CREATE_CHAUFFEUR` : Utilisateur profil Chauffeur, N° de permis) ; « Créer une tournée » (droit `CREATE_TOURNEE` : Chauffeur, Véhicule, Date).
+#### Tournées & flotte — `/distribution/tournees`
+**Onglets** Tournées · Véhicules · Chauffeurs ; formulaires de création en **tiroir** (bouton d'en-tête selon l'onglet).
+- **Tournées :** à gauche la liste (aujourd'hui et à venir / passées, nombre de BL), à droite les **BL de la tournée sélectionnée** (`?tournee=`).
+- Véhicules : immatriculation, type, nombre de tournées, statut. Chauffeurs : nom, permis, nombre de tournées (seuls les comptes Chauffeur sans fiche sont proposés).
+*Chauffeur : « Mes tournées », sans les onglets de flotte.*
 
 ### 3.8 Réclamations
 #### Réclamations (liste) — `/reclamations`

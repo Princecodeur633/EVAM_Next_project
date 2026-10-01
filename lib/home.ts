@@ -990,49 +990,36 @@ function distribution(state: AppState, h: HomeHelpers): HomeData {
   const pretes = state.preparations.filter((p) => p.statut === "PRETE");
   const enLivraison = state.bonsLivraison.filter((b) => b.statut === "EN_LIVRAISON");
   const tourneesJour = state.tournees.filter((t) => sameDay(t.date_tournee));
-  const reclamations = state.reclamations.filter((r) => r.statut !== "CLOTUREE");
   const cmd = (id: number) => state.commandes.find((c) => c.id === id);
   const vehicule = (id: number) => state.vehicules.find((v) => v.id === id)?.immatriculation ?? `Véhicule n°${id}`;
   const chauffeurNom = (id: number) => h.userName(state.chauffeurs.find((c) => c.id === id)?.utilisateur);
   return {
     actions: [
-      { href: "/distribution/preparations", label: "Préparations", icon: PackageOpen },
-      { href: "/distribution/tournees", label: "Tournées", icon: Route },
+      { href: "/distribution", label: "Circuit de livraison", icon: Truck },
+      { href: "/distribution/tournees", label: "Tournées & flotte", icon: Route },
     ],
     kpis: [
-      { label: "Commandes à lancer", value: aLancer.length, tone: aLancer.length ? "warning" : "success", icon: ClipboardList, href: "/commercial/commandes" },
-      { label: "Préparations en cours", value: enCours.length, icon: PackageOpen, href: "/distribution/preparations" },
-      { label: "Prêtes à sortir", value: pretes.length, tone: pretes.length ? "teal" : "default", icon: PackageCheck, href: "/distribution/preparations" },
-      { label: "En livraison", value: enLivraison.length, hint: `${tourneesJour.length} tournée(s) aujourd’hui`, icon: Truck, href: "/distribution/bl" },
+      { label: "Commandes à lancer", value: aLancer.length, tone: aLancer.length ? "warning" : "success", icon: ClipboardList, href: "/distribution?etape=commandes" },
+      { label: "Préparations en cours", value: enCours.length, icon: PackageOpen, href: "/distribution?etape=preparations" },
+      { label: "Prêtes à sortir", value: pretes.length, tone: pretes.length ? "teal" : "default", icon: PackageCheck, href: "/distribution?etape=preparations" },
+      { label: "En livraison", value: enLivraison.length, hint: `${tourneesJour.length} tournée(s) aujourd’hui`, icon: Truck, href: "/distribution?etape=bl" },
     ],
     sections: [
       section({
         id: "lancer",
         title: "Commandes validées à préparer",
         icon: ClipboardList,
-        href: "/distribution/preparations",
+        href: "/distribution?etape=commandes",
         tone: "warning",
         empty: "Toutes les commandes validées sont lancées.",
-        all: aLancer.map((c) => ({ href: `/commercial/commandes/${c.id}`, title: c.numero, detail: h.clientName(c.client), meta: formatDate(c.date_commande) })),
-      }),
-      section({
-        id: "preps",
-        title: "Préparations",
-        icon: PackageOpen,
-        href: "/distribution/preparations",
-        empty: "Aucune préparation en cours.",
-        all: [...pretes, ...enCours].map((p) => ({
-          href: `/distribution/preparations/${p.id}`,
-          title: cmd(p.commande)?.numero ?? `Préparation n°${p.id}`,
-          detail: h.clientName(cmd(p.commande)?.client),
-          badge: { label: STATUT_PREP_LABEL[p.statut], tone: p.statut === "PRETE" ? "teal" : p.statut === "EN_PREPARATION" ? "warning" : "info" },
-        })),
+        all: aLancer.map((c) => ({ href: "/distribution?etape=commandes", title: c.numero, detail: h.clientName(c.client), meta: formatDate(c.date_commande) })),
       }),
       section({
         id: "bl",
         title: "Livraisons en cours",
         icon: Truck,
-        href: "/distribution/bl",
+        href: "/distribution?etape=bl",
+        tone: "info",
         empty: "Aucune livraison en cours.",
         all: enLivraison.map((b) => ({ href: `/distribution/bl/${b.id}`, title: b.numero, detail: h.clientName(cmd(b.commande)?.client), badge: { label: STATUT_BL_LABEL[b.statut], tone: "info" } })),
       }),
@@ -1041,21 +1028,10 @@ function distribution(state: AppState, h: HomeHelpers): HomeData {
         title: "Tournées du jour",
         icon: Route,
         href: "/distribution/tournees",
+        pinned: true,
         empty: "Aucune tournée prévue aujourd’hui.",
-        all: tourneesJour.map((t) => ({ href: "/distribution/tournees", title: t.numero, detail: `${chauffeurNom(t.chauffeur)} · ${vehicule(t.vehicule)}` })),
+        all: tourneesJour.map((t) => ({ href: `/distribution/tournees?tournee=${t.id}`, title: t.numero, detail: `${chauffeurNom(t.chauffeur)} · ${vehicule(t.vehicule)}` })),
       }),
-      ...(reclamations.length
-        ? [
-            section({
-              id: "reclamations",
-              title: "Réclamations ouvertes",
-              icon: MessageSquareWarning,
-              href: "/reclamations",
-              empty: "",
-              all: reclamations.map((r) => ({ href: `/reclamations/${r.id}`, title: r.numero, detail: h.clientName(r.client), badge: { label: STATUT_RECLAMATION_LABEL[r.statut], tone: "warning" } })),
-            }),
-          ]
-        : []),
     ],
     chart: {
       title: "Bons de livraison",
