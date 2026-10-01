@@ -17,14 +17,15 @@ import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, NAV_ICONS, ROLE_ICO
 
 /** Écran où ouvrir une notification, selon le document qui l'a générée
  * (apps/core/notifications.py:REGLES_STATUT) — absent de la liste : non cliquable. */
-const ROUTE_PAR_DOCUMENT: Record<string, string> = {
+const ROUTE_PAR_DOCUMENT: Record<string, string | string[]> = {
   "caisse.decaissement": "/caisse/decaissements",
   "production.demandematiere": "/production/demandes-matieres",
   "production.demandecomplementaire": "/production/demandes-matieres",
   "achats.demandeachat": "/approvisionnement/demandes",
   "achats.commandefournisseur": "/approvisionnement/commandes",
   "commercial.commande": "/commercial/commandes",
-  "commercial.facture": "/caisse",
+  // Caissier → encaissement, Commercial → facturation : le premier écran accessible l’emporte.
+  "commercial.facture": ["/caisse", "/commercial/facturation"],
   "distribution.preparationlivraison": "/distribution/preparations",
   "distribution.bonlivraison": "/distribution/bl",
   "qualite.lot": "/production/qualite",
@@ -113,8 +114,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setNotifications((items) => items.map((i) => (i.id === n.id ? { ...i, lue: true } : i)));
       setNonLues((v) => Math.max(0, v - 1));
     }
-    const href = ROUTE_PAR_DOCUMENT[n.type_document];
-    if (href && canAccess(currentUser.role, href)) {
+    const cibles = ROUTE_PAR_DOCUMENT[n.type_document];
+    const href = (Array.isArray(cibles) ? cibles : cibles ? [cibles] : []).find((h) => canAccess(currentUser.role, h));
+    if (href) {
       router.push(href);
       setOpenNotif(false);
     }

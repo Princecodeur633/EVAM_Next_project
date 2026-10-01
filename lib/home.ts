@@ -835,14 +835,14 @@ function commercial(state: AppState, h: HomeHelpers): HomeData {
   const bloques = state.clients.filter((c) => c.bloque);
   return {
     actions: [
-      { href: "/commercial/commandes/nouvelle", label: "Nouvelle commande", icon: FilePlus2 },
-      { href: "/commercial/clients", label: "Clients", icon: Users },
+      { href: "/commercial/commandes?nouvelle=1", label: "Nouvelle commande", icon: FilePlus2 },
+      { href: "/parametrage/clients", label: "Clients", icon: Users },
     ],
     kpis: [
-      { label: "Facturé ce mois", value: formatDa(caMois), tone: "success", icon: Receipt, href: "/caisse" },
+      { label: "Facturé ce mois", value: formatDa(caMois), tone: "success", icon: Receipt, href: "/commercial/facturation" },
       { label: "Commandes à valider", value: brouillons.length, tone: brouillons.length ? "warning" : "default", icon: ClipboardList, href: "/commercial/commandes" },
-      { label: "Factures non payées", value: impayees.length, hint: formatDa(sum(impayees, (f) => f.montant_total)), icon: Wallet, href: "/caisse" },
-      { label: "Factures échues", value: echues.length, tone: echues.length ? "danger" : "success", icon: CalendarClock, href: "/commercial/impayes" },
+      { label: "Factures non payées", value: impayees.length, hint: formatDa(sum(impayees, (f) => f.montant_total)), icon: Wallet, href: "/commercial/facturation?onglet=impayes" },
+      { label: "Factures échues", value: echues.length, tone: echues.length ? "danger" : "success", icon: CalendarClock, href: "/commercial/facturation?onglet=impayes" },
     ],
     sections: [
       section({
@@ -864,15 +864,24 @@ function commercial(state: AppState, h: HomeHelpers): HomeData {
         id: "echues",
         title: "Factures échues",
         icon: CalendarClock,
-        href: "/commercial/impayes",
+        href: "/commercial/facturation?onglet=impayes",
         tone: "danger",
         empty: "Aucune facture en retard.",
         all: echues.map((f) => ({
-          href: "/commercial/impayes",
+          href: `/commercial/commandes/${f.commande}`,
           title: f.numero,
           detail: `${h.clientName(f.client)} · ${formatDa(num(f.montant_total))}`,
           badge: { label: `Échue le ${formatDate(f.date_echeance ?? "")}`, tone: "danger" },
         })),
+      }),
+      section({
+        id: "bloques",
+        title: "Clients bloqués",
+        icon: Ban,
+        href: "/parametrage/clients",
+        tone: "warning",
+        empty: "Aucun client bloqué.",
+        all: bloques.map((c) => ({ href: `/parametrage/clients?client=${c.id}`, title: c.nom, detail: c.code, badge: { label: "Bloqué", tone: "danger" } })),
       }),
       section({
         id: "reclamations",
@@ -886,14 +895,6 @@ function commercial(state: AppState, h: HomeHelpers): HomeData {
           detail: `${h.clientName(r.client)} · ${TYPE_PROBLEME_LABEL[r.type_probleme] ?? r.type_probleme}`,
           badge: { label: STATUT_RECLAMATION_LABEL[r.statut], tone: r.statut === "OUVERTE" ? "warning" : "info" },
         })),
-      }),
-      section({
-        id: "bloques",
-        title: "Clients bloqués",
-        icon: Ban,
-        href: "/commercial/clients",
-        empty: "Aucun client bloqué.",
-        all: bloques.map((c) => ({ href: "/commercial/clients", title: c.nom, detail: c.code, badge: { label: "Bloqué", tone: "danger" } })),
       }),
     ],
     chart: {

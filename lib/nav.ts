@@ -53,7 +53,6 @@ const I = {
   cf: { href: "/approvisionnement/commandes", label: "Commandes fournisseurs", hint: "Commandes d’achat" },
   rec: { href: "/approvisionnement/receptions", label: "Réceptions", hint: "Réceptions magasin" },
   cmd: { href: "/commercial/commandes", label: "Commandes", hint: "Commandes clients" },
-  cmdNew: { href: "/commercial/commandes/nouvelle", label: "Nouvelle commande", hint: "Créer une commande" },
   clients: { href: "/commercial/clients", label: "Clients", hint: "Fiches clients" },
   factures: { href: "/caisse", label: "Factures", hint: "Suivi des factures" },
   encaissements: { href: "/caisse", label: "Encaissements", hint: "Factures à encaisser" },
@@ -244,9 +243,16 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/parametrage/produits", label: "Catalogue", hint: "Articles et matières", hub: ACHATS_CATALOGUE },
     ]),
   ],
+  // Menu à plat : 6 entrées ; factures, impayés et avoirs sont des onglets de « Facturation ».
   COMMERCIAL: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("vente", "Commercial", "handshake", [I.cmd, I.cmdNew, I.clients, I.factures, I.avoirs, I.impayes, I.reclamations]),
+    g("vente", "Vente", "handshake", [
+      I.accueil,
+      I.cmd,
+      { href: "/commercial/facturation", label: "Facturation", hint: "Factures, impayés, avoirs" },
+      { href: "/parametrage/clients", label: "Clients", hint: "Fiches et conditions" },
+      { href: "/parametrage/tarifs", label: "Tarifs", hint: "Prix de vente" },
+      I.reclamations,
+    ]),
   ],
   CAISSIER: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -419,6 +425,7 @@ export function breadcrumbs(pathname: string) {
     receptions: "Réceptions",
     commercial: "Commercial",
     nouvelle: "Nouvelle",
+    facturation: "Facturation",
     clients: "Clients",
     caisse: "Caisse",
     suspendues: "Factures",

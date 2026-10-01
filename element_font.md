@@ -225,25 +225,22 @@ Accueil · Approvisionnement · Fournisseurs · Stock · Catalogue
 ### 2.8 Commercial (`COMMERCIAL`)
 **Carte d'identité**
 - Station : Vente · Couleur : bleu marine · Icône : poignée de main
-- Mission : « Clients, tarifs, commandes et factures. Consultez le stock, ne le modifiez pas. »
+- Mission : « Créez les commandes, validez-les, facturez, puis suivez les impayés et les clients bloqués. »
 - Posture : « Vous ne forcez pas le stock. Les lots non libérés ne sont pas vendables. »
-- Possède : Clients, Commandes, Lignes, Factures, Tarifs
-- Ne fait jamais : encaisser, modifier le stock, livrer
-- Règles : un client bloqué ne peut plus commander ; la commande suit le circuit brouillon → facturée
+- Fait : clients, tarifs, commandes, factures, avoirs, réclamations · Voit : stock en lecture
+- Ne fait pas : encaisser, modifier le stock, livrer
+- Priorités : 1) créer la commande ; 2) ajouter les lignes ; 3) valider ; 4) facturer ; 5) suivre impayés et clients bloqués
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Commercial : Commandes, Nouvelle commande, Clients, Factures, Avoirs, Impayés, Réclamations
-- Référentiel : Clients, Tarifs (écriture) + Articles (lecture)
-- *Accès supplémentaire* : Situation de stock (`/stocks`, lecture).
+**Menu (sidebar)** — un seul groupe « Vente », 6 entrées (au lieu de 11) :
+Accueil · Commandes · Facturation · Clients · Tarifs · Réclamations
 
 **Page d'accueil**
-- Actions rapides : Nouvelle commande, Clients.
+- Actions rapides : Nouvelle commande (ouvre le tiroir), Clients.
 - KPI : Facturé ce mois, Commandes à valider, Factures non payées, Factures échues.
-- Files de travail : Commandes en brouillon, Factures échues, Réclamations ouvertes, Clients bloqués.
+- Files : Commandes en brouillon, Factures échues, Clients bloqués, Réclamations ouvertes.
 - Graphique : camembert « Commandes par statut ».
 
-**Écrans accessibles** : Accueil · Commandes clients (liste + détail + nouvelle commande) · Clients · Avoirs · Impayés · Réclamations (liste + détail) · Situation de stock (lecture) · Référentiel : Clients, Tarifs (liste + fiche), Articles (lecture).
+**Écrans accessibles** : Accueil · Commandes (liste + fiche) · Facturation (Factures, Impayés, Avoirs) · Clients · Tarifs · Réclamations · Situation de stock (lecture).
 
 ### 2.9 Caissier (`CAISSIER`)
 **Carte d'identité**
@@ -488,30 +485,22 @@ Fournisseur + lignes (article, quantité, prix — prix du catalogue fournisseur
 
 ### 3.6 Commercial
 #### Commandes clients (liste) — `/commercial/commandes`
-**Tableau :** N°, Client, Type, Statut (badge), Date. Ligne cliquable → détail.
-**Action :** bouton « Nouvelle commande » (droit `CREATE_COMMANDE`) dans le header.
+**Pastilles de statut** (En cours, chaque statut, Toutes) + recherche. **Tableau :** N°, Client, Type, Montant, Statut, Date. Ligne cliquable → fiche.
+**[+ Nouvelle commande]** (droit `CREATE_COMMANDE`, aussi via `?nouvelle=1`) → tiroir : client (bloqués grisés, non sélectionnables), type (Comptant / Contrat) → **« Créer et ouvrir »** ouvre directement la fiche de la commande.
 
-#### Nouvelle commande — `/commercial/commandes/nouvelle`
-**Formulaire :** Client (les clients bloqués apparaissent grisés, non sélectionnables), Type (Vente au comptant / Client sous contrat). Bouton « Créer » → redirige vers la liste.
+#### Fiche commande — `/commercial/commandes/[id]` (gabarit B)
+- **Stepper** Brouillon → Validée → En préparation → Livrée → Facturée.
+- **Haut :** client avec **encours en direct** (« factures non soldées / encours autorisé », barre colorée, alerte si la commande ferait dépasser).
+- **Centre :** tableau des lignes (article, quantité, prix, montant) avec le **stock disponible en information** sur chaque ligne ; **[+ Ligne]** en brouillon : article, quantité, **prix automatique** (tarif client sinon public ; ajout impossible sans tarif).
+- **Droite :** total HT + **bloc facture** (numéro, statut, HT, taxes, TTC, échéance ; alerte et « Générer les lignes » si code fiscal manquant).
+- **Barre fixe :** **[Valider]** (brouillon avec lignes, client non bloqué) → **[Facturer]** (tiroir d'aperçu HT / accise / centimes / TVA / TTC estimé, puis « Émettre la facture ») → **[PDF]**.
+- Historique.
 
-#### Détail commande — `/commercial/commandes/[id]`
-**En-tête :** numéro, badge de statut, boutons **« Valider »** (droit `CREATE_COMMANDE`, si Brouillon) et **« Émettre facture »** (droit `CREATE_FACTURE`, si au moins une ligne).
-**Contenu :**
-- `StatusStepper` : Brouillon → Validée → En préparation → Livrée → Facturée.
-- Panneau d'ajout de ligne (droit `CREATE_COMMANDE`) : Article, Quantité, Prix unitaire (calculé automatiquement selon le tarif client).
-- Bloc Facture (si émise) : numéro, statut, montant HT, taxes (TVA/accise/centimes), total TTC, échéance ; bouton **« Générer les lignes »** (droit `GENERER_LIGNES_FACTURE`, avec avertissement sur les articles sans code fiscal) ; bouton **« Télécharger en PDF »**.
-- Composant Historique.
-
-#### Clients — `/commercial/clients`
-**Tableau (lecture seule) :** Code, Nom, Type, Encours, Bloqué (Oui/Non).
-
-#### Avoirs — `/commercial/avoirs`
-**Tableau :** N°, Client, Montant, Statut (Émis/Utilisé/Annulé), Date, Motif.
-**Formulaires :** « Émettre un avoir » (droit `CREATE_AVOIR` : Client, Montant, Facture d'origine optionnelle, Motif) ; « Utiliser un avoir sur une facture » (droit `UTILISER_AVOIR` : Avoir émis, Facture, bouton « Appliquer »).
-
-#### Impayés — `/commercial/impayes`
-**Objectif :** factures à crédit non soldées, échéance dépassée, triées par retard décroissant.
-**Tableau (chargé via API dédiée) :** Facture, Client, Échéance, Montant, Payé, Restant, Retard (badge rouge si > 30 jours, orange sinon). Écran de consultation uniquement.
+#### Facturation — `/commercial/facturation`
+**Onglets** (`?onglet=`) :
+- **Factures** : non soldées / toutes ; N°, client, émission, échéance (rouge si échue), montant TTC, statut, PDF ; ligne → fiche commande.
+- **Impayés** : factures échues non soldées triées par retard ; bandeau et montants en rouge au-delà de 30 jours.
+- **Avoirs** : liste (montant, facture d'origine, motif, statut) ; **[Émettre un avoir]** (tiroir : client, facture d'origine, montant, motif) et **[Appliquer]** par avoir émis (tiroir : facture non soldée du client).
 
 ### 3.7 Distribution
 #### Préparations (liste) — `/distribution/preparations`
@@ -635,10 +624,9 @@ Redirige vers le premier onglet accessible. Pour l'Admin SI (entrée « Référe
 **Liste :** Dépôt, Rôle (Système/Standard), Articles (nb), Statut. Clic → panneau latéral de détail (stock présent par article, statistiques) plutôt qu'une page séparée.
 **Création** (droit `CREATE_DEPOT`, sauf pour l'Admin SI dont les dépôts système sont pilotés par le code) : Nom, Adresse.
 
-#### Clients — `/parametrage/clients` et fiche `/parametrage/clients/[id]`
-**Liste :** Code, Nom, Type, Téléphone, Encours autorisé, Délai de paiement, Statut (Bloqué/Actif).
-**Formulaire de création :** Nom, Type (Particulier/Société/Contrat), Téléphone, Adresse, Encours autorisé, Délai de paiement.
-**Fiche :** Identité, Conditions commerciales (encours, délai, case « Compte bloqué ») ; tableau des tarifs spécifiques au client (si le poste a lecture sur les Tarifs).
+#### Clients — `/parametrage/clients`
+**Tableau :** Code, Nom, Type, Téléphone, Encours (utilisé / autorisé), Paiement, Statut ; clients bloqués en tête. Filtres : recherche, statut, type.
+**Tiroir** (clic sur une ligne, `?client=`, ou **[+ Nouveau client]**) : Identité ; Conditions commerciales (encours autorisé, délai de paiement, case **« Compte bloqué »**) ; **tarifs spécifiques du client** en bas (article, prix, validité, statut) si le poste lit les Tarifs.
 
 #### Tarifs — `/parametrage/tarifs` et fiche `/parametrage/tarifs/[id]`
 **Liste :** Article, Client (ou « Public »), Prix, Début, Fin, Statut (En vigueur/À venir/Expiré).
