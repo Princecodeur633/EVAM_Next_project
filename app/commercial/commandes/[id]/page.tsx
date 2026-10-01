@@ -6,8 +6,10 @@ import { OrderBadge } from "@/components/badges";
 import { Button, Field, Guard, ORDER_STEPS, PageHeader, Panel, StatusStepper, inputClass } from "@/components/ui";
 import { STATUT_FACTURE_LABEL, TYPE_COMMANDE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { endpoints } from "@/lib/api";
 import { formatDa, formatDate, formatQty, num } from "@/lib/utils";
 import { telechargerFacturePdf } from "@/lib/facturePdf";
+import { Historique } from "@/components/Historique";
 
 export default function CommandeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -106,6 +108,8 @@ export default function CommandeDetailPage() {
           )}
         </Panel>
       )}
+
+      <Historique endpoint={endpoints.commandes} id={cmd.id} />
     </div>
   );
 }

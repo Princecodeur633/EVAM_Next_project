@@ -12,6 +12,8 @@ export default function ProduitDetailPage() {
   const { state, dispatch, canEditParam, role, familleFiscaleName } = useStore();
   const article = state.articles.find((a) => a.id === Number(id));
   const canEditFiche = canEditParam("/parametrage/produits");
+  // Champs de codification figés dès que l'article est utilisé (commande, stock, OF, lot...).
+  const codeVerrouille = !!article?.est_verrouille;
   const canGererQualite = role === "RESPONSABLE_PRODUCTION" || role === "RESPONSABLE_QUALITE" || role === "ADMIN_SI";
 
   const [form, setForm] = useState(() => ({
@@ -76,9 +78,9 @@ export default function ProduitDetailPage() {
         <h2 className="text-[13px] font-semibold">Identité</h2>
         {article.type_article === "PRODUIT_FINI" && (
           <p className="text-[12px] text-muted">
-            Pour un produit fini, le code (ex. {article.code}) est recalculé à partir de la famille, du parfum, du
-            format et de l’unité de vente — dès que l’article est utilisé dans une commande, un stock, un OF ou un
-            lot, ces quatre champs ne peuvent plus être modifiés.
+            {codeVerrouille
+              ? `Cet article est déjà utilisé (commande, stock, OF...) : la famille, le parfum, le format et l’unité de vente qui forment son code (${article.code}) sont figés.`
+              : `Pour un produit fini, le code (ex. ${article.code}) est recalculé à partir de la famille, du parfum, du format et de l’unité de vente tant que l’article n’est utilisé nulle part.`}
           </p>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -86,7 +88,7 @@ export default function ProduitDetailPage() {
             <input className={inputClass} disabled={!canEditFiche} value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} />
           </Field>
           <Field label="Famille">
-            <select className={inputClass} disabled={!canEditFiche} value={form.famille} onChange={(e) => setForm((f) => ({ ...f, famille: Number(e.target.value) }))}>
+            <select className={inputClass} disabled={!canEditFiche || codeVerrouille} value={form.famille} onChange={(e) => setForm((f) => ({ ...f, famille: Number(e.target.value) }))}>
               <option value={0}>—</option>
               {state.famillesArticle.filter((v) => v.actif || v.id === form.famille).map((v) => <option key={v.id} value={v.id}>{v.nom}</option>)}
             </select>
@@ -98,13 +100,13 @@ export default function ProduitDetailPage() {
             <input className={inputClass} disabled={!canEditFiche} value={form.marque} onChange={(e) => setForm((f) => ({ ...f, marque: e.target.value }))} />
           </Field>
           <Field label="Format">
-            <select className={inputClass} disabled={!canEditFiche} value={form.format} onChange={(e) => setForm((f) => ({ ...f, format: Number(e.target.value) }))}>
+            <select className={inputClass} disabled={!canEditFiche || codeVerrouille} value={form.format} onChange={(e) => setForm((f) => ({ ...f, format: Number(e.target.value) }))}>
               <option value={0}>—</option>
               {state.formatsArticle.filter((v) => v.actif || v.id === form.format).map((v) => <option key={v.id} value={v.id}>{v.valeur}</option>)}
             </select>
           </Field>
           <Field label="Parfum / variante">
-            <select className={inputClass} disabled={!canEditFiche} value={form.parfum} onChange={(e) => setForm((f) => ({ ...f, parfum: Number(e.target.value) }))}>
+            <select className={inputClass} disabled={!canEditFiche || codeVerrouille} value={form.parfum} onChange={(e) => setForm((f) => ({ ...f, parfum: Number(e.target.value) }))}>
               <option value={0}>—</option>
               {state.parfums.filter((v) => v.actif || v.id === form.parfum).map((v) => <option key={v.id} value={v.id}>{v.nom}</option>)}
             </select>
@@ -113,7 +115,7 @@ export default function ProduitDetailPage() {
             <input className={inputClass} disabled value={UNITE_LABEL[article.unite_mesure]} />
           </Field>
           <Field label="Unité de vente">
-            <select className={inputClass} disabled={!canEditFiche} value={form.unite_vente} onChange={(e) => setForm((f) => ({ ...f, unite_vente: Number(e.target.value) }))}>
+            <select className={inputClass} disabled={!canEditFiche || codeVerrouille} value={form.unite_vente} onChange={(e) => setForm((f) => ({ ...f, unite_vente: Number(e.target.value) }))}>
               <option value={0}>—</option>
               {state.unitesVente.filter((v) => v.actif || v.id === form.unite_vente).map((v) => <option key={v.id} value={v.id}>{v.nom}</option>)}
             </select>

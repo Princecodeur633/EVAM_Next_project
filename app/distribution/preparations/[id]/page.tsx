@@ -4,6 +4,8 @@ import { useParams } from "next/navigation";
 import { Button, PageHeader, Panel, StatusBadge } from "@/components/ui";
 import { STATUT_PREP_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { endpoints } from "@/lib/api";
+import { Historique } from "@/components/Historique";
 
 export default function PreparationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +31,7 @@ export default function PreparationDetailPage() {
         <p>Lancée par {userName(p.lancee_par)}</p>
         <p>Préparée par {p.preparee_par ? userName(p.preparee_par) : "—"}</p>
       </Panel>
+      <Historique endpoint={endpoints.preparations} id={p.id} />
     </div>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { PRIORITE_LABEL, STATUT_PLAN_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { actions } from "@/lib/api";
 import { formatDate, formatQty, num } from "@/lib/utils";
 
 export default function PlanningPage() {
@@ -13,6 +14,15 @@ export default function PlanningPage() {
   const [qty, setQty] = useState(1000);
   const [priorite, setPriorite] = useState("NORMALE");
   const [commentaire, setCommentaire] = useState("");
+
+  // Agents Production actifs, pour affecter l'OF dès sa création (sinon
+  // aucun écran ne permet plus de le faire une fois l'OF créé sans passer
+  // par « Affecter les agents » sur sa fiche).
+  const [agentsDispo, setAgentsDispo] = useState<{ id: number; nom: string }[]>([]);
+  useEffect(() => {
+    void actions.agentsDisponibles().then(setAgentsDispo);
+  }, []);
+  const [agentsChoisis, setAgentsChoisis] = useState<Record<number, number[]>>({});
 
   return (
     <div className="space-y-4">
@@ -75,9 +85,27 @@ export default function PlanningPage() {
             com: p.commentaire || "—",
             x:
               can("CONVERTIR_PLAN") && p.statut !== "CONVERTIE" && p.statut !== "ANNULEE" ? (
-                <Button className="h-8 px-2.5 text-[12px]" onClick={() => void dispatch({ type: "CONVERTIR_PLAN", id: p.id })}>
-                  Convertir en OF
-                </Button>
+                <span className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                  {agentsDispo.length > 0 && (
+                    <select
+                      multiple
+                      className="h-16 sm:w-40 border border-line rounded px-1 text-[12px]"
+                      value={(agentsChoisis[p.id] ?? []).map(String)}
+                      onChange={(e) => {
+                        const selected = Array.from(e.target.selectedOptions).map((o) => Number(o.value));
+                        setAgentsChoisis((m) => ({ ...m, [p.id]: selected }));
+                      }}
+                    >
+                      {agentsDispo.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
+                    </select>
+                  )}
+                  <Button
+                    className="h-8 px-2.5 text-[12px]"
+                    onClick={() => void dispatch({ type: "CONVERTIR_PLAN", id: p.id, agents_affectes: agentsChoisis[p.id] })}
+                  >
+                    Convertir en OF
+                  </Button>
+                </span>
               ) : (
                 "—"
               ),

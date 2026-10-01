@@ -4,8 +4,10 @@ import { useParams } from "next/navigation";
 import { LotBadge } from "@/components/badges";
 import { Button, Field, Guard, PageHeader, Panel, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import { endpoints } from "@/lib/api";
 import { formatDate, formatQty, num } from "@/lib/utils";
 import { useState } from "react";
+import { Historique } from "@/components/Historique";
 
 export default function LotDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -52,6 +54,7 @@ export default function LotDetailPage() {
           <Button variant="danger" onClick={() => void dispatch({ type: "BLOQUER_LOT", id: lot.id, motif: obs })}>Bloquer</Button>
         )}
       </div>
+      <Historique endpoint={endpoints.lots} id={lot.id} />
     </div>
   );
 }

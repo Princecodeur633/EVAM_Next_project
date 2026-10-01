@@ -69,7 +69,7 @@ export type StatutLot = "EN_ATTENTE" | "CONFORME" | "NON_CONFORME" | "BLOQUE" | 
 export type ResultatControle = "CONFORME" | "NON_CONFORME";
 export type TypeMouvement = "ENTREE" | "SORTIE" | "TRANSFERT" | "AJUSTEMENT" | "RETOUR";
 export type StatutInventaire = "EN_COURS" | "CLOTURE";
-export type OrigineBesoin = "AUTO_PRODUCTION" | "MANUEL";
+export type OrigineBesoin = "AUTO_PRODUCTION" | "SEUIL_ALERTE" | "MANUEL";
 export type StatutDemandeAchat = "EN_ATTENTE" | "APPROUVEE" | "REJETEE" | "TRANSFORMEE";
 export type StatutCommandeFournisseur = "BROUILLON" | "ENVOYEE" | "PARTIELLEMENT_RECUE" | "RECUE" | "ANNULEE";
 export type MotifRetour = "NON_CONFORME" | "ENDOMMAGE" | "QUANTITE_EXCEDENTAIRE" | "ERREUR_REFERENCE" | "AUTRE";
@@ -80,6 +80,9 @@ export type StatutCommande = "BROUILLON" | "VALIDEE" | "EN_PREPARATION" | "LIVRE
 export type StatutFacture = "EMISE" | "PAYEE" | "PARTIELLEMENT_PAYEE" | "ANNULEE";
 export type ModePaiement = "ESPECES" | "MOBILE_MONEY" | "VIREMENT" | "CHEQUE";
 export type StatutSession = "OUVERTE" | "CLOTUREE";
+/** Circuit du décaissement : demande (caissier) -> autorisation (Direction/
+ * Comptabilité) -> sortie d'argent (caissier). Refusé et Effectué sont finaux. */
+export type StatutDecaissement = "EN_ATTENTE" | "AUTORISE" | "REFUSE" | "EFFECTUE";
 export type StatutPreparation = "A_PREPARER" | "EN_PREPARATION" | "PRETE" | "SORTIE_MAGASIN";
 export type StatutBL = "EN_LIVRAISON" | "LIVREE" | "PARTIELLEMENT_LIVREE" | "RETOURNEE";
 export type TypeAnomalie =
@@ -88,6 +91,11 @@ export type TypeAnomalie =
   | "DEPASSEMENT_MATIERE"
   | "LOT_NON_LIBERE_VENDU"
   | "COMMANDE_CLIENT_BLOQUE"
+  | "IMPAYE"
+  | "STOCK_SOUS_MINIMUM"
+  | "LOT_PERIME"
+  | "SESSION_NON_CLOTUREE"
+  | "DECAISSEMENT_EN_ATTENTE"
   | "AUTRE";
 export type StatutAnomalie = "DETECTEE" | "EN_TRAITEMENT" | "TRAITEE" | "IGNOREE";
 export type TypeExport = "VENTES" | "ENCAISSEMENTS" | "ACHATS" | "JOURNAL";
@@ -181,6 +189,9 @@ export interface Article {
   fiche_technique_brouillon?: number | null;
   /** Id de la fiche technique validée en vigueur (ou null). */
   fiche_technique_validee?: number | null;
+  /** Vrai dès que l'article figure dans un document (commande, stock, OF, lot...) :
+   * type, famille, parfum, format et unité de vente sont alors figés. */
+  est_verrouille?: boolean;
 }
 
 /** Un article pouvant entrer dans une composition (matière première ou
@@ -749,10 +760,17 @@ export interface Decaissement {
   montant: string;
   motif: string;
   beneficiaire: string;
-  /** Réservé à la Direction ou la Comptabilité/DAF — voir Autorisateur. */
-  autorise_par: number;
+  statut: StatutDecaissement;
+  /** Renseigné par l'action Autoriser / Refuser — jamais choisi à la demande. */
+  autorise_par: number | null;
+  autorise_par_nom?: string | null;
   effectue_par: number;
+  effectue_par_nom?: string;
+  caisse_nom?: string;
+  motif_refus: string;
   date_decaissement: string;
+  date_autorisation: string | null;
+  date_execution: string | null;
 }
 
 /** Une personne pouvant autoriser un décaissement (Direction ou
@@ -817,6 +835,10 @@ export interface BonLivraison {
   tournee: number | null;
   statut: StatutBL;
   signature_client: boolean;
+  /** Renseignée quand le chauffeur indique la remise au client (avant confirmation finale). */
+  date_signature: string | null;
+  /** Motif renseigné par le chauffeur en cas de problème de livraison. */
+  incident_livraison: string;
   confirme_par: number | null;
   date_generation: string;
   date_livraison: string | null;
@@ -953,8 +975,13 @@ export interface AnomalieDetectee {
   description: string;
   statut: StatutAnomalie;
   traite_par: number | null;
+  traite_par_nom?: string | null;
   date_detection: string;
   date_traitement: string | null;
+  commentaire_traitement: string;
+  type_document: string;
+  document_id: number | null;
+  reference: string;
 }
 
 export interface ExportComptable {
@@ -975,6 +1002,70 @@ export interface Cloture {
   date_cloture: string;
 }
 
+/** Rôle d'un compte général utilisé par les écritures automatiques (plan SYSCOHADA par défaut). */
+export type CleCompte =
+  | "CLIENTS" | "FOURNISSEURS" | "VENTES_PRODUITS_FINIS" | "TVA_COLLECTEE" | "ACCISES"
+  | "CENTIMES_ADDITIONNELS" | "RABAIS_ACCORDES" | "ACHATS_MATIERES" | "CAISSE" | "BANQUE"
+  | "MOBILE_MONEY" | "CHARGES_DIVERSES";
+
+export interface CompteParametre {
+  id: number;
+  cle: CleCompte;
+  role: string;
+  numero: string;
+}
+
+export type CleControle = "TOLERANCE_DEPASSEMENT_MATIERE" | "DELAI_ALERTE_PEREMPTION_JOURS" | "DELAI_DECAISSEMENT_EN_ATTENTE_JOURS";
+
+export interface ParametreControle {
+  id: number;
+  cle: CleControle;
+  libelle: string;
+  valeur: string;
+  minimum: number;
+  maximum: number;
+  modifie_par_nom: string | null;
+  date_modification: string;
+}
+
+export type Journal = "VT" | "AC" | "CA" | "OD";
+
+export interface LigneEcriture {
+  compte: string;
+  compte_tiers: string;
+  libelle: string;
+  debit: string;
+  credit: string;
+}
+
+/** Une ligne de GET /stocks/valorisation/ : valeur du stock au coût moyen pondéré (CMUP). */
+export interface LigneValorisation {
+  article: string;
+  designation: string;
+  type_article: TypeArticle;
+  depot: string;
+  quantite: string;
+  cout_unitaire_moyen: string;
+  valeur: string;
+}
+
+export interface ValorisationStock {
+  valeur_totale: string;
+  lignes: LigneValorisation[];
+}
+
+export interface EcritureComptable {
+  id: number;
+  numero: string;
+  journal: Journal;
+  journal_libelle: string;
+  date: string;
+  piece: string;
+  libelle: string;
+  exportee_le: string | null;
+  lignes: LigneEcriture[];
+}
+
 export interface RapportGenere {
   id: number;
   periode: PeriodeRapport;
@@ -993,9 +1084,45 @@ export interface SessionUser {
   active: boolean;
 }
 
+/** Annuaire léger de tous les comptes (GET /comptes/annuaire/), ouvert à tout
+ * utilisateur authentifié — sert à résoudre un nom sans les droits d'ADMIN_SI
+ * qu'exige UtilisateurViewSet. */
+export interface AnnuaireEntry {
+  id: number;
+  username: string;
+  nom: string;
+  profil: Profil;
+  profil_libelle: string;
+  actif: boolean;
+}
+
+/** Une notification « à faire » (GET /notifications/) : générée automatiquement
+ * à la création ou au changement de statut d'un document qui vous concerne. */
+export interface AppNotification {
+  id: number;
+  titre: string;
+  message: string;
+  type_document: string;
+  document_id: number | null;
+  reference: string;
+  lue: boolean;
+  date: string;
+}
+
+/** Une ligne de l'historique d'un document (GET .../{id}/historique/) :
+ * création ou changement de statut, qui et quand. */
+export interface HistoriqueLigne {
+  date: string;
+  action: string;
+  ancien_statut: string;
+  nouveau_statut: string;
+  par: string;
+}
+
 export interface AppState {
   currentUserId: number | null;
   depotId: number | null;
+  annuaire: AnnuaireEntry[];
   utilisateurs: Utilisateur[];
   journal: JournalAction[];
   articles: Article[];
@@ -1073,6 +1200,9 @@ export interface AppState {
   anomalies: AnomalieDetectee[];
   exportsComptables: ExportComptable[];
   clotures: Cloture[];
+  comptesParametres: CompteParametre[];
+  seuilsControles: ParametreControle[];
+  ecrituresComptables: EcritureComptable[];
   rapports: RapportGenere[];
   lastError: string | null;
   loading: boolean;

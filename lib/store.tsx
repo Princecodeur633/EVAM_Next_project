@@ -56,7 +56,8 @@ export type Action =
   | { type: "CREATE_OF"; article: number; quantite_a_produire: number; plan_production?: number; agents_affectes?: number[] }
   | { type: "AVANCER_OF"; id: number }
   | { type: "ANNULER_OF"; id: number; motif: string }
-  | { type: "CONVERTIR_PLAN"; id: number }
+  | { type: "CONVERTIR_PLAN"; id: number; agents_affectes?: number[] }
+  | { type: "AFFECTER_AGENTS_OF"; id: number; agents: number[] }
   | { type: "DEMANDER_MATIERES_OF"; id: number }
   | { type: "LIVRER_DEMANDE_MATIERE"; id: number; quantite_livree?: number }
   | { type: "CREATE_COMPLEMENT"; ordre_fabrication: number; matiere: number; quantite: number; motif: string }
@@ -141,7 +142,10 @@ export type Action =
   | { type: "GENERER_LIGNES_FACTURE"; id: number }
   | { type: "CREATE_AVOIR"; client: number; montant: number; motif: string; facture_origine?: number }
   | { type: "UTILISER_AVOIR"; id: number; facture: number }
-  | { type: "CREATE_DECAISSEMENT"; session_caisse: number; montant: number; motif: string; autorise_par: number; beneficiaire?: string }
+  | { type: "CREATE_DECAISSEMENT"; session_caisse: number; montant: number; motif: string; beneficiaire?: string }
+  | { type: "AUTORISER_DECAISSEMENT"; id: number }
+  | { type: "REFUSER_DECAISSEMENT"; id: number; motif: string }
+  | { type: "EFFECTUER_DECAISSEMENT"; id: number }
   | { type: "CREATE_RECLAMATION"; client: number; article: number; quantite: number; type_probleme: string; description: string; bon_livraison?: number; facture?: number; produit_retourne?: boolean; prix_unitaire?: number }
   | { type: "CREATE_RETOUR_PHYSIQUE"; reclamation: number; quantite_retournee: number; lot?: number }
   | { type: "CREATE_CONTROLE_RETOUR"; retour_physique: number; resultat: string; observations?: string }
@@ -154,6 +158,7 @@ export type Action =
   | { type: "ENCAISSER"; session_caisse: number; facture: number; montant: number; mode_paiement: ModePaiement }
   | { type: "CLOTURER_CAISSE"; id: number; solde_compte: string; justification?: string }
   | { type: "CREATE_DA"; article: number; quantite_demandee: number; motif?: string; besoin?: number }
+  | { type: "CREER_DA_DEPUIS_BESOIN"; id: number }
   | { type: "APPROUVER_DA"; id: number }
   | { type: "REJETER_DA"; id: number }
   | { type: "CREATE_CF"; fournisseur: number; demande_achat?: number }
@@ -174,14 +179,21 @@ export type Action =
   | { type: "CREATE_TOURNEE"; chauffeur: number; vehicule: number; date_tournee: string }
   | { type: "CREATE_BL"; commande: number; tournee?: number }
   | { type: "CONFIRMER_BL"; id: number }
+  | { type: "LIVRER_BL"; id: number }
+  | { type: "SIGNALER_PROBLEME_BL"; id: number; motif: string }
   | { type: "CREATE_USER"; username: string; password: string; profil: Profil; first_name?: string; last_name?: string; email?: string }
   | { type: "TOGGLE_USER"; id: number; actif: boolean }
   | { type: "PATCH_USER"; id: number; first_name?: string; last_name?: string; email?: string; telephone?: string; profil?: Profil; password?: string }
   | { type: "RECALCULER_COUT"; id: number }
   | { type: "CREATE_EXPORT"; type_export: string; periode_debut: string; periode_fin: string }
   | { type: "CREATE_ANOMALIE"; type_anomalie: string; module_source: string; description: string }
-  | { type: "TRAITER_ANOMALIE"; id: number; statut: "TRAITEE" | "IGNOREE" | "EN_TRAITEMENT" }
+  | { type: "PRENDRE_EN_CHARGE_ANOMALIE"; id: number }
+  | { type: "RESOUDRE_ANOMALIE"; id: number; commentaire: string }
+  | { type: "IGNORER_ANOMALIE"; id: number; commentaire: string }
+  | { type: "DETECTER_ANOMALIES" }
   | { type: "CREATE_CLOTURE"; periode: string; type_cloture: string }
+  | { type: "PATCH_COMPTE_PARAMETRE"; id: number; numero: string }
+  | { type: "PATCH_SEUIL_CONTROLE"; id: number; valeur: number }
   | { type: "GENERER_RAPPORT"; periode: "JOURNALIER" | "MENSUEL" }
   | { type: "CREATE_VALEUR_LISTE"; liste: ListeValeurs; valeur: string }
   | { type: "TOGGLE_VALEUR_LISTE"; liste: ListeValeurs; id: number; actif: boolean }
@@ -191,6 +203,7 @@ function emptyState(): AppState {
   return {
     currentUserId: null,
     depotId: null,
+    annuaire: [],
     utilisateurs: [],
     journal: [],
     articles: [],
@@ -268,6 +281,9 @@ function emptyState(): AppState {
     anomalies: [],
     exportsComptables: [],
     clotures: [],
+    comptesParametres: [],
+    seuilsControles: [],
+    ecrituresComptables: [],
     rapports: [],
     lastError: null,
     loading: false,
@@ -378,6 +394,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setState({ ...loaded, currentUserId: nextSession.userId });
 
+      // Annuaire des noms : ouvert à tout utilisateur authentifié (contrairement à
+      // /comptes/utilisateurs/, réservé à l'Admin SI) — chargé à part, sans bloquer
+      // le premier affichage.
+      void actions.annuaire().then((annuaire) => {
+        setState((s) => ({ ...s, annuaire }));
+      }).catch(() => {});
+
       if (moi.profil === "ADMIN_SI") {
         const remaining = catalogKeysForRole(moi.profil).filter((k) => !ADMIN_CORE_KEYS.includes(k));
         void fetchCatalogs(remaining).then((rest) => {
@@ -471,7 +494,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             await actions.annulerOf(action.id, action.motif);
             break;
           case "CONVERTIR_PLAN":
-            await actions.convertirPlanEnOf(action.id);
+            await actions.convertirPlanEnOf(action.id, action.agents_affectes);
+            break;
+          case "AFFECTER_AGENTS_OF":
+            await actions.affecterAgentsOF(action.id, action.agents);
             break;
           case "DEMANDER_MATIERES_OF":
             // Toute la composition de l'OF en une fois (plus de saisie
@@ -747,13 +773,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             await actions.utiliserAvoir(action.id, action.facture);
             break;
           case "CREATE_DECAISSEMENT":
+            // Le caissier ne fait que la DEMANDE : l'autorisation (Direction /
+            // Comptabilité) et l'exécution sont deux actions séparées.
             await api.post(endpoints.decaissements, {
               session_caisse: action.session_caisse,
               montant: action.montant,
               motif: action.motif,
               beneficiaire: action.beneficiaire ?? "",
-              autorise_par: action.autorise_par,
             });
+            break;
+          case "AUTORISER_DECAISSEMENT":
+            await actions.autoriserDecaissement(action.id);
+            break;
+          case "REFUSER_DECAISSEMENT":
+            await actions.refuserDecaissement(action.id, action.motif);
+            break;
+          case "EFFECTUER_DECAISSEMENT":
+            await actions.effectuerDecaissement(action.id);
             break;
           case "CREATE_RECLAMATION":
             await api.post(endpoints.reclamations, {
@@ -848,6 +884,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               motif: action.motif ?? "",
               besoin: action.besoin ?? null,
             });
+            break;
+          case "CREER_DA_DEPUIS_BESOIN":
+            await actions.creerDemandeDepuisBesoin(action.id);
             break;
           case "APPROUVER_DA":
             await actions.approuverDemande(action.id);
@@ -961,6 +1000,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           case "CONFIRMER_BL":
             await actions.confirmerLivraison(action.id);
             break;
+          case "LIVRER_BL":
+            await actions.livrerBL(action.id);
+            break;
+          case "SIGNALER_PROBLEME_BL":
+            await actions.signalerProblemeBL(action.id, action.motif);
+            break;
           case "CREATE_USER":
             await api.post(endpoints.utilisateurs, {
               username: action.username,
@@ -999,18 +1044,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               description: action.description,
             });
             break;
-          case "TRAITER_ANOMALIE":
-            await api.patch(detail(endpoints.anomalies, action.id), {
-              statut: action.statut,
-              traite_par: userId ?? null,
-              date_traitement: action.statut === "EN_TRAITEMENT" ? null : new Date().toISOString(),
-            });
+          case "PRENDRE_EN_CHARGE_ANOMALIE":
+            await actions.prendreEnChargeAnomalie(action.id);
+            break;
+          case "RESOUDRE_ANOMALIE":
+            await actions.resoudreAnomalie(action.id, action.commentaire);
+            break;
+          case "IGNORER_ANOMALIE":
+            await actions.ignorerAnomalie(action.id, action.commentaire);
+            break;
+          case "DETECTER_ANOMALIES":
+            await actions.detecterAnomalies();
             break;
           case "CREATE_CLOTURE":
             await api.post(endpoints.clotures, {
               periode: action.periode,
               type_cloture: action.type_cloture,
             });
+            break;
+          case "PATCH_COMPTE_PARAMETRE":
+            await api.patch(detail(endpoints.comptesParametres, action.id), { numero: action.numero });
+            break;
+          case "PATCH_SEUIL_CONTROLE":
+            await api.patch(detail(endpoints.seuilsControles, action.id), { valeur: action.valeur });
             break;
           case "CREATE_VALEUR_LISTE": {
             const cfg = LISTE_CONFIG[action.liste];
@@ -1099,6 +1155,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (id == null) return "—";
       const u = state.utilisateurs.find((x) => x.id === id);
       if (u) return displayName(u);
+      const a = state.annuaire.find((x) => x.id === id);
+      if (a) return a.nom;
       if (session?.userId === id) return session.name || session.username;
       return `#${id}`;
     };

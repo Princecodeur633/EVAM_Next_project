@@ -1,10 +1,12 @@
 import { api, listAll } from "./client";
 import type {
   Amortissement,
+  AnnuaireEntry,
+  AppNotification,
+  HistoriqueLigne,
   AnomalieDetectee,
   Article,
   ArticleFournisseur,
-  Autorisateur,
   Avoir,
   BesoinApprovisionnement,
   BesoinMatierePrevu,
@@ -13,6 +15,10 @@ import type {
   Chauffeur,
   Client,
   Cloture,
+  CompteParametre,
+  ParametreControle,
+  EcritureComptable,
+  ValorisationStock,
   CodeFiscal,
   FamilleArticle,
   FamilleFiscale,
@@ -161,6 +167,9 @@ export const endpoints = {
   anomalies: "/comptabilite/anomalies/",
   exportsComptables: "/comptabilite/exports/",
   clotures: "/comptabilite/clotures/",
+  comptesParametres: "/comptabilite/comptes/",
+  seuilsControles: "/comptabilite/seuils-controles/",
+  ecrituresComptables: "/comptabilite/ecritures/",
   rapports: "/reporting/rapports/",
 } as const;
 
@@ -244,6 +253,9 @@ export const catalog = {
   anomalies: () => listAll<AnomalieDetectee>(endpoints.anomalies),
   exportsComptables: () => listAll<ExportComptable>(endpoints.exportsComptables),
   clotures: () => listAll<Cloture>(endpoints.clotures),
+  comptesParametres: () => listAll<CompteParametre>(endpoints.comptesParametres),
+  seuilsControles: () => listAll<ParametreControle>(endpoints.seuilsControles),
+  ecrituresComptables: () => listAll<EcritureComptable>(endpoints.ecrituresComptables),
   rapports: () => listAll<RapportGenere>(endpoints.rapports),
 };
 
@@ -262,8 +274,36 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "lots",
     "journal",
     "ofList",
+    "plans",
+    "besoinsMatieres",
+    "demandesMatieres",
+    "controles",
+    "depots",
+    "mouvements",
+    "inventaires",
+    "lignesInventaire",
+    "clients",
+    "tarifs",
+    "commandes",
+    "lignesCommande",
+    "factures",
+    "lignesFacture",
+    "fournisseurs",
+    "besoinsAchat",
+    "demandesAchat",
+    "commandesFournisseur",
+    "lignesCommandeFournisseur",
+    "receptions",
+    "lignesReception",
+    "preparations",
+    "bonsLivraison",
+    "tournees",
     "utilisateurs",
     "encaissements",
+    "caisses",
+    "sessionsCaisse",
+    "decaissements",
+    "ecartsCaisse",
     "coutsMatieres",
     "coutsEnergie",
     "coutsMainOeuvre",
@@ -271,6 +311,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "coutsStandards",
     "coutsReels",
     "anomalies",
+    "ecrituresComptables",
+    "exportsComptables",
+    "clotures",
     "rapports",
   ],
   RESPONSABLE_PRODUCTION: [
@@ -446,6 +489,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "anomalies",
     "exportsComptables",
     "clotures",
+    "comptesParametres",
+    "seuilsControles",
+    "ecrituresComptables",
     "codesFiscaux",
     "coutsRetours",
     "rapports",
@@ -471,7 +517,12 @@ export function detail(path: string, id: number) {
 
 export const actions = {
   validerFiche: (id: number) => api.post<FicheTechnique>(`${endpoints.fichesTechniques}${id}/valider/`),
-  convertirPlanEnOf: (id: number) => api.post<OrdreFabrication>(`${endpoints.plans}${id}/convertir_en_of/`),
+  convertirPlanEnOf: (id: number, agents_affectes?: number[]) =>
+    api.post<OrdreFabrication>(`${endpoints.plans}${id}/convertir_en_of/`, agents_affectes?.length ? { agents_affectes } : {}),
+  /** Comptes Agent Production actifs, pour les sélecteurs « Agents affectés ». */
+  agentsDisponibles: () => api.get<{ id: number; username: string; nom: string }[]>(`${endpoints.ofList}agents_disponibles/`),
+  affecterAgentsOF: (id: number, agents: number[]) =>
+    api.post<OrdreFabrication>(`${endpoints.ofList}${id}/affecter_agents/`, { agents }),
   avancerOf: (id: number) => api.post<{ statut: string; of: OrdreFabrication }>(`${endpoints.ofList}${id}/avancer_statut/`),
   annulerOf: (id: number, motif: string) => api.post<OrdreFabrication>(`${endpoints.ofList}${id}/annuler/`, { motif }),
   /** Demande d'un coup toute la composition de l'OF au magasin (une DemandeMatiere par matière). */
@@ -491,6 +542,8 @@ export const actions = {
     api.post<DemandeComplementaire>(`${endpoints.demandesComplementaires}${id}/approuver/`),
   rejeterComplement: (id: number) =>
     api.post<DemandeComplementaire>(`${endpoints.demandesComplementaires}${id}/rejeter/`),
+  /** Reprend l'article et la quantité du besoin — rien à ressaisir. */
+  creerDemandeDepuisBesoin: (id: number) => api.post<DemandeAchat>(`${endpoints.besoinsAchat}${id}/creer_demande/`),
   approuverDemande: (id: number) => api.post<DemandeAchat>(`${endpoints.demandesAchat}${id}/approuver/`),
   rejeterDemande: (id: number) => api.post<DemandeAchat>(`${endpoints.demandesAchat}${id}/rejeter/`),
   envoyerCommandeFournisseur: (id: number) => api.post<CommandeFournisseur>(`${endpoints.commandesFournisseur}${id}/envoyer/`),
@@ -499,8 +552,51 @@ export const actions = {
   genererLignesFacture: (id: number) => api.post<Facture>(`${endpoints.factures}${id}/generer_lignes/`),
   utiliserAvoir: (id: number, facture: number) =>
     api.post<Avoir>(`${endpoints.avoirs}${id}/utiliser/`, { facture }),
-  /** Liste de choix du champ « Autorisé par » d'un décaissement : Direction et Comptabilité/DAF uniquement. */
-  autorisateursDecaissement: () => api.get<Autorisateur[]>(`${endpoints.decaissements}autorisateurs/`),
+  /**
+   * Circuit du décaissement : le caissier fait la demande (CREATE_DECAISSEMENT,
+   * sans autorise_par) ; la Direction ou la Comptabilité/DAF autorise ou
+   * refuse ; puis le caissier effectue la sortie d'argent.
+   */
+  decaissementsAAutoriser: () => api.get<Decaissement[]>(`${endpoints.decaissements}a_autoriser/`),
+  autoriserDecaissement: (id: number) => api.post<Decaissement>(`${endpoints.decaissements}${id}/autoriser/`),
+  refuserDecaissement: (id: number, motif: string) => api.post<Decaissement>(`${endpoints.decaissements}${id}/refuser/`, { motif }),
+  effectuerDecaissement: (id: number) => api.post<Decaissement>(`${endpoints.decaissements}${id}/effectuer/`),
+  /** Annuaire léger (id, nom, profil) de tous les comptes — ouvert à tout utilisateur authentifié. */
+  annuaire: () => api.get<AnnuaireEntry[]>("/comptes/annuaire/"),
+  /** Mes notifications « à faire » : générées automatiquement par le backend à chaque
+   * événement métier qui me concerne (voir apps/core/notifications.py). */
+  notifications: (nonLuesSeulement = false) => api.get<AppNotification[]>(`/notifications/${nonLuesSeulement ? "?lue=false" : ""}`),
+  notificationsNonLues: () => api.get<{ non_lues: number }>("/notifications/non_lues/"),
+  marquerNotificationLue: (id: number) => api.post<AppNotification>(`/notifications/${id}/lire/`),
+  marquerToutesNotificationsLues: () => api.post<{ marquees: number }>("/notifications/tout_lire/"),
+  /** Valeur du stock au coût moyen pondéré (CMUP), article par article — Comptabilité/DAF, Direction, Admin SI. */
+  valorisationStock: (params?: { depot?: number; type_article?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.depot) q.set("depot", String(params.depot));
+    if (params?.type_article) q.set("type_article", params.type_article);
+    const suffixe = q.toString() ? `?${q}` : "";
+    return api.get<ValorisationStock>(`/stocks/valorisation/${suffixe}`);
+  },
+  /** Historique (création, changements de statut) d'un document — endpoint = base de collection (endpoints.xxx). */
+  historique: (endpoint: string, id: number) => api.get<HistoriqueLigne[]>(`${endpoint}${id}/historique/`),
+  /** Les anomalies sont détectées par le système : plus de PATCH direct, seulement ces actions. */
+  prendreEnChargeAnomalie: (id: number) => api.post<AnomalieDetectee>(`${endpoints.anomalies}${id}/prendre_en_charge/`),
+  resoudreAnomalie: (id: number, commentaire: string) => api.post<AnomalieDetectee>(`${endpoints.anomalies}${id}/resoudre/`, { commentaire }),
+  ignorerAnomalie: (id: number, commentaire: string) => api.post<AnomalieDetectee>(`${endpoints.anomalies}${id}/ignorer/`, { commentaire }),
+  detecterAnomalies: () => api.post<{ detectees: number; resolues_automatiquement: number }>(`${endpoints.anomalies}detecter/`),
+  /**
+   * Le CSV Sage exige le jeton d'authentification (un lien <a> brut ne
+   * l'enverrait pas) : on le récupère en texte, puis on déclenche le
+   * téléchargement nous-mêmes.
+   */
+  telechargerExport: async (id: number, nomFichier: string) => {
+    const csv = await api.get<string>(`${endpoints.exportsComptables}${id}/telecharger/`);
+    const lien = document.createElement("a");
+    lien.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    lien.download = nomFichier;
+    lien.click();
+    URL.revokeObjectURL(lien.href);
+  },
   cloturerSession: (id: number, solde_compte: string, justification?: string) =>
     api.post<{ session: SessionCaisse }>(`${endpoints.sessionsCaisse}${id}/cloturer/`, {
       solde_compte,
@@ -509,6 +605,9 @@ export const actions = {
   confirmerPreparation: (id: number) => api.post<PreparationLivraison>(`${endpoints.preparations}${id}/confirmer_preparation/`),
   confirmerSortie: (id: number) => api.post<PreparationLivraison>(`${endpoints.preparations}${id}/confirmer_sortie/`),
   confirmerLivraison: (id: number) => api.post<BonLivraison>(`${endpoints.bonsLivraison}${id}/confirmer_livraison/`),
+  /** Le chauffeur indique la remise au client ; la confirmation finale reste au Responsable Distribution. */
+  livrerBL: (id: number) => api.post<BonLivraison>(`${endpoints.bonsLivraison}${id}/livre/`),
+  signalerProblemeBL: (id: number, motif: string) => api.post<BonLivraison>(`${endpoints.bonsLivraison}${id}/probleme/`, { motif }),
   terminerReconditionnement: (id: number, quantite_reconditionnee: string | number, cout?: string | number) =>
     api.post<Reconditionnement>(`${endpoints.reconditionnements}${id}/terminer/`, {
       quantite_reconditionnee,

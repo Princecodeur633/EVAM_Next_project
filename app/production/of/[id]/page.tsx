@@ -1,18 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { OfBadge } from "@/components/badges";
 import { Button, Guard, OF_STEPS, PageHeader, Panel, StatusStepper } from "@/components/ui";
 import { nextOfStatut, useStore } from "@/lib/store";
+import { actions, endpoints } from "@/lib/api";
 import { formatDateTime, formatQty, num } from "@/lib/utils";
 import { ETAPE_LABEL, MOTIF_PERTE_LABEL, STATUT_LOT_LABEL, STATUT_OF_LABEL, TYPE_SORTIE_LABEL } from "@/lib/labels";
+import { Historique } from "@/components/Historique";
 
 export default function OfDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, dispatch, articleName, can, userName } = useStore();
   const ofId = Number(id);
   const of = state.ofList.find((o) => o.id === ofId);
+  const [agentsDispo, setAgentsDispo] = useState<{ id: number; nom: string }[]>([]);
+  const [agentsChoisis, setAgentsChoisis] = useState<number[]>([]);
+  useEffect(() => {
+    void actions.agentsDisponibles().then(setAgentsDispo);
+  }, []);
+  useEffect(() => {
+    if (of) setAgentsChoisis(of.agents_affectes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [of?.id, of?.agents_affectes]);
   if (!of) return <p className="text-[13px] text-muted">Ordre de fabrication introuvable.</p>;
+  const modifiable = of.statut !== "CLOTURE" && of.statut !== "ANNULE";
 
   const besoins = state.besoinsMatieres.filter((b) => b.ordre_fabrication === of.id);
   const demandes = state.demandesMatieres.filter((d) => d.ordre_fabrication === of.id);
@@ -71,6 +84,24 @@ export default function OfDetailPage() {
           <Row k="Début prod." v={of.date_debut_production ? formatDateTime(of.date_debut_production) : "—"} />
           <Row k="Fin" v={of.date_fin ? formatDateTime(of.date_fin) : "—"} />
           <Row k="Agents" v={of.agents_affectes.length ? of.agents_affectes.map((id) => userName(id)).join(", ") : "Aucun"} />
+          {can("AFFECTER_AGENTS_OF") && modifiable && agentsDispo.length > 0 && (
+            <div className="pt-2 space-y-2">
+              <select
+                multiple
+                className="h-24 w-full border border-line rounded px-1 text-[12px]"
+                value={agentsChoisis.map(String)}
+                onChange={(e) => setAgentsChoisis(Array.from(e.target.selectedOptions).map((o) => Number(o.value)))}
+              >
+                {agentsDispo.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
+              </select>
+              <Button
+                className="h-8 px-2.5 text-[12px] w-full"
+                onClick={() => void dispatch({ type: "AFFECTER_AGENTS_OF", id: of.id, agents: agentsChoisis })}
+              >
+                Affecter les agents
+              </Button>
+            </div>
+          )}
         </Panel>
         <Panel className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between gap-3 mb-2">
@@ -118,6 +149,8 @@ export default function OfDetailPage() {
           <p key={l.id} className="text-[13px]">{l.numero_lot} · {STATUT_LOT_LABEL[l.statut] ?? l.statut}</p>
         ))}
       </Panel>
+
+      <Historique endpoint={endpoints.ofList} id={of.id} />
     </div>
   );
 }
