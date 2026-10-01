@@ -752,59 +752,62 @@ function achats(state: AppState, h: HomeHelpers): HomeData {
   const fournisseur = (id: number) => state.fournisseurs.find((f) => f.id === id)?.nom ?? `Fournisseur n°${id}`;
   return {
     actions: [
-      { href: "/approvisionnement/demandes", label: "Demandes d’achat", icon: FileText },
-      { href: "/approvisionnement/commandes", label: "Commandes fournisseurs", icon: ShoppingCart },
+      { href: "/approvisionnement", label: "Approvisionnement", icon: ShoppingCart },
     ],
     kpis: [
-      { label: "Demandes à approuver", value: daWait.length, tone: daWait.length ? "warning" : "success", icon: FileText, href: "/approvisionnement/demandes" },
-      { label: "Besoins à couvrir", value: besoins.length, icon: ListTodo, href: "/approvisionnement/besoins" },
-      { label: "Commandes à envoyer", value: brouillons.length, tone: brouillons.length ? "warning" : "default", icon: ShoppingCart, href: "/approvisionnement/commandes" },
-      { label: "Livraisons attendues", value: attendues.length, tone: "teal", icon: Truck, href: "/approvisionnement/receptions" },
+      { label: "Demandes à approuver", value: daWait.length, tone: daWait.length ? "warning" : "success", icon: FileText, href: "/approvisionnement?etape=demandes" },
+      { label: "Besoins à couvrir", value: besoins.length, icon: ListTodo, href: "/approvisionnement?etape=besoins" },
+      { label: "Commandes à envoyer", value: brouillons.length, tone: brouillons.length ? "warning" : "default", icon: ShoppingCart, href: "/approvisionnement?etape=commandes" },
+      { label: "Livraisons attendues", value: attendues.length, tone: "teal", icon: Truck, href: "/approvisionnement?etape=receptions" },
     ],
     sections: [
+      section({
+        id: "besoins",
+        title: "Besoins non couverts",
+        icon: ListTodo,
+        href: "/approvisionnement?etape=besoins",
+        tone: "warning",
+        empty: "Tous les besoins sont couverts.",
+        all: besoins.map((b) => ({
+          href: "/approvisionnement?etape=besoins",
+          title: h.articleName(b.article),
+          detail: `${formatQty(num(b.quantite_besoin), 2)} à couvrir`,
+          badge:
+            b.origine === "SEUIL_ALERTE"
+              ? { label: "Sous seuil", tone: "danger" }
+              : { label: b.origine === "AUTO_PRODUCTION" ? "Production" : "Manuel", tone: "neutral" },
+        })),
+      }),
       section({
         id: "da",
         title: "Demandes en attente d’approbation",
         icon: FileText,
-        href: "/approvisionnement/demandes",
+        href: "/approvisionnement?etape=demandes",
         tone: "warning",
         empty: "Aucune demande en attente.",
         all: daWait.map((d) => ({
-          href: "/approvisionnement/demandes",
+          href: "/approvisionnement?etape=demandes",
           title: `Demande n°${d.id}`,
           detail: `${h.articleName(d.article)} · ${formatQty(num(d.quantite_demandee), 2)}`,
           meta: `par ${h.userName(d.demandeur)}`,
         })),
       }),
       section({
-        id: "besoins",
-        title: "Besoins non couverts",
-        icon: ListTodo,
-        href: "/approvisionnement/besoins",
-        empty: "Tous les besoins sont couverts.",
-        all: besoins.map((b) => ({
-          href: "/approvisionnement/besoins",
-          title: h.articleName(b.article),
-          detail: `${formatQty(num(b.quantite_besoin), 2)} à couvrir`,
-          badge: { label: b.origine === "AUTO_PRODUCTION" ? "Production" : "Manuel", tone: "neutral" },
-        })),
-      }),
-      section({
         id: "brouillons",
         title: "Commandes prêtes à envoyer",
         icon: ShoppingCart,
-        href: "/approvisionnement/commandes",
+        href: "/approvisionnement?etape=commandes",
         empty: "Aucune commande en brouillon.",
-        all: brouillons.map((c) => ({ href: "/approvisionnement/commandes", title: c.numero, detail: fournisseur(c.fournisseur), badge: { label: "Brouillon", tone: "neutral" } })),
+        all: brouillons.map((c) => ({ href: "/approvisionnement?etape=commandes", title: c.numero, detail: fournisseur(c.fournisseur), badge: { label: "Brouillon", tone: "neutral" } })),
       }),
       section({
         id: "attendues",
         title: "Livraisons attendues",
         icon: Truck,
-        href: "/approvisionnement/receptions",
+        href: "/approvisionnement?etape=receptions",
         empty: "Aucune livraison attendue.",
         all: attendues.map((c) => ({
-          href: "/approvisionnement/receptions",
+          href: "/approvisionnement?etape=receptions",
           title: c.numero,
           detail: `${fournisseur(c.fournisseur)} · commandée le ${formatDate(c.date_commande)}`,
           badge: { label: STATUT_CF_LABEL[c.statut], tone: c.statut === "PARTIELLEMENT_RECUE" ? "warning" : "info" },
@@ -815,7 +818,7 @@ function achats(state: AppState, h: HomeHelpers): HomeData {
     chart: {
       title: "Commandes fournisseurs",
       subtitle: "Par statut",
-      href: "/approvisionnement/commandes",
+      href: "/approvisionnement?etape=commandes",
       kind: "donut",
       centerLabel: "cmd.",
       data: countBy(state.commandesFournisseur, (c) => c.statut, (k) => STATUT_CF_LABEL[k as keyof typeof STATUT_CF_LABEL] ?? k),

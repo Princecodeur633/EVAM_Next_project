@@ -204,25 +204,23 @@ Accueil · Servir l'atelier · Préparations · Réceptions · Stock · Réclama
 ### 2.7 Responsable Achat (`RESPONSABLE_ACHATS`)
 **Carte d'identité**
 - Station : Approvisionnement · Couleur : teal · Icône : chariot
-- Mission : « Fournisseurs, demandes, commandes et réceptions. »
+- Mission : « Couvrez les besoins, traitez les demandes d'achat, envoyez les commandes et suivez les réceptions. »
 - Posture : « Le stock matières suit le reçu, pas le commandé. »
-- Possède : Fournisseurs, Demandes d'achat, Commandes fournisseurs, Réceptions
-- Ne fait jamais : lancer un OF, modifier une fiche client
-- Règles : approuver/rejeter une demande est réservé à ce poste ; envoyer une commande la transmet au fournisseur
+- Fait : fournisseurs, DA (approuver / rejeter), commandes, réceptions
+- Ne fait pas : lancer un OF, modifier un client · Ne voit pas : ventes, caisse, production
+- Priorités : 1) couvrir les besoins sous seuil ; 2) approuver / rejeter les DA ; 3) créer et envoyer les commandes ; 4) suivre les réceptions
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Achats : Besoins d'achat, Demandes d'achat, Commandes fournisseurs, Réceptions
-- Stocks : Situation
-- Référentiel : Articles, Matières, Fournisseurs (écriture)
+**Menu (sidebar)** — un seul groupe « Achats », 5 entrées (au lieu de 9) :
+Accueil · Approvisionnement · Fournisseurs · Stock · Catalogue
+- **Catalogue** (hub à onglets) : Articles · Matières.
 
 **Page d'accueil**
-- Actions rapides : Demandes d'achat, Commandes fournisseurs.
-- KPI : Demandes à approuver, Besoins à couvrir, Commandes à envoyer, Livraisons attendues.
-- Files de travail : Demandes en attente d'approbation, Besoins non couverts, Commandes prêtes à envoyer, Livraisons attendues, Articles sous le seuil.
+- Action rapide : Approvisionnement.
+- KPI : Demandes à approuver, Besoins à couvrir, Commandes à envoyer, Livraisons attendues (chacun ouvre l'étape correspondante du flux).
+- Files dans l'ordre du flux : Besoins non couverts (badge « Sous seuil »), Demandes en attente d'approbation, Commandes prêtes à envoyer, Livraisons attendues, puis Articles sous le seuil.
 - Graphique : camembert « Commandes fournisseurs » par statut.
 
-**Écrans accessibles** : Accueil · Besoins d'approvisionnement · Demandes d'achat · Commandes fournisseurs · Réceptions achat (liste + détail) · Situation de stock · Référentiel : Articles, Matières, Fournisseurs (liste + fiche).
+**Écrans accessibles** : Accueil · Approvisionnement (et les anciens écrans Besoins, Demandes, Commandes, Réceptions) · Fournisseurs · Situation de stock · Catalogue (Articles, Matières).
 
 ### 2.8 Commercial (`COMMERCIAL`)
 **Carte d'identité**
@@ -458,6 +456,14 @@ Composant Historique en bas de page.
 *(Note : `/stocks/alertes` n'est qu'une redirection technique vers `/stocks`, sans contenu propre.)*
 
 ### 3.5 Achats / Approvisionnement
+#### Approvisionnement — `/approvisionnement` (Responsable Achat)
+**Frise de flux en haut** avec compteurs : Besoins (à couvrir) → Demandes (à traiter) → Commandes (à envoyer) → Réceptions (attendues) ; chaque pastille est un onglet (`?etape=`). Tableau dessous, recherche et vue « À traiter / Tout ».
+**Actions de ligne :** Besoin → **[Créer la DA]** · DA en attente → **[Approuver] [Rejeter]** · DA approuvée → **[Créer la commande]** (tiroir pré-rempli) · Commande brouillon → **[Envoyer]** · Commande attendue → **[Réceptionner]** (tiroir de réception).
+**Boutons d'en-tête** selon l'étape : Nouvelle demande (tiroir), Nouvelle commande.
+
+#### Commande fournisseur (tiroir)
+Fournisseur + lignes (article, quantité, prix — prix du catalogue fournisseur proposé) dans un seul formulaire, total en direct ; **[Envoyer]** fixe en bas (ou « Enregistrer le brouillon »). Pour une commande existante : onglets **Commande · Réceptions · Historique**.
+
 #### Besoins d'approvisionnement — `/approvisionnement/besoins`
 **Tableau :** Article, Qté, Origine (Production / Stock sous seuil / Saisie manuelle), Satisfait (Oui/Non), action.
 **Actions :** bouton **« Créer la DA »** par ligne non satisfaite (droit `CREER_DA_DEPUIS_BESOIN`). Pas de formulaire de création (besoins générés automatiquement).

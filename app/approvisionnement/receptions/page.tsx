@@ -3,14 +3,13 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { PackageCheck, Truck } from "lucide-react";
-import { Drawer } from "@/components/Drawer";
+import { ReceptionDrawer } from "@/components/achats";
 import { FilterBar, SearchInput, matchSearch } from "@/components/Filters";
 import { Tabs } from "@/components/Tabs";
-import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { Button, DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
 import { STATUT_CF_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { CommandeFournisseur } from "@/lib/types";
-import { cn, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
+import { formatDate, formatDateTime, num } from "@/lib/utils";
 
 type Onglet = "attendues" | "effectuees";
 
@@ -110,107 +109,5 @@ function Receptions() {
 
       {cf && <ReceptionDrawer key={cf.id} cf={cf} onClose={() => setOuverte(null)} />}
     </div>
-  );
-}
-
-/** Tiroir unique : lignes de la commande, « Qté reçue » pré-remplie avec le reste dû, écart en direct. */
-function ReceptionDrawer({ cf, onClose }: { cf: CommandeFournisseur; onClose: () => void }) {
-  const { state, dispatch, articleName } = useStore();
-  const lignes = state.lignesCommandeFournisseur.filter((l) => l.commande === cf.id);
-  const reste = (l: (typeof lignes)[number]) => Math.max(0, num(l.quantite_commandee) - num(l.quantite_recue));
-  const [recu, setRecu] = useState<Record<number, string>>(() => Object.fromEntries(lignes.map((l) => [l.id, String(reste(l))])));
-  const [observations, setObservations] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const ecart = (l: (typeof lignes)[number]) => (Number(recu[l.id]) || 0) - reste(l);
-  const aRecevoir = lignes.filter((l) => (Number(recu[l.id]) || 0) > 0);
-  const conforme = lignes.every((l) => ecart(l) === 0);
-
-  async function valider() {
-    setSaving(true);
-    const ok = await dispatch({
-      type: "RECEVOIR_COMMANDE",
-      commande: cf.id,
-      conforme,
-      observations: observations.trim(),
-      lignes: aRecevoir.map((l) => ({ ligne_commande: l.id, quantite_recue: Number(recu[l.id]) })),
-    });
-    setSaving(false);
-    if (ok) onClose();
-  }
-
-  return (
-    <Drawer
-      open
-      width="lg"
-      onClose={onClose}
-      title={`Réceptionner ${cf.numero}`}
-      subtitle={`Commandée le ${formatDate(cf.date_commande)} · ${STATUT_CF_LABEL[cf.statut]}`}
-      icon={<PackageCheck size={17} />}
-      footer={
-        <>
-          <span className="mr-auto text-[12px]">{conforme ? <span className="text-success font-medium">Conforme à la commande</span> : <span className="text-warning font-medium">Réception avec écart</span>}</span>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button disabled={aRecevoir.length === 0 || saving} onClick={() => void valider()}>
-            {saving ? "Validation…" : "Valider la réception"}
-          </Button>
-        </>
-      }
-    >
-      <div className="rounded-[9px] border border-line overflow-x-auto">
-        <table className="w-full text-left min-w-[480px]">
-          <thead>
-            <tr className="bg-surface-2 border-b border-line text-[11px] uppercase tracking-[0.08em] text-muted">
-              <th className="px-3 py-2 font-medium">Article</th>
-              <th className="px-3 py-2 font-medium text-right">Reste dû</th>
-              <th className="px-3 py-2 font-medium text-right">Qté reçue</th>
-              <th className="px-3 py-2 font-medium text-right">Écart</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lignes.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-[12.5px] text-muted">
-                  Aucune ligne sur cette commande.
-                </td>
-              </tr>
-            )}
-            {lignes.map((l) => {
-              const e = ecart(l);
-              return (
-                <tr key={l.id} className="border-b border-line last:border-0">
-                  <td className="px-3 py-2.5">
-                    <p className="text-[13px] font-medium">{articleName(l.article)}</p>
-                    <p className="text-[11.5px] text-muted num">
-                      Commandé {formatQty(num(l.quantite_commandee), 2)} · déjà reçu {formatQty(num(l.quantite_recue), 2)}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2.5 text-right text-[13px] num">{formatQty(reste(l), 2)}</td>
-                  <td className="px-3 py-2.5 text-right">
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      aria-label={`Quantité reçue ${articleName(l.article)}`}
-                      className="h-9 w-28 border border-line-strong rounded-[6px] px-2 text-[13px] text-right num bg-surface focus:border-primary outline-none"
-                      value={recu[l.id] ?? ""}
-                      onChange={(ev) => setRecu((m) => ({ ...m, [l.id]: ev.target.value }))}
-                    />
-                  </td>
-                  <td className={cn("px-3 py-2.5 text-right text-[13px] num font-semibold", e === 0 ? "text-success" : e < 0 ? "text-warning" : "text-danger")}>
-                    {e === 0 ? "✓" : `${e > 0 ? "+" : ""}${formatQty(e, 2)}`}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <Field label="Observations">
-        <textarea className={cn(inputClass, "h-20 py-2 resize-none")} value={observations} onChange={(e) => setObservations(e.target.value)} placeholder={conforme ? "Facultatif" : "Expliquez l’écart (casse, manquant…)"} />
-      </Field>
-    </Drawer>
   );
 }

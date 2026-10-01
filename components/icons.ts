@@ -135,6 +135,7 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
 export const LABEL_ICONS: Record<string, LucideIcon> = {
   Encaissements: Wallet,
   Supervision: Binoculars,
+  Approvisionnement: ShoppingCart,
   "Mes OF": ClipboardList,
   Saisir: PencilLine,
 };

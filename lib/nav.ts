@@ -146,6 +146,12 @@ export const REF_TABS: NavItem[] = [
   { href: "/parametrage/fiscalite", label: "Codes fiscaux" },
 ];
 
+/** « Catalogue » du Responsable Achat. */
+const ACHATS_CATALOGUE: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles" },
+  { href: "/parametrage/matieres", label: "Matières" },
+];
+
 /** Hub « Stock » du Magasinier. */
 const STOCK_MAGASIN: NavItem[] = [
   { href: "/stocks", label: "Situation" },
@@ -228,10 +234,15 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.reclamations,
     ]),
   ],
+  // Menu à plat : 5 entrées ; besoins, demandes, commandes et réceptions sont les étapes du flux « Approvisionnement ».
   RESPONSABLE_ACHATS: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("appro", "Achats", "cart", [I.apBesoins, I.da, I.cf, I.rec]),
-    g("stock", "Stocks", "boxes", [I.stock]),
+    g("appro", "Achats", "cart", [
+      I.accueil,
+      { href: "/approvisionnement", label: "Approvisionnement", hint: "Besoins → demandes → commandes → réceptions" },
+      { href: "/parametrage/fournisseurs", label: "Fournisseurs", hint: "Fiches fournisseurs" },
+      { ...I.stock, label: "Stock" },
+      { href: "/parametrage/produits", label: "Catalogue", hint: "Articles et matières", hub: ACHATS_CATALOGUE },
+    ]),
   ],
   COMMERCIAL: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -402,7 +413,7 @@ export function breadcrumbs(pathname: string) {
     mouvements: "Mouvements",
     inventaires: "Inventaires",
     alertes: "Stock",
-    approvisionnement: "Achats",
+    approvisionnement: "Approvisionnement",
     demandes: "Demandes d'achat",
     commandes: "Commandes",
     receptions: "Réceptions",
