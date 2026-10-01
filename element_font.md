@@ -142,25 +142,21 @@ Accueil · Plans · Ordres de fabrication · Matières atelier · Stock · Réf�
 
 ### 2.4 Agent Production (`AGENT_PRODUCTION`)
 **Carte d'identité**
-- Station : Ligne / atelier · Couleur : ambre · Icône : clé
-- Mission : « Saisissez les étapes, les quantités et les pertes sur vos OF. »
-- Posture : « Écran d'atelier : actions courtes. Le responsable avance le statut de l'OF. »
-- Possède : Étapes de production, Pertes, Consultation des OF affectés
-- Ne fait jamais : avancer le statut d'un OF, modifier une fiche technique, créer une commande
-- Règles : ne voit que les OF auxquels il est affecté ; les motifs de pertes sont une liste fixe
+- Station : Saisie atelier (mobile) · Couleur : ambre · Icône : clé
+- Mission : « Choisissez l'OF en production, saisissez la quantité produite par étape et déclarez les pertes. »
+- Posture : « Écran mobile : actions courtes. Le responsable avance le statut de l'OF. »
+- Fait : étapes, pertes, suivi eau, sessions
+- Ne fait pas : avancer un OF, modifier une fiche technique, créer une commande · Ne voit pas : OF non affectés, stock, ventes
+- Priorités : 1) choisir l'OF en production ; 2) saisir la quantité produite par étape ; 3) déclarer les pertes
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Atelier : Étapes atelier, Suivi eau, Pertes, Ordres de fabrication
-- Pas de Référentiel, pas d'accès supplémentaire.
+**Menu** — 3 entrées (au lieu de 5), en **barre basse sur mobile** (menu latéral sur ordinateur) :
+Mes OF · Saisir · Accueil
 
 **Page d'accueil**
-- Actions rapides : Saisir une étape, Déclarer une perte.
-- KPI : OF en production (filtrés sur ses affectations), OF prêts à démarrer, Mes étapes du jour, Pertes du jour.
-- Files de travail : En production, Prêts à démarrer.
-- Graphique : barres horizontales « Pertes par motif ».
+- KPI : Mes étapes du jour, Pertes du jour.
+- Liste de **cartes OF** (uniquement ses OF ouverts, OF en production en tête et mis en avant) : n°, article, quantité, statut, et deux gros boutons **[Étape]** et **[Perte]** qui ouvrent « Saisir » avec l'OF pré-rempli.
 
-**Écrans accessibles** : Accueil · Étapes de production / Suivi de production · Suivi eau · Pertes de production · Ordres de fabrication (liste + détail, lecture de ses OF affectés).
+**Écrans accessibles** : Accueil · Saisir · Mes OF (liste + fiche en lecture seule).
 
 ### 2.5 Responsable Qualité (`RESPONSABLE_QUALITE`)
 **Carte d'identité**
@@ -381,6 +377,7 @@ Accueil · Plans · Ordres de fabrication · Matières atelier · Stock · Réf�
 **En fin de ligne : [Convertir en OF]** (droit `CONVERTIR_PLAN`) → mini-tiroir avec sélecteur d'agents à cases à cocher. Bouton grisé avec lien « Fiche technique non validée » si l'article n'a pas de fiche validée.
 
 #### Ordres de fabrication (liste) — `/production/of`
+*Agent Production : écran « Mes OF » — liste de ses OF (En cours / Terminés), fiche en lecture seule (stepper, besoins, étapes & pertes, suivi eau) avec un bouton « Saisir sur cet OF ».*
 **Haut :** 3 KPI (OF en production, Attente qualité, Volume à produire) + graphique « Pipeline » (OF par statut).
 **Pastilles de statut** (Ouverts, chaque statut présent, Tous) avec compteurs, recherche.
 **Tableau :** Numéro, Article, Quantité, Statut (badge), Agents, Créé le. Ligne cliquable → fiche.
@@ -392,10 +389,15 @@ Accueil · Plans · Ordres de fabrication · Matières atelier · Stock · Réf�
 - **Onglets :** Synthèse (infos + agents réaffectables, droit `AFFECTER_AGENTS_OF`) · Besoins matières (théorique / disponible / manquant / situation ; bouton **[Demander les matières au magasin]**, remplacé ensuite par **[Demande complémentaire]** en tiroir ; suivi des demandes) · Sorties (sorties, retours, compléments) · Étapes & pertes · Suivi eau (OF de la famille eau uniquement ; saisie en tiroir) · Lots · Historique.
 - **Barre fixe en bas :** **[Avancer → statut suivant]** (droit `AVANCER_OF`) et lien discret **Annuler l'OF** (droit `ANNULER_OF`, tiroir avec motif obligatoire) ; rappel des demandes de matières non livrées.
 
-#### Étapes de production / Suivi de production — `/production/suivi`
-Deux sections sur la même page :
-- **Étapes de production** : tableau (OF, Étape, Qté, Observations) ; formulaire (droit `CREATE_ETAPE`) : OF, Étape (Captage/Traitement/Soufflage/Embouteillage/Étiquetage/Conditionnement), Quantité produite ; bouton « Enregistrer ».
-- **Suivi de production (sessions)** : tableau (OF, Date, Début, Équipe, Entrée, Produite, Conforme, Rejetée) ; formulaire (droit `CREATE_SUIVI_PROD`) : OF, Date, Heure de début, Équipe, Qté entrée/produite/conforme/rejetée, Arrêts, Incidents ; bouton « Enregistrer la session ».
+#### Saisir — `/production/suivi` (gabarit C, mobile)
+- Sélecteur d'OF en haut (pré-rempli par `?of=` depuis une carte de l'accueil), avec quantité et statut.
+- **Onglets :** Étape · Perte · Eau (OF de la famille eau uniquement) · Session (`?tab=`).
+  - Étape (`CREATE_ETAPE`) : étape en gros boutons, quantité produite, observations.
+  - Perte (`CREATE_PERTE`) : motif en gros boutons (liste fixe), quantité, observations.
+  - Eau (`CREATE_SUIVI_EAU`) : volumes capté / traitement / embouteillage, bouteilles produites / conformes / rejetées, packs.
+  - Session (`CREATE_SUIVI_PROD`) : heure de début, équipe, quantités entrée / produite / conforme / rejetée, arrêts, incidents.
+- Bouton **[Enregistrer]** pleine largeur, collé en bas au-dessus de la barre de navigation ; confirmation « Enregistré ».
+- **Dernières saisies du jour** en tableau compact sous le formulaire (derniers relevés de l'OF pour l'onglet Eau).
 
 #### Suivi eau — `/production/suivi-eau`
 **Objectif :** volumes captage → traitement → embouteillage et bouteilles produites sur un OF de la ligne eau.

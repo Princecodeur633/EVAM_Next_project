@@ -186,9 +186,13 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.referentiel, hint: "Articles, matières, conditionnements, fiches techniques", hub: PROD_REF_TABS },
     ]),
   ],
+  // Poste mobile : 3 entrées, affichées en barre basse sur téléphone.
   AGENT_PRODUCTION: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("atelier", "Atelier", "factory", [I.suivi, I.suiviEau, I.pertes, I.of]),
+    g("atelier", "Atelier", "factory", [
+      { href: "/production/of", label: "Mes OF", hint: "OF qui vous sont affectés" },
+      { href: "/production/suivi", label: "Saisir", hint: "Étape, perte, eau, session" },
+      I.accueil,
+    ]),
   ],
   RESPONSABLE_QUALITE: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -228,6 +232,9 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("caisse", "Caisse", "banknote", [I.sessions, I.decaissements]),
   ],
 };
+
+/** Postes dont le menu s’affiche en barre basse sur mobile (saisie terrain). */
+export const BOTTOM_NAV_ROLES: Profil[] = ["AGENT_PRODUCTION"];
 
 export function navForRole(role: Profil): NavGroup[] {
   const base = ROLE_MENU[role];

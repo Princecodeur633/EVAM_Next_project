@@ -16,6 +16,13 @@ export function ftValidee(state: AppState, article: number) {
   return a?.fiche_technique_validee != null || state.fichesTechniques.some((f) => f.article === article && f.statut === "VALIDEE");
 }
 
+/** Vrai si l’OF fabrique un article de la famille « eau » (suivi captage → embouteillage). */
+export function estOfEau(state: AppState, of: OrdreFabrication) {
+  const article = state.articles.find((a) => a.id === of.article);
+  const famille = state.famillesArticle.find((f) => f.id === article?.famille);
+  return famille?.nom.toLowerCase().includes("eau") ?? false;
+}
+
 /** Bandeau « Fiche technique non validée » avec lien vers la fiche. */
 export function FtNonValidee({ className }: { className?: string }) {
   return (

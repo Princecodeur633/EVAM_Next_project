@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, ArrowUpRight, CheckCircle2, CircleSlash, Eye, EyeOff, Info, Landmark, Vault } from "lucide-react";
+import { AgentHome } from "@/components/AgentHome";
 import { DonutChart, KpiCard } from "@/components/charts";
 import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, ROLE_ICONS } from "@/components/icons";
 import { StatusBadge } from "@/components/ui";
@@ -24,6 +25,7 @@ const TONE_CHIP: Record<string, string> = {
 export default function AccueilPage() {
   const { state, currentUser, articleName, clientName, userName } = useStore();
   if (!currentUser) return null;
+  if (currentUser.role === "AGENT_PRODUCTION") return <AgentHome />;
 
   const role = currentUser.role;
   const profile = ROLE_PROFILES[role];

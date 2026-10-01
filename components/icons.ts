@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
+  PencilLine,
   Binoculars,
   BookOpenText,
   Scale,
@@ -134,6 +135,8 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
 export const LABEL_ICONS: Record<string, LucideIcon> = {
   Encaissements: Wallet,
   Supervision: Binoculars,
+  "Mes OF": ClipboardList,
+  Saisir: PencilLine,
 };
 
 export const ROLE_ICONS: Record<string, LucideIcon> = {

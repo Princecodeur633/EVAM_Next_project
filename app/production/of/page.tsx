@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ClipboardPlus, Plus } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, ClipboardPlus, Plus } from "lucide-react";
 import { OfBadge } from "@/components/badges";
 import { BarChart, KpiCard, WidgetCard } from "@/components/charts";
 import { Drawer, DrawerSection } from "@/components/Drawer";
-import { FilterBar, SearchInput, matchSearch } from "@/components/Filters";
+import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { AgentPicker, FtNonValidee, ftValidee, useAgentsDisponibles } from "@/components/production";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { STATUT_OF_LABEL } from "@/lib/labels";
@@ -17,6 +18,62 @@ import { cn, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
 const STATUTS = Object.keys(STATUT_OF_LABEL) as StatutOF[];
 
 export default function OfListPage() {
+  const { role } = useStore();
+  return role === "AGENT_PRODUCTION" ? <MesOf /> : <OfListe />;
+}
+
+/** « Mes OF » de l’agent de production : cartes, consultation seule. */
+function MesOf() {
+  const { state, articleName } = useStore();
+  const [vue, setVue] = useState<"EN_COURS" | "TERMINES">("EN_COURS");
+  const enCours = state.ofList.filter((o) => o.statut !== "CLOTURE" && o.statut !== "ANNULE");
+  const termines = state.ofList.filter((o) => o.statut === "CLOTURE" || o.statut === "ANNULE");
+  const liste = (vue === "EN_COURS" ? enCours : termines).sort((a, b) => Number(b.statut === "EN_PRODUCTION") - Number(a.statut === "EN_PRODUCTION"));
+
+  return (
+    <div className="max-w-[640px] mx-auto space-y-4 anim-in">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.14em] text-muted font-medium">Atelier</p>
+        <h1 className="text-[22px] font-semibold tracking-tight">Mes OF</h1>
+      </div>
+      <Segmented
+        label="Vue"
+        value={vue}
+        onChange={setVue}
+        options={[
+          { value: "EN_COURS", label: "En cours", count: enCours.length },
+          { value: "TERMINES", label: "Terminés", count: termines.length },
+        ]}
+      />
+      {liste.length === 0 ? (
+        <Panel className="px-5 py-12 text-center">
+          <p className="text-[14px] font-medium">{vue === "EN_COURS" ? "Aucun OF en cours ne vous est affecté." : "Aucun OF terminé."}</p>
+        </Panel>
+      ) : (
+        <ul className="evam-card divide-y divide-line overflow-hidden">
+          {liste.map((o) => (
+            <li key={o.id}>
+              <Link href={`/production/of/${o.id}`} className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface-2 active:bg-primary-soft">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-[15px] font-semibold num">{o.numero}</p>
+                    <OfBadge status={o.statut} />
+                  </div>
+                  <p className="text-[13px] text-muted mt-0.5 truncate">
+                    {articleName(o.article)} · {formatQty(num(o.quantite_a_produire), 0)}
+                  </p>
+                </div>
+                <ChevronRight size={18} className="text-muted shrink-0" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function OfListe() {
   const { state, articleName, can, userName } = useStore();
   const router = useRouter();
   const [creating, setCreating] = useState(false);

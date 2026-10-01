@@ -1,122 +1,427 @@
 "use client";
 
-import { useState } from "react";
-import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
-import { ETAPE_LABEL } from "@/lib/labels";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import type { ReactNode } from "react";
+import { Check, Droplets, ListChecks, Timer, TrendingDown } from "lucide-react";
+import { OfBadge } from "@/components/badges";
+import { estOfEau } from "@/components/production";
+import { Tabs } from "@/components/Tabs";
+import { Button, Panel, inputClass } from "@/components/ui";
+import { ETAPE_LABEL, MOTIF_PERTE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import { formatQty, num } from "@/lib/utils";
-import type { Etape } from "@/lib/types";
+import type { Etape, MotifPerte } from "@/lib/types";
+import { cn, formatQty, num } from "@/lib/utils";
 
-export default function SuiviPage() {
-  const { state, dispatch, ofNumero, can, currentUser } = useStore();
-  const [ofId, setOfId] = useState(state.ofList[0]?.id ?? 0);
-  const [etape, setEtape] = useState<Etape>("CAPTAGE");
-  const [qty, setQty] = useState(0);
+type Onglet = "etape" | "perte" | "eau" | "session";
+const ONGLETS: Onglet[] = ["etape", "perte", "eau", "session"];
 
-  const [sessionOf, setSessionOf] = useState(state.ofList[0]?.id ?? 0);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [heureDebut, setHeureDebut] = useState("08:00");
-  const [equipe, setEquipe] = useState("");
-  const [qEntree, setQEntree] = useState(0);
-  const [qProduite, setQProduite] = useState(0);
-  const [qConforme, setQConforme] = useState(0);
-  const [qRejetee, setQRejetee] = useState(0);
-  const [arrets, setArrets] = useState("");
-  const [incidents, setIncidents] = useState("");
+const big = cn(inputClass, "h-11 text-[15px]");
+
+function today(iso: string | null | undefined) {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+}
+function heure(iso: string | null | undefined) {
+  return iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
+}
+
+export default function SaisirPage() {
+  return (
+    <Suspense fallback={null}>
+      <Saisir />
+    </Suspense>
+  );
+}
+
+/** Gabarit C : saisie atelier mobile — OF, onglets, formulaire, [Enregistrer] pleine largeur, saisies du jour. */
+function Saisir() {
+  const { state, articleName } = useStore();
+  const router = useRouter();
+  const params = useSearchParams();
+  const ofs = state.ofList.filter((o) => o.statut !== "CLOTURE" && o.statut !== "ANNULE");
+  const ordre = (s: string) => (s === "EN_PRODUCTION" ? 0 : s === "PRET" ? 1 : 2);
+  const tries = [...ofs].sort((a, b) => ordre(a.statut) - ordre(b.statut));
+  const paramOf = Number(params.get("of"));
+  const ofId = tries.some((o) => o.id === paramOf) ? paramOf : (tries[0]?.id ?? 0);
+  const of = state.ofList.find((o) => o.id === ofId);
+  const eau = of ? estOfEau(state, of) : false;
+  const paramTab = params.get("tab") as Onglet | null;
+  const onglet: Onglet = paramTab && ONGLETS.includes(paramTab) && (paramTab !== "eau" || eau) ? paramTab : "etape";
+
+  const go = (next: { of?: number; tab?: Onglet }) => {
+    const q = new URLSearchParams({ of: String(next.of ?? ofId), tab: next.tab ?? onglet });
+    router.replace(`/production/suivi?${q.toString()}`, { scroll: false });
+  };
 
   return (
-    <div className="space-y-4">
-      <PageHeader eyebrow="Atelier" title="Étapes de production" description="Saisissez captage, traitement, soufflage, embouteillage, étiquetage et conditionnement." />
-      {can("CREATE_ETAPE") && (
-        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
-          <Field label="OF">
-            <select className={inputClass} value={ofId} onChange={(e) => setOfId(Number(e.target.value))}>
-              {state.ofList.map((o) => <option key={o.id} value={o.id}>{o.numero}</option>)}
-            </select>
-          </Field>
-          <Field label="Étape">
-            <select className={inputClass} value={etape} onChange={(e) => setEtape(e.target.value as Etape)}>
-              {(Object.keys(ETAPE_LABEL) as Etape[]).map((k) => <option key={k} value={k}>{ETAPE_LABEL[k]}</option>)}
-            </select>
-          </Field>
-          <Field label="Quantité produite">
-            <input type="number" className={inputClass} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
-          </Field>
-          <Button disabled={!ofId || !currentUser} onClick={() => void dispatch({ type: "CREATE_ETAPE", ordre_fabrication: ofId, etape, quantite_produite: qty })}>
-            Enregistrer
-          </Button>
-        </Panel>
-      )}
-      <Panel>
-        <DataTable
-          columns={[{ key: "of", label: "OF" }, { key: "e", label: "Étape" }, { key: "q", label: "Qté" }, { key: "o", label: "Observations" }]}
-          rows={state.etapes.map((e) => ({ of: ofNumero(e.ordre_fabrication), e: ETAPE_LABEL[e.etape], q: formatQty(num(e.quantite_produite), 2), o: e.observations || "—" }))}
-        />
-      </Panel>
+    <div className="max-w-[640px] mx-auto space-y-4">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.14em] text-muted font-medium">Atelier</p>
+        <h1 className="text-[22px] font-semibold tracking-tight">Saisir</h1>
+      </div>
 
-      <PageHeader eyebrow="Atelier" title="Suivi de production" description="Sessions horodatées : quantités entrées/produites/conformes/rejetées, arrêts et incidents." />
-      {can("CREATE_SUIVI_PROD") && (
-        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
-          <Field label="OF">
-            <select className={inputClass} value={sessionOf} onChange={(e) => setSessionOf(Number(e.target.value))}>
-              {state.ofList.map((o) => <option key={o.id} value={o.id}>{o.numero}</option>)}
-            </select>
-          </Field>
-          <Field label="Date"><input type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-          <Field label="Heure début"><input type="time" className={inputClass} value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} /></Field>
-          <Field label="Équipe"><input className={inputClass} value={equipe} onChange={(e) => setEquipe(e.target.value)} /></Field>
-          <Field label="Qté entrée"><input type="number" className={inputClass} value={qEntree} onChange={(e) => setQEntree(Number(e.target.value))} /></Field>
-          <Field label="Qté produite"><input type="number" className={inputClass} value={qProduite} onChange={(e) => setQProduite(Number(e.target.value))} /></Field>
-          <Field label="Qté conforme"><input type="number" className={inputClass} value={qConforme} onChange={(e) => setQConforme(Number(e.target.value))} /></Field>
-          <Field label="Qté rejetée"><input type="number" className={inputClass} value={qRejetee} onChange={(e) => setQRejetee(Number(e.target.value))} /></Field>
-          <Field label="Arrêts"><input className={inputClass} placeholder="Ex : arrêt 15 min réglage" value={arrets} onChange={(e) => setArrets(e.target.value)} /></Field>
-          <Field label="Incidents"><input className={inputClass} value={incidents} onChange={(e) => setIncidents(e.target.value)} /></Field>
-          <Button
-            disabled={!sessionOf || qEntree <= 0}
-            onClick={() =>
-              void dispatch({
-                type: "CREATE_SUIVI_PROD",
-                ordre_fabrication: sessionOf,
-                date,
-                heure_debut: `${heureDebut}:00`,
-                quantite_entree: qEntree,
-                quantite_produite: qProduite || undefined,
-                quantite_conforme: qConforme || undefined,
-                quantite_rejetee: qRejetee || undefined,
-                equipe: equipe || undefined,
-                arrets: arrets || undefined,
-                incidents: incidents || undefined,
-              })
-            }
-          >
-            Enregistrer la session
-          </Button>
+      {tries.length === 0 ? (
+        <Panel className="px-5 py-12 text-center">
+          <p className="text-[14px] font-medium">Aucun OF ouvert ne vous est affecté.</p>
+          <p className="text-[12.5px] text-muted mt-1">Le responsable de production vous affecte aux OF.</p>
         </Panel>
+      ) : (
+        <>
+          <Panel className="p-3 space-y-2">
+            <label className="block">
+              <span className="block text-[11px] uppercase tracking-wide text-muted mb-1.5 font-medium">Ordre de fabrication</span>
+              <select className={big} value={ofId} onChange={(e) => go({ of: Number(e.target.value), tab: onglet === "eau" ? "etape" : onglet })}>
+                {tries.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.numero} · {articleName(o.article)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {of && (
+              <div className="flex items-center justify-between gap-2 text-[12.5px]">
+                <span className="text-muted truncate">{formatQty(num(of.quantite_a_produire), 0)} à produire</span>
+                <OfBadge status={of.statut} />
+              </div>
+            )}
+          </Panel>
+
+          <Tabs
+            label="Type de saisie"
+            value={onglet}
+            onChange={(tab) => go({ tab })}
+            items={[
+              { value: "etape", label: "Étape", icon: ListChecks },
+              { value: "perte", label: "Perte", icon: TrendingDown },
+              ...(eau ? [{ value: "eau" as const, label: "Eau", icon: Droplets }] : []),
+              { value: "session", label: "Session", icon: Timer },
+            ]}
+          />
+
+          {onglet === "etape" && <EtapeForm key={`e${ofId}`} ofId={ofId} />}
+          {onglet === "perte" && <PerteForm key={`p${ofId}`} ofId={ofId} />}
+          {onglet === "eau" && <EauForm key={`w${ofId}`} ofId={ofId} />}
+          {onglet === "session" && <SessionForm key={`s${ofId}`} ofId={ofId} />}
+        </>
       )}
-      <Panel>
-        <DataTable
-          columns={[
-            { key: "of", label: "OF" },
-            { key: "d", label: "Date" },
-            { key: "h", label: "Début" },
-            { key: "eq", label: "Équipe" },
-            { key: "e", label: "Entrée" },
-            { key: "p", label: "Produite" },
-            { key: "c", label: "Conforme" },
-            { key: "r", label: "Rejetée" },
-          ]}
-          rows={state.suivisProduction.map((s) => ({
-            of: ofNumero(s.ordre_fabrication),
-            d: s.date,
-            h: s.heure_debut,
-            eq: s.equipe || "—",
-            e: formatQty(num(s.quantite_entree), 2),
-            p: s.quantite_produite != null ? formatQty(num(s.quantite_produite), 2) : "—",
-            c: s.quantite_conforme != null ? formatQty(num(s.quantite_conforme), 2) : "—",
-            r: s.quantite_rejetee != null ? formatQty(num(s.quantite_rejetee), 2) : "—",
-          }))}
-        />
-      </Panel>
     </div>
+  );
+}
+
+/** Formulaire + bouton Enregistrer collé en bas (au-dessus de la barre de navigation mobile). */
+function FormShell({ children, valide, saving, onSave, recap }: { children: ReactNode; valide: boolean; saving: boolean; onSave: () => Promise<boolean>; recap: ReactNode }) {
+  const [ok, setOk] = useState(false);
+  return (
+    <>
+      <Panel className="p-4 space-y-4">{children}</Panel>
+      <div className="sticky bottom-[calc(72px+env(safe-area-inset-bottom))] lg:bottom-4 z-20">
+        <Button
+          className={cn("w-full h-12 text-[15px] shadow-[var(--shadow)]", ok && "bg-success hover:bg-success")}
+          disabled={!valide || saving}
+          onClick={async () => {
+            if (!(await onSave())) return;
+            setOk(true);
+            setTimeout(() => setOk(false), 1500);
+          }}
+        >
+          {saving ? "Enregistrement…" : ok ? <><Check size={17} /> Enregistré</> : "Enregistrer"}
+        </Button>
+      </div>
+      <section>
+        <h2 className="text-[12px] uppercase tracking-[0.1em] text-muted font-semibold mb-2">Dernières saisies du jour</h2>
+        <Panel className="overflow-hidden">{recap}</Panel>
+      </section>
+    </>
+  );
+}
+
+function Recap({ lignes, vide }: { lignes: { k: string; a: ReactNode; b: ReactNode; c: ReactNode }[]; vide: string }) {
+  if (lignes.length === 0) return <p className="px-4 py-6 text-center text-[12.5px] text-muted">{vide}</p>;
+  return (
+    <table className="w-full text-left text-[12.5px]">
+      <tbody>
+        {lignes.map((l) => (
+          <tr key={l.k} className="border-b border-line last:border-0">
+            <td className="px-3 py-2 text-muted num w-14">{l.a}</td>
+            <td className="px-3 py-2 min-w-0">{l.b}</td>
+            <td className="px-3 py-2 text-right num font-medium whitespace-nowrap">{l.c}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function Label({ children }: { children: ReactNode }) {
+  return <span className="block text-[11px] uppercase tracking-wide text-muted mb-1.5 font-medium">{children}</span>;
+}
+
+function EtapeForm({ ofId }: { ofId: number }) {
+  const { state, dispatch, ofNumero } = useStore();
+  const [etape, setEtape] = useState<Etape>("CAPTAGE");
+  const [qty, setQty] = useState("");
+  const [obs, setObs] = useState("");
+  const [saving, setSaving] = useState(false);
+  const jour = state.etapes.filter((e) => today(e.date_fin) || today(e.date_debut)).slice(-8).reverse();
+
+  async function save() {
+    setSaving(true);
+    const ok = await dispatch({ type: "CREATE_ETAPE", ordre_fabrication: ofId, etape, quantite_produite: Number(qty), observations: obs.trim() || undefined });
+    setSaving(false);
+    if (ok) {
+      setQty("");
+      setObs("");
+    }
+    return ok;
+  }
+
+  return (
+    <FormShell
+      valide={Number(qty) > 0}
+      saving={saving}
+      onSave={save}
+      recap={
+        <Recap
+          vide="Aucune étape saisie aujourd’hui."
+          lignes={jour.map((e) => ({ k: String(e.id), a: heure(e.date_fin ?? e.date_debut), b: `${ofNumero(e.ordre_fabrication)} · ${ETAPE_LABEL[e.etape]}`, c: e.quantite_produite != null ? formatQty(num(e.quantite_produite), 0) : "—" }))}
+        />
+      }
+    >
+      <div>
+        <Label>Étape</Label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {(Object.keys(ETAPE_LABEL) as Etape[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setEtape(k)}
+              aria-pressed={etape === k}
+              className={cn("h-11 rounded-[8px] border text-[13.5px] font-medium transition-colors", etape === k ? "bg-primary text-white border-primary" : "bg-surface border-line-strong hover:bg-surface-2")}
+            >
+              {ETAPE_LABEL[k]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="block">
+        <Label>Quantité produite</Label>
+        <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right text-[18px] font-semibold")} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="0" />
+      </label>
+      <label className="block">
+        <Label>Observations</Label>
+        <input className={big} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Facultatif" />
+      </label>
+    </FormShell>
+  );
+}
+
+function PerteForm({ ofId }: { ofId: number }) {
+  const { state, dispatch, ofNumero } = useStore();
+  const [motif, setMotif] = useState<MotifPerte>("CASSE");
+  const [qty, setQty] = useState("");
+  const [obs, setObs] = useState("");
+  const [saving, setSaving] = useState(false);
+  const jour = state.pertes.filter((p) => today(p.date_constat)).slice(-8).reverse();
+
+  async function save() {
+    setSaving(true);
+    const ok = await dispatch({ type: "CREATE_PERTE", ordre_fabrication: ofId, quantite_perte: Number(qty), motif, observations: obs.trim() || undefined });
+    setSaving(false);
+    if (ok) {
+      setQty("");
+      setObs("");
+    }
+    return ok;
+  }
+
+  return (
+    <FormShell
+      valide={Number(qty) > 0}
+      saving={saving}
+      onSave={save}
+      recap={
+        <Recap
+          vide="Aucune perte déclarée aujourd’hui."
+          lignes={jour.map((p) => ({ k: String(p.id), a: heure(p.date_constat), b: `${ofNumero(p.ordre_fabrication)} · ${MOTIF_PERTE_LABEL[p.motif]}`, c: formatQty(num(p.quantite_perte), 0) }))}
+        />
+      }
+    >
+      <div>
+        <Label>Motif</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {(Object.keys(MOTIF_PERTE_LABEL) as MotifPerte[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setMotif(k)}
+              aria-pressed={motif === k}
+              className={cn("h-11 px-2 rounded-[8px] border text-[13px] font-medium transition-colors", motif === k ? "bg-danger text-white border-danger" : "bg-surface border-line-strong hover:bg-surface-2")}
+            >
+              {MOTIF_PERTE_LABEL[k]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="block">
+        <Label>Quantité perdue</Label>
+        <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right text-[18px] font-semibold")} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="0" />
+      </label>
+      <label className="block">
+        <Label>Observations</Label>
+        <input className={big} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Facultatif" />
+      </label>
+    </FormShell>
+  );
+}
+
+function EauForm({ ofId }: { ofId: number }) {
+  const { state, dispatch } = useStore();
+  const vide = { capte: "", envoye: "", obtenu: "", embout: "", produites: "", conformes: "", rejetees: "", packs: "" };
+  const [v, setV] = useState(vide);
+  const [saving, setSaving] = useState(false);
+  const n = (k: keyof typeof v) => Number(v[k]) || 0;
+  // Le suivi eau n’a pas de date : on affiche les derniers relevés de cet OF.
+  const derniers = state.suivisEau.filter((s) => s.ordre_fabrication === ofId).slice(-5).reverse();
+
+  async function save() {
+    setSaving(true);
+    const ok = await dispatch({
+      type: "CREATE_SUIVI_EAU",
+      ordre_fabrication: ofId,
+      volume_capte_l: n("capte"),
+      volume_envoye_traitement_l: n("envoye") || undefined,
+      volume_obtenu_traitement_l: n("obtenu"),
+      volume_envoye_embouteillage_l: n("embout"),
+      bouteilles_produites: n("produites"),
+      bouteilles_conformes: n("conformes"),
+      bouteilles_rejetees: n("rejetees") || undefined,
+      nombre_packs: n("packs") || undefined,
+    });
+    setSaving(false);
+    if (ok) setV(vide);
+    return ok;
+  }
+
+  const champ = (k: keyof typeof v, label: string) => (
+    <label className="block">
+      <Label>{label}</Label>
+      <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={v[k]} onChange={(e) => setV((x) => ({ ...x, [k]: e.target.value }))} />
+    </label>
+  );
+
+  return (
+    <FormShell
+      valide={n("capte") > 0 && n("obtenu") > 0 && n("embout") > 0 && n("produites") > 0}
+      saving={saving}
+      onSave={save}
+      recap={
+        <Recap
+          vide="Aucun relevé pour cet OF."
+          lignes={derniers.map((s, i) => ({ k: String(s.id), a: `#${derniers.length - i}`, b: `${formatQty(num(s.volume_capte_l), 0)} L captés`, c: `${s.bouteilles_conformes}/${s.bouteilles_produites} bt.` }))}
+        />
+      }
+    >
+      <p className="text-[11px] uppercase tracking-[0.1em] text-muted font-semibold">Volumes (litres)</p>
+      <div className="grid grid-cols-2 gap-3">
+        {champ("capte", "Capté")}
+        {champ("envoye", "Envoyé traitement")}
+        {champ("obtenu", "Obtenu traitement")}
+        {champ("embout", "Embouteillage")}
+      </div>
+      <p className="text-[11px] uppercase tracking-[0.1em] text-muted font-semibold pt-1">Bouteilles</p>
+      <div className="grid grid-cols-2 gap-3">
+        {champ("produites", "Produites")}
+        {champ("conformes", "Conformes")}
+        {champ("rejetees", "Rejetées")}
+        {champ("packs", "Packs")}
+      </div>
+    </FormShell>
+  );
+}
+
+function SessionForm({ ofId }: { ofId: number }) {
+  const { state, dispatch, ofNumero } = useStore();
+  const now = new Date();
+  const [heureDebut, setHeureDebut] = useState(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+  const [equipe, setEquipe] = useState("");
+  const [v, setV] = useState({ entree: "", produite: "", conforme: "", rejetee: "" });
+  const [arrets, setArrets] = useState("");
+  const [incidents, setIncidents] = useState("");
+  const [saving, setSaving] = useState(false);
+  const date = now.toISOString().slice(0, 10);
+  const jour = state.suivisProduction.filter((s) => s.date === date && state.ofList.some((o) => o.id === s.ordre_fabrication)).slice(-8).reverse();
+
+  async function save() {
+    setSaving(true);
+    const n = (k: keyof typeof v) => (v[k] ? Number(v[k]) : undefined);
+    const ok = await dispatch({
+      type: "CREATE_SUIVI_PROD",
+      ordre_fabrication: ofId,
+      date,
+      heure_debut: `${heureDebut}:00`,
+      quantite_entree: Number(v.entree),
+      quantite_produite: n("produite"),
+      quantite_conforme: n("conforme"),
+      quantite_rejetee: n("rejetee"),
+      equipe: equipe.trim() || undefined,
+      arrets: arrets.trim() || undefined,
+      incidents: incidents.trim() || undefined,
+    });
+    setSaving(false);
+    if (ok) {
+      setV({ entree: "", produite: "", conforme: "", rejetee: "" });
+      setArrets("");
+      setIncidents("");
+    }
+    return ok;
+  }
+
+  const champ = (k: keyof typeof v, label: string) => (
+    <label className="block">
+      <Label>{label}</Label>
+      <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={v[k]} onChange={(e) => setV((x) => ({ ...x, [k]: e.target.value }))} />
+    </label>
+  );
+
+  return (
+    <FormShell
+      valide={Number(v.entree) > 0 && !!heureDebut}
+      saving={saving}
+      onSave={save}
+      recap={
+        <Recap
+          vide="Aucune session aujourd’hui."
+          lignes={jour.map((s) => ({ k: String(s.id), a: s.heure_debut.slice(0, 5), b: `${ofNumero(s.ordre_fabrication)}${s.equipe ? ` · ${s.equipe}` : ""}`, c: s.quantite_produite != null ? formatQty(num(s.quantite_produite), 0) : formatQty(num(s.quantite_entree), 0) }))}
+        />
+      }
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <Label>Heure de début</Label>
+          <input type="time" className={big} value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} />
+        </label>
+        <label className="block">
+          <Label>Équipe</Label>
+          <input className={big} value={equipe} onChange={(e) => setEquipe(e.target.value)} placeholder="Matin, A…" />
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {champ("entree", "Entrée")}
+        {champ("produite", "Produite")}
+        {champ("conforme", "Conforme")}
+        {champ("rejetee", "Rejetée")}
+      </div>
+      <label className="block">
+        <Label>Arrêts</Label>
+        <input className={big} value={arrets} onChange={(e) => setArrets(e.target.value)} placeholder="Ex. 15 min réglage" />
+      </label>
+      <label className="block">
+        <Label>Incidents</Label>
+        <input className={big} value={incidents} onChange={(e) => setIncidents(e.target.value)} placeholder="Facultatif" />
+      </label>
+    </FormShell>
   );
 }

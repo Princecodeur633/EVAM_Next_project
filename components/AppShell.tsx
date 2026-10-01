@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, Circle, LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { activeNavHref, breadcrumbs, canAccess, flattenNav, navForRole } from "@/lib/nav";
+import { activeNavHref, BOTTOM_NAV_ROLES, breadcrumbs, canAccess, flattenNav, navForRole } from "@/lib/nav";
 import { ROLE_PROFILES } from "@/lib/roles";
 import { useStore } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
@@ -102,6 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const crumbs = breadcrumbs(pathname);
   const IconRole = ROLE_ICONS[profile.icon];
   const activeHref = activeNavHref(pathname, flattenNav(currentUser.role));
+  const bottomNav = BOTTOM_NAV_ROLES.includes(currentUser.role);
   const showDepot = ["MAGASINIER", "RESPONSABLE_PRODUCTION", "RESPONSABLE_ACHATS", "AGENT_PRODUCTION", "RESPONSABLE_QUALITE", "RESPONSABLE_DISTRIBUTION"].includes(
     currentUser.role,
   );
@@ -276,7 +277,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
             <button
               type="button"
-              className="lg:hidden h-8 w-8 shrink-0 flex items-center justify-center border border-line rounded-[7px] text-muted hover:text-ink bg-surface"
+              className={cn("lg:hidden h-8 w-8 shrink-0 flex items-center justify-center border border-line rounded-[7px] text-muted hover:text-ink bg-surface", bottomNav && "hidden")}
               onClick={() => setNavOpen(true)}
               aria-label="Ouvrir le menu"
             >
@@ -450,12 +451,46 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="p-3 sm:p-6 lg:p-8 relative min-w-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <main
+          className={cn(
+            "p-3 sm:p-6 lg:p-8 relative min-w-0",
+            bottomNav ? "pb-[calc(76px+env(safe-area-inset-bottom))] lg:pb-8" : "pb-[max(1rem,env(safe-area-inset-bottom))]",
+          )}
+        >
           <div className="relative min-w-0 max-w-full">
             <HubTabs pathname={pathname} role={currentUser.role} />
             {children}
           </div>
         </main>
+
+        {/* Barre basse (mobile) des postes de saisie terrain */}
+        {bottomNav && (
+          <nav
+            aria-label="Navigation principale"
+            className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line pb-[env(safe-area-inset-bottom)]"
+          >
+            <ul className="flex">
+              {groups.flatMap((g) => g.items).map((item) => {
+                const ItemIcon = itemIcon(item);
+                const active = item.href === activeHref;
+                return (
+                  <li key={item.href} className="flex-1">
+                    <Link
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn("h-16 flex flex-col items-center justify-center gap-1 text-[11.5px] font-medium transition-colors", active ? "text-primary" : "text-muted hover:text-ink")}
+                    >
+                      <span className={cn("h-7 w-12 rounded-full flex items-center justify-center transition-colors", active && "bg-primary-soft")}>
+                        <ItemIcon size={19} strokeWidth={active ? 2.1 : 1.75} />
+                      </span>
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        )}
       </div>
 
       {state.lastError && (

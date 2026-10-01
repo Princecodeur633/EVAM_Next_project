@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Ban, Droplets, PackagePlus, Plus, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Ban, Droplets, PackagePlus, PencilLine, Plus, Users } from "lucide-react";
 import { OfBadge } from "@/components/badges";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
-import { AgentPicker, ComplementDrawer, useAgentsDisponibles } from "@/components/production";
+import { AgentPicker, ComplementDrawer, estOfEau, useAgentsDisponibles } from "@/components/production";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, Guard, OF_STEPS, PageHeader, Panel, StatusBadge, StatusStepper, inputClass } from "@/components/ui";
 import { endpoints } from "@/lib/api";
@@ -29,9 +29,11 @@ type Onglet = "synthese" | "besoins" | "sorties" | "etapes" | "eau" | "lots" | "
 
 export default function OfDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, articleName, can } = useStore();
+  const { state, dispatch, articleName, can, role } = useStore();
   const of = state.ofList.find((o) => o.id === Number(id));
-  const [onglet, setOnglet] = useState<Onglet>("synthese");
+  // Agent de production : consultation seule (stepper, besoins, étapes, pertes) ; la saisie se fait dans « Saisir ».
+  const lecture = role === "AGENT_PRODUCTION";
+  const [choix, setOnglet] = useState<Onglet | null>(null);
   const [annulation, setAnnulation] = useState(false);
   const [avancement, setAvancement] = useState(false);
 
@@ -39,9 +41,7 @@ export default function OfDetailPage() {
 
   const modifiable = of.statut !== "CLOTURE" && of.statut !== "ANNULE";
   const next = nextOfStatut(of.statut);
-  const article = state.articles.find((a) => a.id === of.article);
-  const famille = state.famillesArticle.find((f) => f.id === article?.famille);
-  const estEau = famille?.nom.toLowerCase().includes("eau") ?? false;
+  const estEau = estOfEau(state, of);
 
   const besoins = state.besoinsMatieres.filter((b) => b.ordre_fabrication === of.id);
   const demandes = state.demandesMatieres.filter((d) => d.ordre_fabrication === of.id);
@@ -54,7 +54,7 @@ export default function OfDetailPage() {
   const suivisEau = state.suivisEau.filter((s) => s.ordre_fabrication === of.id);
   const nonLivrees = demandes.filter((d) => d.statut !== "LIVREE_A_LA_PRODUCTION" && d.statut !== "ANNULEE").length;
 
-  const onglets: { value: Onglet; label: string; count?: number }[] = [
+  const tous: { value: Onglet; label: string; count?: number }[] = [
     { value: "synthese", label: "Synthèse" },
     { value: "besoins", label: "Besoins matières", count: besoins.length },
     { value: "sorties", label: "Sorties", count: sorties.length + retours.length },
@@ -63,9 +63,11 @@ export default function OfDetailPage() {
     { value: "lots", label: "Lots", count: lots.length },
     { value: "historique", label: "Historique" },
   ];
+  const onglets = lecture ? tous.filter((t) => t.value === "besoins" || t.value === "etapes" || t.value === "eau") : tous;
+  const onglet: Onglet = choix && onglets.some((t) => t.value === choix) ? choix : onglets[0].value;
 
-  const peutAvancer = can("AVANCER_OF") && next != null;
-  const peutAnnuler = can("ANNULER_OF") && modifiable;
+  const peutAvancer = !lecture && can("AVANCER_OF") && next != null;
+  const peutAnnuler = !lecture && can("ANNULER_OF") && modifiable;
 
   async function avancer() {
     setAvancement(true);
@@ -76,13 +78,20 @@ export default function OfDetailPage() {
   return (
     <div className="space-y-4 max-w-[1280px]">
       <Link href="/production/of" className="inline-flex items-center gap-1 text-[12px] text-muted hover:text-ink">
-        <ArrowLeft size={13} /> Ordres de fabrication
+        <ArrowLeft size={13} /> {lecture ? "Mes OF" : "Ordres de fabrication"}
       </Link>
       <PageHeader
         eyebrow="Ordre de fabrication"
         title={of.numero}
         status={<OfBadge status={of.statut} />}
         description={`${articleName(of.article)} · ${formatQty(num(of.quantite_a_produire), 0)} à produire`}
+        actions={
+          lecture && modifiable ? (
+            <Link href={`/production/suivi?of=${of.id}&tab=etape`} className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-[7px] bg-primary text-white text-[13.5px] font-medium hover:bg-primary-hover w-full sm:w-auto">
+              <PencilLine size={15} /> Saisir sur cet OF
+            </Link>
+          ) : undefined
+        }
       />
       <StatusStepper steps={OF_STEPS} current={of.statut === "ANNULE" ? "BROUILLON" : of.statut} />
 
@@ -101,7 +110,7 @@ export default function OfDetailPage() {
 
       <div className="min-h-[240px]">
         {onglet === "synthese" && <Synthese of={of} modifiable={modifiable} />}
-        {onglet === "besoins" && <BesoinsMatieres of={of} modifiable={modifiable} />}
+        {onglet === "besoins" && <BesoinsMatieres of={of} modifiable={modifiable && !lecture} />}
         {onglet === "sorties" && (
           <div className="space-y-4">
             <Bloc titre="Sorties matières">
@@ -168,7 +177,7 @@ export default function OfDetailPage() {
             </Bloc>
           </div>
         )}
-        {onglet === "eau" && <SuiviEauOnglet of={of} modifiable={modifiable} />}
+        {onglet === "eau" && <SuiviEauOnglet of={of} modifiable={modifiable && !lecture} />}
         {onglet === "lots" && (
           <Bloc titre="Lots issus de cet OF">
             <DataTable
@@ -297,7 +306,7 @@ function Synthese({ of, modifiable }: { of: OrdreFabrication; modifiable: boolea
 }
 
 function BesoinsMatieres({ of, modifiable }: { of: OrdreFabrication; modifiable: boolean }) {
-  const { state, dispatch, articleName, can } = useStore();
+  const { state, dispatch, articleName, can, role } = useStore();
   const [complement, setComplement] = useState(false);
   const [demande, setDemande] = useState(false);
   const besoins = state.besoinsMatieres.filter((b) => b.ordre_fabrication === of.id);
@@ -328,7 +337,7 @@ function BesoinsMatieres({ of, modifiable }: { of: OrdreFabrication; modifiable:
     <div className="space-y-4">
       <Bloc titre="Besoins théoriques" action={action}>
         <DataTable
-          emptyText="Aucun besoin : fiche technique manquante ou OF pas encore calculé."
+          emptyText={role === "AGENT_PRODUCTION" ? "Les besoins matières ne sont pas transmis à votre poste." : "Aucun besoin : fiche technique manquante ou OF pas encore calculé."}
           columns={[
             { key: "m", label: "Matière" },
             { key: "q", label: "Théorique", className: "text-right" },
