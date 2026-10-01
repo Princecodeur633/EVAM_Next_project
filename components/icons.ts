@@ -1,6 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
+  PencilLine,
+  Binoculars,
+  BookOpenText,
+  Scale,
   Box,
   CalendarClock,
   CalendarDays,
@@ -108,6 +112,8 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/comptabilite/brouillards": AlertTriangle,
   "/comptabilite/export-sage": FileOutput,
   "/comptabilite/clotures": Lock,
+  "/comptabilite/ecritures": BookOpenText,
+  "/stocks/valorisation": Scale,
   "/reclamations": MessageSquareWarning,
   "/parametrage": SlidersHorizontal,
   "/parametrage/produits": Package,
@@ -128,6 +134,9 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
 /** Icône propre à un libellé quand deux écrans partagent la même route. */
 export const LABEL_ICONS: Record<string, LucideIcon> = {
   Encaissements: Wallet,
+  Supervision: Binoculars,
+  "Mes OF": ClipboardList,
+  Saisir: PencilLine,
 };
 
 export const ROLE_ICONS: Record<string, LucideIcon> = {

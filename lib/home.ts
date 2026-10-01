@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ClipboardCheck,
   ClipboardList,
-  Coins,
   FilePlus2,
   FileOutput,
   FileText,
@@ -16,7 +15,6 @@ import {
   HandCoins,
   History,
   Inbox,
-  LayoutDashboard,
   ListChecks,
   ListTodo,
   Lock,
@@ -421,11 +419,10 @@ function direction(state: AppState, h: HomeHelpers): HomeData {
   const encJour = sum(state.encaissements.filter((e) => sameDay(e.date_encaissement)), (e) => e.montant);
   const encMois = sum(state.encaissements.filter((e) => sameMonth(e.date_encaissement)), (e) => e.montant);
   const anomalies = state.anomalies.filter((a) => a.statut === "DETECTEE" || a.statut === "EN_TRAITEMENT");
+  const decAutoriser = state.decaissements.filter((d) => d.statut === "EN_ATTENTE").length;
   return {
-    actions: [
-      { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-      { href: "/couts", label: "Coûts réels", icon: Coins },
-    ],
+    // Seule action en tête : les décaissements en attente, quand il y en a.
+    actions: decAutoriser ? [{ href: "/caisse/decaissements", label: `Décaissements à autoriser (${decAutoriser})`, icon: HandCoins }] : [],
     kpis: [
       { label: "Encaissé aujourd’hui", value: formatDa(encJour), hint: `${formatDa(encMois)} ce mois`, tone: "success", icon: Wallet },
       { label: "OF en cours", value: ofCours.length, hint: `${ofCours.filter((o) => o.statut === "EN_PRODUCTION").length} en production`, icon: ClipboardList },
@@ -435,7 +432,7 @@ function direction(state: AppState, h: HomeHelpers): HomeData {
     sections: [
       section({
         id: "lots",
-        title: "Lots en attente de libération",
+        title: "Lots à libérer",
         icon: FlaskConical,
         href: "/production/qualite",
         tone: "warning",
@@ -486,7 +483,7 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
   return {
     actions: [
       { href: "/production/planning", label: "Planifier", icon: CalendarDays },
-      { href: "/production/of", label: "Ordres de fabrication", icon: ClipboardList },
+      { href: "/production/of", label: "OF", icon: ClipboardList },
     ],
     kpis: [
       { label: "OF en production", value: enProd.length, hint: `${ofCours.length} OF ouverts`, tone: "teal", icon: ClipboardList, href: "/production/of" },
@@ -495,14 +492,6 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
       { label: "Pertes du jour", value: formatQty(sum(pertesJour, (p) => p.quantite_perte), 0), hint: `${pertesJour.length} déclaration(s)`, tone: pertesJour.length ? "danger" : "success", icon: TrendingDown, href: "/production/pertes" },
     ],
     sections: [
-      section({
-        id: "of",
-        title: "OF ouverts",
-        icon: ClipboardList,
-        href: "/production/of",
-        empty: "Aucun OF ouvert.",
-        all: [...ofCours].sort((a, b) => ofOrder(a) - ofOrder(b)).map((o) => ofTask(o, h)),
-      }),
       section({
         id: "plans",
         title: "Plans à convertir en OF",
@@ -515,8 +504,21 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
             href: "/production/planning",
             title: h.articleName(p.article),
             detail: `${formatQty(num(p.quantite_prevue), 0)} prévus le ${formatDate(p.date_prevue)}`,
-            badge: { label: p.priorite === "URGENTE" || p.priorite === "HAUTE" ? p.priorite === "URGENTE" ? "Urgent" : "Prioritaire" : STATUT_PLAN_LABEL[p.statut], tone: p.priorite === "URGENTE" ? "danger" : p.priorite === "HAUTE" ? "warning" : "neutral" },
+            badge:
+              p.priorite === "URGENTE"
+                ? { label: "Urgent", tone: "danger" }
+                : p.priorite === "HAUTE"
+                  ? { label: "Prioritaire", tone: "warning" }
+                  : { label: STATUT_PLAN_LABEL[p.statut], tone: "neutral" },
           })),
+      }),
+      section({
+        id: "of",
+        title: "OF par étape",
+        icon: ClipboardList,
+        href: "/production/of",
+        empty: "Aucun OF ouvert.",
+        all: [...ofCours].sort((a, b) => ofOrder(a) - ofOrder(b)).map((o) => ofTask(o, h)),
       }),
       section({
         id: "matieres",
@@ -531,7 +533,7 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
           badge: { label: STATUT_DEMANDE_MATIERE_LABEL[d.statut], tone: d.statut === "PREPAREE" ? "teal" : "info" },
         })),
       }),
-      ftBrouillonSection(state, h, "Fiches techniques à valider", "Toutes les fiches sont validées."),
+      ftBrouillonSection(state, h, "Fiches techniques en attente (Admin SI)", "Toutes les fiches sont validées."),
     ],
     chart: ofDonut(state.ofList),
   };

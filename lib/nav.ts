@@ -20,7 +20,12 @@ export type NavItem = {
   href: string;
   label: string;
   hint?: string;
+  /** Entrée « hub » : les écrans regroupés s’affichent sous des onglets communs. */
+  hub?: HubTab[];
 };
+
+/** Onglet d’un hub ; `items` = sous-onglets (sinon l’onglet est l’écran `href`). */
+export type HubTab = { label: string; href: string; items?: NavItem[] };
 
 export type NavGroup = {
   id: string;
@@ -70,6 +75,9 @@ const I = {
   users: { href: "/admin/utilisateurs", label: "Utilisateurs & profils", hint: "Comptes, rôles et accès" },
   ftAdmin: { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Composer et valider les recettes" },
   referentiel: { href: "/parametrage", label: "Référentiel", hint: "Articles, matières, tiers, fiscalité" },
+  supervision: { href: "/commercial/commandes", label: "Supervision", hint: "Commandes, production, achats, livraisons, stocks" },
+  coutsMarges: { href: "/couts", label: "Coûts & marges", hint: "Coûts réels, standards, valorisation" },
+  anomaliesEcritures: { href: "/comptabilite/brouillards", label: "Anomalies & écritures", hint: "Écarts détectés et journal comptable" },
   parametres: { href: "/admin/parametres", label: "Paramètres", hint: "Listes fixes, numérotation" },
   audit: { href: "/admin/audit", label: "Journal d'audit", hint: "Historique des actions" },
   caisses: { href: "/admin/caisses", label: "Caisses", hint: "Créer et affecter les caisses" },
@@ -77,6 +85,43 @@ const I = {
   avoirs: { href: "/commercial/avoirs", label: "Avoirs", hint: "Crédits clients" },
   impayes: { href: "/commercial/impayes", label: "Impayés", hint: "Factures en retard" },
 };
+
+// ---------- hubs à onglets ----------
+
+const SUPERVISION: HubTab[] = [
+  { label: "Commandes", href: "/commercial/commandes" },
+  { label: "Production", href: "/production/of", items: [{ href: "/production/of", label: "Ordres de fabrication" }, { href: "/production/qualite", label: "Lots" }] },
+  {
+    label: "Achats",
+    href: "/approvisionnement/besoins",
+    items: [
+      { href: "/approvisionnement/besoins", label: "Besoins" },
+      { href: "/approvisionnement/commandes", label: "Commandes fournisseurs" },
+      { href: "/approvisionnement/receptions", label: "Réceptions" },
+    ],
+  },
+  { label: "Distribution", href: "/distribution/preparations", items: [{ href: "/distribution/preparations", label: "Préparations" }, { href: "/distribution/bl", label: "Bons de livraison" }] },
+  {
+    label: "Stocks",
+    href: "/stocks",
+    items: [
+      { href: "/stocks", label: "Situation" },
+      { href: "/stocks/mouvements", label: "Mouvements" },
+      { href: "/stocks/inventaires", label: "Inventaires" },
+    ],
+  },
+];
+
+const COUTS_MARGES: HubTab[] = [
+  { label: "Coûts réels", href: "/couts" },
+  { label: "Coûts standards", href: "/couts/marges" },
+  { label: "Valorisation du stock", href: "/stocks/valorisation" },
+];
+
+const ANOMALIES_ECRITURES: HubTab[] = [
+  { label: "Anomalies", href: "/comptabilite/brouillards" },
+  { label: "Écritures", href: "/comptabilite/ecritures" },
+];
 
 /** Pages du référentiel, listées directement dans le groupe « Référentiel » selon les droits du profil. */
 const PARAM_PAGES: NavItem[] = [
@@ -91,6 +136,25 @@ const PARAM_PAGES: NavItem[] = [
   { href: "/parametrage/fiscalite", label: "Codes fiscaux", hint: "TVA, accises, centimes" },
 ];
 
+/** Onglets du hub « Référentiel » de l’Admin SI. */
+export const REF_TABS: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles" },
+  { href: "/parametrage/matieres", label: "Matières" },
+  { href: "/parametrage/conditionnements", label: "Conditionnements" },
+  { href: "/parametrage/depots", label: "Dépôts" },
+  { href: "/parametrage/clients", label: "Clients" },
+  { href: "/parametrage/fournisseurs", label: "Fournisseurs" },
+  { href: "/parametrage/fiscalite", label: "Codes fiscaux" },
+];
+
+/** Référentiel du Responsable Production (fiches techniques en lecture). */
+const PROD_REF_TABS: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles" },
+  { href: "/parametrage/matieres", label: "Matières" },
+  { href: "/parametrage/conditionnements", label: "Conditionnements" },
+  { href: "/parametrage/fiches-techniques", label: "Fiches techniques" },
+];
+
 function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup {
   return { id, label, icon, items };
 }
@@ -98,22 +162,37 @@ function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup 
 export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ADMIN_SI: [
     // Menu à plat : 7 entrées, le référentiel est regroupé derrière un hub à onglets.
-    g("config", "Configuration", "shield", [I.accueil, I.users, I.caisses, I.ftAdmin, I.referentiel, I.parametres, I.audit]),
+    g("config", "Configuration", "shield", [I.accueil, I.users, I.caisses, I.ftAdmin, { ...I.referentiel, hub: REF_TABS }, I.parametres, I.audit]),
   ],
+  // Menu à plat : 6 entrées, tout en lecture sauf l’autorisation des décaissements.
   DIRECTION: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("pilotage", "Pilotage", "bar", [I.dashboard, I.couts, I.marges, I.anomalies, I.ecritures, I.valorisation]),
-    g("supervision", "Supervision", "handshake", [I.cmd, I.of, I.apBesoins, I.cf, I.rec, I.prep, I.bl, I.mvt, I.inv]),
-    g("caisse", "Caisse", "banknote", [I.decaissements]),
+    g("pilotage", "Pilotage", "bar", [
+      I.accueil,
+      I.dashboard,
+      { ...I.supervision, hub: SUPERVISION },
+      { ...I.coutsMarges, hub: COUTS_MARGES },
+      { ...I.anomaliesEcritures, hub: ANOMALIES_ECRITURES },
+      I.decaissements,
+    ]),
   ],
+  // Menu à plat : 6 entrées ; besoins matières et suivi eau sont des onglets de la fiche OF.
   RESPONSABLE_PRODUCTION: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("prod", "Production", "factory", [I.planning, I.of, I.besoinsOf, I.sorties, I.suiviEau, I.da]),
-    g("stock", "Stocks", "boxes", [I.stock]),
+    g("prod", "Production", "factory", [
+      I.accueil,
+      I.planning,
+      I.of,
+      I.sorties,
+      { ...I.stock, label: "Stock" },
+      { ...I.referentiel, hint: "Articles, matières, conditionnements, fiches techniques", hub: PROD_REF_TABS },
+    ]),
   ],
+  // Poste mobile : 3 entrées, affichées en barre basse sur téléphone.
   AGENT_PRODUCTION: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("atelier", "Atelier", "factory", [I.suivi, I.suiviEau, I.pertes, I.of]),
+    g("atelier", "Atelier", "factory", [
+      { href: "/production/of", label: "Mes OF", hint: "OF qui vous sont affectés" },
+      { href: "/production/suivi", label: "Saisir", hint: "Étape, perte, eau, session" },
+      I.accueil,
+    ]),
   ],
   RESPONSABLE_QUALITE: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -153,6 +232,9 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("caisse", "Caisse", "banknote", [I.sessions, I.decaissements]),
   ],
 };
+
+/** Postes dont le menu s’affiche en barre basse sur mobile (saisie terrain). */
+export const BOTTOM_NAV_ROLES: Profil[] = ["AGENT_PRODUCTION"];
 
 export function navForRole(role: Profil): NavGroup[] {
   const base = ROLE_MENU[role];
@@ -207,7 +289,6 @@ function matchesExtra(href: string, extra: string) {
 }
 
 const EXTRA_ACCESS: Partial<Record<Profil, string[]>> = {
-  DIRECTION: ["/stocks", "/production/qualite"],
   RESPONSABLE_QUALITE: ["/stocks"],
   COMMERCIAL: ["/stocks"],
   RESPONSABLE_DISTRIBUTION: ["/commercial/commandes"],
@@ -217,7 +298,7 @@ const EXTRA_ACCESS: Partial<Record<Profil, string[]>> = {
 
 export function canAccess(role: Profil, href: string) {
   if (["/403", "/login", "/", "/accueil"].includes(href)) return true;
-  if (flattenNav(role).some((i) => matchesItem(href, i.href))) return true;
+  if (flattenNav(role).some((i) => itemPatterns(i).some((p) => matchesItem(href, p)))) return true;
   const extra = EXTRA_ACCESS[role] ?? [];
   if (extra.some((p) => matchesExtra(href, p))) return true;
   if (href.startsWith("/parametrage")) {
@@ -233,14 +314,49 @@ export function canAccess(role: Profil, href: string) {
   return false;
 }
 
-export function isNavActive(pathname: string, href: string, allHrefs: string[]) {
-  if (pathname === href) return true;
-  if (href === "/accueil") return false;
-  if (!pathname.startsWith(href + "/")) return false;
-  const moreSpecific = allHrefs.some(
-    (h) => h !== href && h.length > href.length && (pathname === h || pathname.startsWith(h + "/")),
+function pathMatch(pathname: string, p: string) {
+  return pathname === p || (p !== "/accueil" && pathname.startsWith(p + "/"));
+}
+
+/** Chemins couverts par une entrée du menu (elle-même + écrans de son hub). */
+export function itemPatterns(item: NavItem) {
+  return [item.href, ...(item.hub ?? []).flatMap((t) => (t.items ?? [t]).map((i) => i.href))];
+}
+
+/** Entrée du menu active : celle dont un chemin correspond le plus précisément à l’URL. */
+export function activeNavHref(pathname: string, items: NavItem[]) {
+  let best: string | null = null;
+  let len = -1;
+  items.forEach((item) =>
+    itemPatterns(item).forEach((p) => {
+      if (pathMatch(pathname, p) && p.length > len) {
+        best = item.href;
+        len = p.length;
+      }
+    }),
   );
-  return !moreSpecific;
+  return best;
+}
+
+/** Hub à onglets de l’écran courant (entrée du menu, onglet et sous-onglet actifs). */
+export function activeHub(pathname: string, role: Profil) {
+  const items = flattenNav(role);
+  const href = activeNavHref(pathname, items);
+  const item = items.find((i) => i.href === href && i.hub?.length);
+  if (!item?.hub) return null;
+  let tab: HubTab | null = null;
+  let sub: NavItem | null = null;
+  let len = -1;
+  item.hub.forEach((t) =>
+    (t.items ?? [t]).forEach((i) => {
+      if (pathMatch(pathname, i.href) && i.href.length > len) {
+        tab = t;
+        sub = i;
+        len = i.href.length;
+      }
+    }),
+  );
+  return tab ? { item, tab: tab as HubTab, sub: sub as NavItem | null } : null;
 }
 
 export function breadcrumbs(pathname: string) {
@@ -315,14 +431,3 @@ export function breadcrumbs(pathname: string) {
   });
   return crumbs.filter((c, i, a) => i === 0 || c.label !== a[i - 1]?.label);
 }
-
-/** Onglets du hub « Référentiel » (postes dont le menu pointe sur /parametrage, ex. Admin SI). */
-export const REF_TABS: NavItem[] = [
-  { href: "/parametrage/produits", label: "Articles" },
-  { href: "/parametrage/matieres", label: "Matières" },
-  { href: "/parametrage/conditionnements", label: "Conditionnements" },
-  { href: "/parametrage/depots", label: "Dépôts" },
-  { href: "/parametrage/clients", label: "Clients" },
-  { href: "/parametrage/fournisseurs", label: "Fournisseurs" },
-  { href: "/parametrage/fiscalite", label: "Codes fiscaux" },
-];

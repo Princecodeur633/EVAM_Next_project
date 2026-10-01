@@ -202,187 +202,178 @@ function ReportingDashboard() {
         />
       </div>
 
-      {/* Production + Distribution */}
-      <div className="grid lg:grid-cols-5 gap-4">
-        <WidgetCard
-          className="lg:col-span-3"
-          title="Production"
-          subtitle="Quantité conforme, rendement et pertes"
-          action={
-            <Link href="/production/qualite" className="text-[12px] text-primary font-medium inline-flex items-center gap-1 shrink-0">
-              Lots <ArrowUpRight size={13} />
-            </Link>
-          }
-        >
-          <div className="grid sm:grid-cols-2 gap-4">
-            {[
-              { titre: "Aujourd’hui", bloc: production.aujourd_hui },
-              { titre: "Ce mois", bloc: production.mois },
-            ].map(({ titre, bloc }) => (
-              <div key={titre} className="space-y-3">
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-[11px] uppercase tracking-[0.1em] text-muted font-medium">{titre}</p>
-                  <p className="text-[18px] font-semibold num">
-                    {formatQty(num(bloc.production_conforme), 0)} <span className="text-[11px] text-muted font-normal">conformes</span>
-                  </p>
+      {/* Widgets sur 2 colonnes, alertes en colonne droite fixe */}
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_340px] gap-4 items-start">
+        <div className="grid md:grid-cols-2 gap-4 items-start min-w-0">
+          <WidgetCard
+            title="Production"
+            subtitle="Quantité conforme, rendement et pertes"
+            action={
+              <Link href="/production/qualite" className="text-[12px] text-primary font-medium inline-flex items-center gap-1 shrink-0">
+                Lots <ArrowUpRight size={13} />
+              </Link>
+            }
+          >
+            <div className="grid sm:grid-cols-2 md:grid-cols-1 2xl:grid-cols-2 gap-4">
+              {[
+                { titre: "Aujourd’hui", bloc: production.aujourd_hui },
+                { titre: "Ce mois", bloc: production.mois },
+              ].map(({ titre, bloc }) => (
+                <div key={titre} className="space-y-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-[11px] uppercase tracking-[0.1em] text-muted font-medium">{titre}</p>
+                    <p className="text-[18px] font-semibold num">
+                      {formatQty(num(bloc.production_conforme), 0)} <span className="text-[11px] text-muted font-normal">conformes</span>
+                    </p>
+                  </div>
+                  <Meter label="Rendement" value={bloc.rendement_pourcentage} tone="teal" />
+                  <Meter label="Pertes" value={bloc.pertes_pourcentage} tone="danger" />
                 </div>
-                <Meter label="Rendement" value={bloc.rendement_pourcentage} tone="teal" />
-                <Meter label="Pertes" value={bloc.pertes_pourcentage} tone="danger" />
-              </div>
-            ))}
-          </div>
-        </WidgetCard>
-
-        <WidgetCard className="lg:col-span-2" title="Livraisons du jour" subtitle={`${tauxLivraison} % terminées`}>
-          <BarChart
-            data={[
-              { label: "Prévues", value: distribution.livraisons_prevues, color: "var(--chart-1)" },
-              { label: "En cours", value: distribution.livraisons_en_cours, color: "var(--chart-3)" },
-              { label: "Terminées", value: distribution.livraisons_terminees, color: "var(--success)" },
-              { label: "En retard", value: distribution.livraisons_en_retard, color: "var(--danger)" },
-            ]}
-            height={150}
-          />
-          <div className="grid grid-cols-4 gap-1 mt-2 text-center">
-            {[distribution.livraisons_prevues, distribution.livraisons_en_cours, distribution.livraisons_terminees, distribution.livraisons_en_retard].map((v, i) => (
-              <p key={i} className={cn("text-[13px] num font-semibold", i === 3 && v > 0 && "text-danger")}>
-                {v}
-              </p>
-            ))}
-          </div>
-        </WidgetCard>
-      </div>
-
-      {/* Stock, caisse, commercial */}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <WidgetCard title="Stock" subtitle="Valeur par nature et alertes">
-          <DonutChart
-            size={104}
-            centerValue={valeurStock ? `${Math.round((stock.valeur_stock_produits_finis / valeurStock) * 100)}%` : "—"}
-            centerLabel="produits finis"
-            data={[
-              { label: "Produits finis", value: stock.valeur_stock_produits_finis },
-              { label: "Matières", value: stock.valeur_stock_matieres },
-            ]}
-          />
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            <Stat label="En rupture" value={stock.articles_en_rupture} tone={stock.articles_en_rupture ? "danger" : "success"} />
-            <Stat label="Sous minimum" value={stock.articles_sous_minimum} tone={stock.articles_sous_minimum ? "warning" : "success"} />
-          </div>
-        </WidgetCard>
-
-        <WidgetCard title="Caisse" subtitle="Situation du jour">
-          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 gap-2">
-            <Stat label="Encaissements" value={formatDa(num(caisse.encaissements_jour))} tone="success" />
-            <Stat label="Solde théorique" value={formatDa(caisse.solde_theorique)} />
-            <div className="min-[420px]:col-span-2 md:col-span-1 lg:col-span-2">
-              <Stat
-                label="Écart de caisse"
-                value={formatDa(ecart)}
-                tone={ecart ? "danger" : "success"}
-                sub={alertes.ecarts_caisse_non_justifies.length ? `${alertes.ecarts_caisse_non_justifies.length} non justifié(s)` : "Tous justifiés"}
-              />
+              ))}
             </div>
-          </div>
-        </WidgetCard>
-
-        <WidgetCard title="Commercial" subtitle="Ventes du mois" className="md:col-span-2 xl:col-span-1">
-          <div className="space-y-3">
-            <Stat label="Chiffre d’affaires du mois" value={formatDa(num(commercial.chiffre_affaires_mois))} tone="success" />
-            <div className="flex items-center gap-3 rounded-[8px] border border-line px-3 py-2.5">
-              <span className="h-8 w-8 rounded-[7px] bg-warning-soft text-warning flex items-center justify-center shrink-0">
-                <Star size={15} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[11px] text-muted">Produit le plus vendu</p>
-                <p className="text-[13px] font-medium truncate">{commercial.produit_le_plus_vendu ?? "—"}</p>
+          </WidgetCard>
+          <WidgetCard title="Livraisons du jour" subtitle={`${tauxLivraison} % terminées`}>
+            <BarChart
+              data={[
+                { label: "Prévues", value: distribution.livraisons_prevues, color: "var(--chart-1)" },
+                { label: "En cours", value: distribution.livraisons_en_cours, color: "var(--chart-3)" },
+                { label: "Terminées", value: distribution.livraisons_terminees, color: "var(--success)" },
+                { label: "En retard", value: distribution.livraisons_en_retard, color: "var(--danger)" },
+              ]}
+              height={150}
+            />
+            <div className="grid grid-cols-4 gap-1 mt-2 text-center">
+              {[distribution.livraisons_prevues, distribution.livraisons_en_cours, distribution.livraisons_terminees, distribution.livraisons_en_retard].map((v, i) => (
+                <p key={i} className={cn("text-[13px] num font-semibold", i === 3 && v > 0 && "text-danger")}>
+                  {v}
+                </p>
+              ))}
+            </div>
+          </WidgetCard>
+          <WidgetCard title="Stock" subtitle="Valeur par nature et alertes">
+            <DonutChart
+              size={104}
+              centerValue={valeurStock ? `${Math.round((stock.valeur_stock_produits_finis / valeurStock) * 100)}%` : "—"}
+              centerLabel="produits finis"
+              data={[
+                { label: "Produits finis", value: stock.valeur_stock_produits_finis },
+                { label: "Matières", value: stock.valeur_stock_matieres },
+              ]}
+            />
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <Stat label="En rupture" value={stock.articles_en_rupture} tone={stock.articles_en_rupture ? "danger" : "success"} />
+              <Stat label="Sous minimum" value={stock.articles_sous_minimum} tone={stock.articles_sous_minimum ? "warning" : "success"} />
+            </div>
+          </WidgetCard>
+          <WidgetCard title="Caisse" subtitle="Situation du jour">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
+              <Stat label="Encaissements" value={formatDa(num(caisse.encaissements_jour))} tone="success" />
+              <Stat label="Solde théorique" value={formatDa(caisse.solde_theorique)} />
+              <div className="min-[420px]:col-span-2">
+                <Stat
+                  label="Écart de caisse"
+                  value={formatDa(ecart)}
+                  tone={ecart ? "danger" : "success"}
+                  sub={alertes.ecarts_caisse_non_justifies.length ? `${alertes.ecarts_caisse_non_justifies.length} non justifié(s)` : "Tous justifiés"}
+                />
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-[8px] border border-line px-3 py-2.5">
-              <span className="h-8 w-8 rounded-[7px] bg-primary-soft text-primary flex items-center justify-center shrink-0">
-                <Crown size={15} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[11px] text-muted">Client principal</p>
-                <p className="text-[13px] font-medium truncate">{commercial.client_principal ?? "—"}</p>
+          </WidgetCard>
+          <WidgetCard title="Commercial" subtitle="Ventes du mois">
+            <div className="space-y-3">
+              <Stat label="Chiffre d’affaires du mois" value={formatDa(num(commercial.chiffre_affaires_mois))} tone="success" />
+              <div className="flex items-center gap-3 rounded-[8px] border border-line px-3 py-2.5">
+                <span className="h-8 w-8 rounded-[7px] bg-warning-soft text-warning flex items-center justify-center shrink-0">
+                  <Star size={15} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted">Produit le plus vendu</p>
+                  <p className="text-[13px] font-medium truncate">{commercial.produit_le_plus_vendu ?? "—"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-[8px] border border-line px-3 py-2.5">
+                <span className="h-8 w-8 rounded-[7px] bg-primary-soft text-primary flex items-center justify-center shrink-0">
+                  <Crown size={15} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted">Client principal</p>
+                  <p className="text-[13px] font-medium truncate">{commercial.client_principal ?? "—"}</p>
+                </div>
               </div>
             </div>
-          </div>
-        </WidgetCard>
-      </div>
+          </WidgetCard>
+          <WidgetCard
+            title="Rentabilité"
+            subtitle={`Marge moyenne : ${pct(rentabilite.marge_moyenne_pourcentage)}`}
+            action={
+              <Link href="/couts/marges" className="text-[12px] text-primary font-medium inline-flex items-center gap-1 shrink-0">
+                Coûts <ArrowUpRight size={13} />
+              </Link>
+            }
+          >
+            {rentabilite.produits_les_plus_rentables.length === 0 ? (
+              <p className="text-[13px] text-muted py-6 text-center">Pas encore de coût réel calculé.</p>
+            ) : (
+              <ul className="space-y-3">
+                {rentabilite.produits_les_plus_rentables.slice(0, 5).map((p, i) => (
+                  <li key={p.produit}>
+                    <div className="flex items-baseline justify-between gap-2 text-[12.5px] mb-1">
+                      <span className="truncate min-w-0">
+                        <span className="text-muted num mr-1.5">{i + 1}.</span>
+                        {p.produit}
+                      </span>
+                      <span className="num font-medium shrink-0">
+                        {formatDa(p.marge)} <span className="text-muted font-normal">· {pct(p.taux_marge_pourcentage)}</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                      <div className="h-full rounded-full bg-success transition-all duration-700" style={{ width: `${Math.max(4, (p.marge / maxMarge) * 100)}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </WidgetCard>
+        </div>
 
-      {/* Rentabilité + alertes */}
-      <div className="grid xl:grid-cols-5 gap-4">
-        <WidgetCard
-          className="xl:col-span-2"
-          title="Rentabilité"
-          subtitle={`Marge moyenne : ${pct(rentabilite.marge_moyenne_pourcentage)}`}
-          action={
-            <Link href="/couts/marges" className="text-[12px] text-primary font-medium inline-flex items-center gap-1 shrink-0">
-              Coûts <ArrowUpRight size={13} />
-            </Link>
-          }
-        >
-          {rentabilite.produits_les_plus_rentables.length === 0 ? (
-            <p className="text-[13px] text-muted py-6 text-center">Pas encore de coût réel calculé.</p>
-          ) : (
-            <ul className="space-y-3">
-              {rentabilite.produits_les_plus_rentables.slice(0, 5).map((p, i) => (
-                <li key={p.produit}>
-                  <div className="flex items-baseline justify-between gap-2 text-[12.5px] mb-1">
-                    <span className="truncate min-w-0">
-                      <span className="text-muted num mr-1.5">{i + 1}.</span>
-                      {p.produit}
+        <aside className="xl:sticky xl:top-[72px] min-w-0">
+          <WidgetCard title="Alertes" subtitle="Signaux consolidés des autres modules">
+            <div className="grid sm:grid-cols-2 xl:grid-cols-1 gap-3">
+              <AlertBlock title="Matières manquantes" icon={<Factory size={15} />} count={alertes.matieres_manquantes.length}>
+                {alertes.matieres_manquantes.slice(0, 4).map((m, i) => (
+                  <li key={i} className="flex justify-between gap-2 min-w-0">
+                    <span className="truncate text-muted">
+                      {m.of} · {m.matiere}
                     </span>
-                    <span className="num font-medium shrink-0">
-                      {formatDa(p.marge)} <span className="text-muted font-normal">· {pct(p.taux_marge_pourcentage)}</span>
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                    <div className="h-full rounded-full bg-success transition-all duration-700" style={{ width: `${Math.max(4, (p.marge / maxMarge) * 100)}%` }} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </WidgetCard>
-
-        <WidgetCard className="xl:col-span-3" title="Alertes" subtitle="Signaux consolidés des autres modules">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <AlertBlock title="Matières manquantes" icon={<Factory size={15} />} count={alertes.matieres_manquantes.length}>
-              {alertes.matieres_manquantes.slice(0, 4).map((m, i) => (
-                <li key={i} className="flex justify-between gap-2 min-w-0">
-                  <span className="truncate text-muted">
-                    {m.of} · {m.matiere}
-                  </span>
-                  <span className="num shrink-0 text-danger">−{formatQty(num(m.manquant), 2)}</span>
-                </li>
-              ))}
-            </AlertBlock>
-            <AlertBlock title="Ruptures de stock" icon={<PackageX size={15} />} count={alertes.ruptures_stock.length}>
-              {alertes.ruptures_stock.slice(0, 4).map((r, i) => (
-                <li key={i} className="truncate text-muted">
-                  {r.article} · {r.depot}
-                </li>
-              ))}
-            </AlertBlock>
-            <AlertBlock title="Écarts de caisse non justifiés" icon={<Banknote size={15} />} count={alertes.ecarts_caisse_non_justifies.length}>
-              {alertes.ecarts_caisse_non_justifies.slice(0, 4).map((e, i) => (
-                <li key={i} className="flex justify-between gap-2 min-w-0">
-                  <span className="truncate text-muted">{e.caisse}</span>
-                  <span className="num shrink-0">{formatDa(num(e.ecart))}</span>
-                </li>
-              ))}
-            </AlertBlock>
-            <AlertBlock title="Anomalies comptables" icon={<AlertTriangle size={15} />} count={alertes.anomalies_comptables.length} href="/comptabilite/brouillards">
-              {alertes.anomalies_comptables.slice(0, 4).map((a) => (
-                <li key={a.id} className="truncate text-muted">
-                  <span className="text-ink">{TYPE_ANOMALIE_LABEL[a.type_anomalie as TypeAnomalie] ?? a.type_anomalie}</span> · {a.description}
-                </li>
-              ))}
-            </AlertBlock>
-          </div>
-        </WidgetCard>
+                    <span className="num shrink-0 text-danger">−{formatQty(num(m.manquant), 2)}</span>
+                  </li>
+                ))}
+              </AlertBlock>
+              <AlertBlock title="Ruptures de stock" icon={<PackageX size={15} />} count={alertes.ruptures_stock.length}>
+                {alertes.ruptures_stock.slice(0, 4).map((r, i) => (
+                  <li key={i} className="truncate text-muted">
+                    {r.article} · {r.depot}
+                  </li>
+                ))}
+              </AlertBlock>
+              <AlertBlock title="Écarts de caisse non justifiés" icon={<Banknote size={15} />} count={alertes.ecarts_caisse_non_justifies.length}>
+                {alertes.ecarts_caisse_non_justifies.slice(0, 4).map((e, i) => (
+                  <li key={i} className="flex justify-between gap-2 min-w-0">
+                    <span className="truncate text-muted">{e.caisse}</span>
+                    <span className="num shrink-0">{formatDa(num(e.ecart))}</span>
+                  </li>
+                ))}
+              </AlertBlock>
+              <AlertBlock title="Anomalies comptables" icon={<AlertTriangle size={15} />} count={alertes.anomalies_comptables.length} href="/comptabilite/brouillards">
+                {alertes.anomalies_comptables.slice(0, 4).map((a) => (
+                  <li key={a.id} className="truncate text-muted">
+                    <span className="text-ink">{TYPE_ANOMALIE_LABEL[a.type_anomalie as TypeAnomalie] ?? a.type_anomalie}</span> · {a.description}
+                  </li>
+                ))}
+              </AlertBlock>
+            </div>
+          </WidgetCard>
+        </aside>
       </div>
 
       {/* Rapports */}
