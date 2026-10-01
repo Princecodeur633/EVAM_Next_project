@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { BlBadge } from "@/components/badges";
-import { Button, PageHeader, Panel } from "@/components/ui";
+import { Button, Guard, PageHeader, Panel } from "@/components/ui";
 import { useStore } from "@/lib/store";
 
 export default function BlDetailPage() {
@@ -12,6 +12,7 @@ export default function BlDetailPage() {
   if (!bl) return <p className="text-[13px] text-muted">Bon de livraison introuvable.</p>;
   const cmd = state.commandes.find((c) => c.id === bl.commande);
   const tournee = bl.tournee ? state.tournees.find((t) => t.id === bl.tournee) : null;
+  const enCours = bl.statut === "EN_LIVRAISON";
   return (
     <div className="space-y-4">
       <PageHeader
@@ -19,10 +20,35 @@ export default function BlDetailPage() {
         title={bl.numero}
         status={<BlBadge status={bl.statut} />}
         description={cmd?.numero}
-        actions={can("CONFIRMER_BL") && bl.statut !== "LIVREE" ? (
-          <Button onClick={() => void dispatch({ type: "CONFIRMER_BL", id: bl.id })}>Confirmer la livraison</Button>
-        ) : null}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {enCours && can("LIVRER_BL") && !bl.signature_client && (
+              <Button onClick={() => void dispatch({ type: "LIVRER_BL", id: bl.id })}>
+                Marquer remis au client
+              </Button>
+            )}
+            {enCours && can("SIGNALER_PROBLEME_BL") && (
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const motif = window.prompt("Décrivez le problème (obligatoire) :");
+                  if (motif?.trim()) void dispatch({ type: "SIGNALER_PROBLEME_BL", id: bl.id, motif: motif.trim() });
+                }}
+              >
+                Signaler un problème
+              </Button>
+            )}
+            {can("CONFIRMER_BL") && bl.statut !== "LIVREE" && (
+              <Button onClick={() => void dispatch({ type: "CONFIRMER_BL", id: bl.id })}>Confirmer la livraison</Button>
+            )}
+          </div>
+        }
       />
+      {bl.incident_livraison && (
+        <Guard variant="warn" title="Problème signalé par le chauffeur">
+          {bl.incident_livraison}
+        </Guard>
+      )}
       <Panel className="p-4 text-[13px] space-y-1">
         <p>Signature client : {bl.signature_client ? "Oui" : "Non"}</p>
         <p>Tournée : {tournee?.numero ?? "—"}</p>

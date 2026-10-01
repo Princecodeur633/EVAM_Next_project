@@ -158,6 +158,7 @@ export type Action =
   | { type: "ENCAISSER"; session_caisse: number; facture: number; montant: number; mode_paiement: ModePaiement }
   | { type: "CLOTURER_CAISSE"; id: number; solde_compte: string; justification?: string }
   | { type: "CREATE_DA"; article: number; quantite_demandee: number; motif?: string; besoin?: number }
+  | { type: "CREER_DA_DEPUIS_BESOIN"; id: number }
   | { type: "APPROUVER_DA"; id: number }
   | { type: "REJETER_DA"; id: number }
   | { type: "CREATE_CF"; fournisseur: number; demande_achat?: number }
@@ -178,6 +179,8 @@ export type Action =
   | { type: "CREATE_TOURNEE"; chauffeur: number; vehicule: number; date_tournee: string }
   | { type: "CREATE_BL"; commande: number; tournee?: number }
   | { type: "CONFIRMER_BL"; id: number }
+  | { type: "LIVRER_BL"; id: number }
+  | { type: "SIGNALER_PROBLEME_BL"; id: number; motif: string }
   | { type: "CREATE_USER"; username: string; password: string; profil: Profil; first_name?: string; last_name?: string; email?: string }
   | { type: "TOGGLE_USER"; id: number; actif: boolean }
   | { type: "PATCH_USER"; id: number; first_name?: string; last_name?: string; email?: string; telephone?: string; profil?: Profil; password?: string }
@@ -874,6 +877,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               besoin: action.besoin ?? null,
             });
             break;
+          case "CREER_DA_DEPUIS_BESOIN":
+            await actions.creerDemandeDepuisBesoin(action.id);
+            break;
           case "APPROUVER_DA":
             await actions.approuverDemande(action.id);
             break;
@@ -985,6 +991,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             break;
           case "CONFIRMER_BL":
             await actions.confirmerLivraison(action.id);
+            break;
+          case "LIVRER_BL":
+            await actions.livrerBL(action.id);
+            break;
+          case "SIGNALER_PROBLEME_BL":
+            await actions.signalerProblemeBL(action.id, action.motif);
             break;
           case "CREATE_USER":
             await api.post(endpoints.utilisateurs, {

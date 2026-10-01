@@ -313,6 +313,7 @@ export const TYPE_SORTIE_LABEL: Record<TypeSortie, string> = {
 
 export const ORIGINE_BESOIN_LABEL: Record<OrigineBesoin, string> = {
   AUTO_PRODUCTION: "Issu de la production",
+  SEUIL_ALERTE: "Stock sous le seuil d'alerte",
   MANUEL: "Saisi manuellement",
 };
 

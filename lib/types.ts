@@ -69,7 +69,7 @@ export type StatutLot = "EN_ATTENTE" | "CONFORME" | "NON_CONFORME" | "BLOQUE" | 
 export type ResultatControle = "CONFORME" | "NON_CONFORME";
 export type TypeMouvement = "ENTREE" | "SORTIE" | "TRANSFERT" | "AJUSTEMENT" | "RETOUR";
 export type StatutInventaire = "EN_COURS" | "CLOTURE";
-export type OrigineBesoin = "AUTO_PRODUCTION" | "MANUEL";
+export type OrigineBesoin = "AUTO_PRODUCTION" | "SEUIL_ALERTE" | "MANUEL";
 export type StatutDemandeAchat = "EN_ATTENTE" | "APPROUVEE" | "REJETEE" | "TRANSFORMEE";
 export type StatutCommandeFournisseur = "BROUILLON" | "ENVOYEE" | "PARTIELLEMENT_RECUE" | "RECUE" | "ANNULEE";
 export type MotifRetour = "NON_CONFORME" | "ENDOMMAGE" | "QUANTITE_EXCEDENTAIRE" | "ERREUR_REFERENCE" | "AUTRE";
@@ -830,6 +830,10 @@ export interface BonLivraison {
   tournee: number | null;
   statut: StatutBL;
   signature_client: boolean;
+  /** Renseignée quand le chauffeur indique la remise au client (avant confirmation finale). */
+  date_signature: string | null;
+  /** Motif renseigné par le chauffeur en cas de problème de livraison. */
+  incident_livraison: string;
   confirme_par: number | null;
   date_generation: string;
   date_livraison: string | null;

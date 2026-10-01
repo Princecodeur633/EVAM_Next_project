@@ -500,6 +500,8 @@ export const actions = {
     api.post<DemandeComplementaire>(`${endpoints.demandesComplementaires}${id}/approuver/`),
   rejeterComplement: (id: number) =>
     api.post<DemandeComplementaire>(`${endpoints.demandesComplementaires}${id}/rejeter/`),
+  /** Reprend l'article et la quantité du besoin — rien à ressaisir. */
+  creerDemandeDepuisBesoin: (id: number) => api.post<DemandeAchat>(`${endpoints.besoinsAchat}${id}/creer_demande/`),
   approuverDemande: (id: number) => api.post<DemandeAchat>(`${endpoints.demandesAchat}${id}/approuver/`),
   rejeterDemande: (id: number) => api.post<DemandeAchat>(`${endpoints.demandesAchat}${id}/rejeter/`),
   envoyerCommandeFournisseur: (id: number) => api.post<CommandeFournisseur>(`${endpoints.commandesFournisseur}${id}/envoyer/`),
@@ -527,6 +529,9 @@ export const actions = {
   confirmerPreparation: (id: number) => api.post<PreparationLivraison>(`${endpoints.preparations}${id}/confirmer_preparation/`),
   confirmerSortie: (id: number) => api.post<PreparationLivraison>(`${endpoints.preparations}${id}/confirmer_sortie/`),
   confirmerLivraison: (id: number) => api.post<BonLivraison>(`${endpoints.bonsLivraison}${id}/confirmer_livraison/`),
+  /** Le chauffeur indique la remise au client ; la confirmation finale reste au Responsable Distribution. */
+  livrerBL: (id: number) => api.post<BonLivraison>(`${endpoints.bonsLivraison}${id}/livre/`),
+  signalerProblemeBL: (id: number, motif: string) => api.post<BonLivraison>(`${endpoints.bonsLivraison}${id}/probleme/`, { motif }),
   terminerReconditionnement: (id: number, quantite_reconditionnee: string | number, cout?: string | number) =>
     api.post<Reconditionnement>(`${endpoints.reconditionnements}${id}/terminer/`, {
       quantite_reconditionnee,
