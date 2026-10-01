@@ -12,7 +12,7 @@ import { cn, formatQty, num } from "@/lib/utils";
 
 type FiltreDepot = "TOUS" | "SYSTEME" | "STANDARD" | "INACTIFS";
 
-/** Tableau des dépôts (70 %) + fiche du dépôt sélectionné (30 %). */
+/** Tableau des dépôts (60 %) + fiche du dépôt sélectionné (40 %). */
 export default function DepotsPage() {
   const { state, can, role } = useStore();
   // Côté administrateur, les dépôts se consultent uniquement : les dépôts système sont pilotés par le code.

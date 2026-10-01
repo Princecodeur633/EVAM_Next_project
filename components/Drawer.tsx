@@ -85,7 +85,7 @@ export function DrawerSection({ title, hint, children }: { title: string; hint?:
 }
 
 /**
- * Panneau latéral intégré à la page (colonne de droite, ~30 %) : même contenu qu'un tiroir,
+ * Panneau latéral intégré à la page (colonne de droite, ~40 %) : même contenu qu'un tiroir,
  * mais sans fond flouté sur ordinateur. Sur mobile, il s'ouvre en plein écran si `mobileOpen`.
  */
 export function SidePanel({
@@ -146,7 +146,7 @@ export function SidePanel({
   );
 }
 
-/** Grille « tableau 70 % / panneau 30 % » ; empilée sur mobile. */
+/** Grille « tableau 60 % / panneau 40 % » ; empilée sur mobile. */
 export function SplitLayout({ children }: { children: ReactNode }) {
-  return <div className="grid lg:grid-cols-[minmax(0,7fr)_minmax(300px,3fr)] gap-4 items-start">{children}</div>;
+  return <div className="grid lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)] gap-4 items-start">{children}</div>;
 }
