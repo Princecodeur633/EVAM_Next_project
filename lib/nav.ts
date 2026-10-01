@@ -147,6 +147,14 @@ export const REF_TABS: NavItem[] = [
   { href: "/parametrage/fiscalite", label: "Codes fiscaux" },
 ];
 
+/** Référentiel du Responsable Production (fiches techniques en lecture). */
+const PROD_REF_TABS: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles" },
+  { href: "/parametrage/matieres", label: "Matières" },
+  { href: "/parametrage/conditionnements", label: "Conditionnements" },
+  { href: "/parametrage/fiches-techniques", label: "Fiches techniques" },
+];
+
 function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup {
   return { id, label, icon, items };
 }
@@ -167,10 +175,16 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.decaissements,
     ]),
   ],
+  // Menu à plat : 6 entrées ; besoins matières et suivi eau sont des onglets de la fiche OF.
   RESPONSABLE_PRODUCTION: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("prod", "Production", "factory", [I.planning, I.of, I.besoinsOf, I.sorties, I.suiviEau, I.da]),
-    g("stock", "Stocks", "boxes", [I.stock]),
+    g("prod", "Production", "factory", [
+      I.accueil,
+      I.planning,
+      I.of,
+      I.sorties,
+      { ...I.stock, label: "Stock" },
+      { ...I.referentiel, hint: "Articles, matières, conditionnements, fiches techniques", hub: PROD_REF_TABS },
+    ]),
   ],
   AGENT_PRODUCTION: [
     g("poste", "Menu", "home", [I.accueil]),

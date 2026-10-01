@@ -119,27 +119,26 @@ Accueil · Tableau de bord · Supervision · Coûts & marges · Anomalies & écr
 
 ### 2.3 Responsable Production (`RESPONSABLE_PRODUCTION`)
 **Carte d'identité**
-- Station : Atelier — planification · Couleur : teal · Icône : usine
-- Mission : « Planifiez la journée et lancez les OF. Les fiches techniques sont paramétrées par l'Admin SI. »
+- Station : Planifier et piloter · Couleur : teal · Icône : usine
+- Mission : « Planifiez, lancez les OF, demandez les matières et menez chaque OF jusqu'à la clôture. »
 - Posture : « Vous orchestrez l'atelier. Le stock vendable n'existe qu'après libération qualité. »
-- Possède : Plans, Ordres de fabrication, Besoins matières
-- Ne fait jamais : libérer un lot, encaisser, accéder aux coûts, modifier une fiche technique
-- Règles : un OF ne se lance qu'avec une fiche technique validée ; les besoins matières sont calculés au lancement
+- Fait : plans, OF, avancer/annuler, demandes de matières, compléments
+- Ne fait pas : libérer un lot, encaisser, accéder aux coûts, modifier une fiche technique · Ne voit pas : coûts, caisse
+- Priorités : 1) créer le plan ; 2) le convertir en OF (avec agents) ; 3) demander les matières ; 4) avancer le statut quand les matières sont livrées ; 5) clôturer
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Production : Plans, Ordres de fabrication, Besoins matières, Matières atelier, Suivi eau, Demandes d'achat
-- Stocks : Situation
-- Référentiel : Articles, Matières, Conditionnements (écriture) + Fiches techniques (lecture seule)
+**Menu (sidebar)** — un seul groupe « Production », 6 entrées (au lieu de 12) :
+Accueil · Plans · Ordres de fabrication · Matières atelier · Stock · Référentiel
+- **Référentiel** (hub à onglets) : Articles, Matières, Conditionnements (écriture) · Fiches techniques (lecture seule).
+- Besoins matières et Suivi eau ne sont plus des entrées de menu : ce sont des onglets de la fiche OF.
 - *Accès supplémentaire sans entrée de menu* : Lots qualité (`/production/qualite`, lecture).
 
 **Page d'accueil**
-- Actions rapides : Planifier, Ordres de fabrication.
-- KPI : OF en production (+ total ouverts), OF à lancer (phases amont), Plans à convertir, Pertes du jour.
-- Files de travail : OF ouverts (triés par étape), Plans à convertir en OF (badges Urgent/Prioritaire), Matières demandées au magasin, Fiches techniques à valider.
+- Actions rapides : Planifier, OF.
+- KPI : OF en production (+ total ouverts), OF à lancer, Plans à convertir, Pertes du jour.
+- Files de travail : Plans à convertir (badges Urgent/Prioritaire), OF par étape, Matières demandées au magasin, Fiches techniques en attente (Admin SI).
 - Graphique : camembert « Ordres de fabrication » par étape.
 
-**Écrans accessibles** : Accueil · Plans de production · Ordres de fabrication (liste + détail) · Besoins matières · Matières atelier · Suivi eau · Demandes d'achat · Situation de stock · Lots qualité (lecture) · Référentiel (Articles, Matières, Conditionnements, Fiches techniques en lecture).
+**Écrans accessibles** : Accueil · Plans · Ordres de fabrication (liste + fiche) · Matières atelier · Situation de stock · Lots qualité (lecture) · Référentiel (Articles, Matières, Conditionnements, Fiches techniques en lecture).
 
 ### 2.4 Agent Production (`AGENT_PRODUCTION`)
 **Carte d'identité**
@@ -376,28 +375,22 @@ Accueil · Tableau de bord · Supervision · Coûts & marges · Anomalies & écr
 
 ### 3.2 Production
 #### Plans de production — `/production/planning`
-**Objectif :** prévisions de volumes ; convertir une prévision en OF déclenche le calcul des besoins matières.
-**Tableau :** Article, Date, Qté, Priorité, Statut, Créé par, Commentaire, action.
-**Formulaire de création** (droit `CREATE_PLAN`) : Article (select produits finis), Date prévue, Quantité (défaut 1000), Priorité (Basse/Normale/Haute/Urgente), Commentaire.
-**Actions :** « Créer la prévision » ; par ligne, « Convertir en OF » (droit `CONVERTIR_PLAN`, si statut convertible) avec un sélecteur multiple d'agents de production disponibles à affecter à l'OF résultant.
+**Objectif :** prévisions de volumes ; convertir un plan en OF déclenche le calcul des besoins matières.
+**Tableau :** Article (+ commentaire), Date prévue, Quantité, Priorité (badge), Statut (badge), action. Filtres : recherche, À convertir / Convertis / Tous. Tri : plans ouverts d'abord, par priorité puis date.
+**Tiroir « Nouveau plan »** (bouton d'en-tête, droit `CREATE_PLAN`) : Article, Date prévue, Quantité, Priorité (4 boutons), Commentaire ; alerte si l'article n'a pas de fiche technique validée.
+**En fin de ligne : [Convertir en OF]** (droit `CONVERTIR_PLAN`) → mini-tiroir avec sélecteur d'agents à cases à cocher. Bouton grisé avec lien « Fiche technique non validée » si l'article n'a pas de fiche validée.
 
 #### Ordres de fabrication (liste) — `/production/of`
-**Objectif :** suivre chaque OF du brouillon à la clôture.
-**KPI :** OF non clôturés, Attente qualité, Volume à produire ; graphique « Pipeline OF » (répartition par statut).
-**Tableau :** Numéro, Article, Quantité, Statut (badge), Responsable, Créé le. Ligne cliquable → détail.
-**Formulaire de création** (droit `CREATE_OF`) : Article, Quantité (défaut 100), Plan d'origine (optionnel), Agents affectés (sélecteur multiple ou saisie d'identifiants si aucun agent déclaré).
-**Actions :** « Créer OF ».
+**Haut :** 3 KPI (OF en production, Attente qualité, Volume à produire) + graphique « Pipeline » (OF par statut).
+**Pastilles de statut** (Ouverts, chaque statut présent, Tous) avec compteurs, recherche.
+**Tableau :** Numéro, Article, Quantité, Statut (badge), Agents, Créé le. Ligne cliquable → fiche.
+**[+ Créer OF]** (en-tête, droit `CREATE_OF`) → tiroir : Article, Quantité, Plan d'origine (facultatif), Agents ; création bloquée si fiche technique non validée.
 
-#### Détail d'un ordre de fabrication — `/production/of/[id]`
-**Objectif :** fiche complète d'un OF (synthèse, besoins, sorties, étapes, pertes, lots) et pilotage de son avancement.
-**En-tête :** numéro, badge de statut, bouton **« Avancer → {statut suivant} »** (droit `AVANCER_OF`), bouton **« Annuler l'OF »** (droit `ANNULER_OF`, motif obligatoire).
-**Contenu :**
-- `StatusStepper` de progression (Brouillon → … → Clôturé).
-- Bandeau d'alerte si production terminée (contrôle qualité en attente) ou si OF annulé (motif affiché).
-- Panneau **Synthèse** : article, responsable, équipe, dates, agents affectés, avec un sélecteur pour réaffecter les agents (droit `AFFECTER_AGENTS_OF`).
-- Panneau **Besoins matières** (lecture) ; bouton **« Demander les matières au magasin »** (droit `DEMANDER_MATIERES_OF`) si des besoins existent et qu'aucune demande n'est en cours.
-- Panneaux **Sorties matières**, **Étapes**, **Pertes · Lots** (lecture).
-- Composant **Historique** en bas de page.
+#### Détail d'un ordre de fabrication — `/production/of/[id]` (gabarit B)
+- En haut : retour à la liste, numéro + badge, **stepper** de progression.
+- Bandeau si production terminée (contrôle qualité en attente) ou OF annulé (motif).
+- **Onglets :** Synthèse (infos + agents réaffectables, droit `AFFECTER_AGENTS_OF`) · Besoins matières (théorique / disponible / manquant / situation ; bouton **[Demander les matières au magasin]**, remplacé ensuite par **[Demande complémentaire]** en tiroir ; suivi des demandes) · Sorties (sorties, retours, compléments) · Étapes & pertes · Suivi eau (OF de la famille eau uniquement ; saisie en tiroir) · Lots · Historique.
+- **Barre fixe en bas :** **[Avancer → statut suivant]** (droit `AVANCER_OF`) et lien discret **Annuler l'OF** (droit `ANNULER_OF`, tiroir avec motif obligatoire) ; rappel des demandes de matières non livrées.
 
 #### Étapes de production / Suivi de production — `/production/suivi`
 Deux sections sur la même page :
@@ -418,13 +411,13 @@ Deux sections sur la même page :
 **Tableau :** OF, Matière, Théorique, Dispo, Manquant, Situation.
 
 #### Matières atelier — `/production/demandes-matieres`
-**Objectif :** livraison, sorties, compléments et retours de matières pour les OF.
-**4 tableaux :**
-1. Demandes de matières (N°, OF, Matière, Qté demandée, Qté livrée, Statut) — champ de quantité à livrer par ligne (droit `LIVRER_DEMANDE_MATIERE`, livraison partielle possible).
-2. Demandes complémentaires (N°, OF, Matière, Qté, Statut) — boutons Approuver/Rejeter par ligne (droit `APPROUVER_COMPLEMENT`).
-3. Sorties matières (OF, Matière, Qté, Type).
-4. Retours matières (OF, Matière, Qté retournée).
-**Formulaires** : « Demande complémentaire » (droit `CREATE_COMPLEMENT` : OF, Matière, Quantité, Motif obligatoire) ; « Sortie manuelle » (droit `CREATE_SORTIE` : OF, Matière, Quantité, Type Normale/Complémentaire, Motif obligatoire si complémentaire) ; « Retour matière » (droit `CREATE_RETOUR_MAT` : OF, Matière, Quantité).
+**Objectif :** suivi des demandes de matières, compléments, sorties et retours pour les OF.
+**4 onglets** (avec compteurs) et recherche commune ; numéro d'OF cliquable vers sa fiche :
+1. Demandes (N°, OF, Matière, Demandée, Livrée, Statut) — quantité à livrer + « Livrer » par ligne (droit `LIVRER_DEMANDE_MATIERE`).
+2. Compléments (N°, OF, Matière, Quantité, Motif, Statut) — Approuver / Rejeter (droit `APPROUVER_COMPLEMENT`).
+3. Sorties (OF, Matière, Quantité, Type, Motif, Date).
+4. Retours (OF, Matière, Quantité retournée, Date).
+**Formulaires en tiroir** (bouton d'en-tête selon l'onglet) : Demande complémentaire (`CREATE_COMPLEMENT`), Sortie manuelle (`CREATE_SORTIE`, motif obligatoire si complémentaire), Retour matière (`CREATE_RETOUR_MAT`).
 
 ### 3.3 Qualité
 #### Lots — `/production/qualite`

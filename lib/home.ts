@@ -483,7 +483,7 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
   return {
     actions: [
       { href: "/production/planning", label: "Planifier", icon: CalendarDays },
-      { href: "/production/of", label: "Ordres de fabrication", icon: ClipboardList },
+      { href: "/production/of", label: "OF", icon: ClipboardList },
     ],
     kpis: [
       { label: "OF en production", value: enProd.length, hint: `${ofCours.length} OF ouverts`, tone: "teal", icon: ClipboardList, href: "/production/of" },
@@ -492,14 +492,6 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
       { label: "Pertes du jour", value: formatQty(sum(pertesJour, (p) => p.quantite_perte), 0), hint: `${pertesJour.length} déclaration(s)`, tone: pertesJour.length ? "danger" : "success", icon: TrendingDown, href: "/production/pertes" },
     ],
     sections: [
-      section({
-        id: "of",
-        title: "OF ouverts",
-        icon: ClipboardList,
-        href: "/production/of",
-        empty: "Aucun OF ouvert.",
-        all: [...ofCours].sort((a, b) => ofOrder(a) - ofOrder(b)).map((o) => ofTask(o, h)),
-      }),
       section({
         id: "plans",
         title: "Plans à convertir en OF",
@@ -512,8 +504,21 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
             href: "/production/planning",
             title: h.articleName(p.article),
             detail: `${formatQty(num(p.quantite_prevue), 0)} prévus le ${formatDate(p.date_prevue)}`,
-            badge: { label: p.priorite === "URGENTE" || p.priorite === "HAUTE" ? p.priorite === "URGENTE" ? "Urgent" : "Prioritaire" : STATUT_PLAN_LABEL[p.statut], tone: p.priorite === "URGENTE" ? "danger" : p.priorite === "HAUTE" ? "warning" : "neutral" },
+            badge:
+              p.priorite === "URGENTE"
+                ? { label: "Urgent", tone: "danger" }
+                : p.priorite === "HAUTE"
+                  ? { label: "Prioritaire", tone: "warning" }
+                  : { label: STATUT_PLAN_LABEL[p.statut], tone: "neutral" },
           })),
+      }),
+      section({
+        id: "of",
+        title: "OF par étape",
+        icon: ClipboardList,
+        href: "/production/of",
+        empty: "Aucun OF ouvert.",
+        all: [...ofCours].sort((a, b) => ofOrder(a) - ofOrder(b)).map((o) => ofTask(o, h)),
       }),
       section({
         id: "matieres",
@@ -528,7 +533,7 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
           badge: { label: STATUT_DEMANDE_MATIERE_LABEL[d.statut], tone: d.statut === "PREPAREE" ? "teal" : "info" },
         })),
       }),
-      ftBrouillonSection(state, h, "Fiches techniques à valider", "Toutes les fiches sont validées."),
+      ftBrouillonSection(state, h, "Fiches techniques en attente (Admin SI)", "Toutes les fiches sont validées."),
     ],
     chart: ofDonut(state.ofList),
   };
