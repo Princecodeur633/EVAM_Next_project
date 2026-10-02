@@ -271,6 +271,8 @@ export interface FicheTechnique {
   date_validation: string | null;
   /** Composition imbriquée en lecture seule — plus besoin d'un appel séparé pour l'afficher. */
   composition: CompositionFicheTechnique[];
+  /** Coût des matières pour UNE unité du produit (somme des montant_par_unite de la composition). */
+  cout_matieres_par_unite?: string | number;
 }
 
 export interface CompositionFicheTechnique {
@@ -278,6 +280,10 @@ export interface CompositionFicheTechnique {
   fiche_technique: number;
   matiere: number;
   quantite_necessaire: string;
+  /** Prix d'une unité de la matière ; sert au chiffrage des besoins de chaque OF. Obligatoire à la création. */
+  prix_unitaire: string;
+  /** Coût de cet élément pour une unité produite (quantite_necessaire x prix_unitaire), calculé par le serveur. */
+  montant_par_unite?: string | number;
   matiere_code?: string;
   matiere_designation?: string;
   matiere_type?: TypeArticle;
@@ -474,6 +480,9 @@ export interface OrdreFabrication {
   date_debut_production: string | null;
   date_fin: string | null;
   date_creation: string;
+  /** Somme des montants chiffrés des besoins matières de l'OF. Absent pour l'Agent Production
+   * (aucune donnée financière ne lui est jamais transmise). */
+  montant_total_matieres?: string | number;
 }
 
 export interface BesoinMatierePrevu {
@@ -481,6 +490,10 @@ export interface BesoinMatierePrevu {
   ordre_fabrication: number;
   matiere: number;
   quantite_theorique: string;
+  /** Prix de la fiche technique au moment de la création de l'OF (figé) ; montant = théorique x prix.
+   * Absents pour l'Agent Production. */
+  prix_unitaire?: string | number;
+  montant?: string | number;
   /** Enrichissement API list (§5.5), non stocké en base. */
   stock_disponible?: string | number;
   manquant?: string | number;
@@ -496,6 +509,9 @@ export interface DemandeMatiere {
   ordre_fabrication: number;
   matiere: number;
   quantite_demandee: string;
+  /** Repris du besoin chiffré de l'OF au moment de la demande. Absents pour l'Agent Production. */
+  prix_unitaire?: string | number;
+  montant?: string | number;
   /** Renseignée par le backend au moment de /livrer/ ; en lecture seule. */
   quantite_livree: string | null;
   demandeur: number;

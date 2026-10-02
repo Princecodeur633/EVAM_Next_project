@@ -71,8 +71,8 @@ export type Action =
   | { type: "CREATE_RETOUR_MAT"; ordre_fabrication: number; matiere: number; quantite_retournee: number }
   | { type: "VALIDER_FT"; id: number }
   | { type: "CREATE_FT"; article: number; version?: number }
-  | { type: "CREATE_COMPOSITION"; fiche_technique: number; matiere: number; quantite_necessaire: number }
-  | { type: "PATCH_COMPOSITION"; id: number; quantite_necessaire: number }
+  | { type: "CREATE_COMPOSITION"; fiche_technique: number; matiere: number; quantite_necessaire: number; prix_unitaire: number }
+  | { type: "PATCH_COMPOSITION"; id: number; quantite_necessaire?: number; prix_unitaire?: number }
   | { type: "DELETE_COMPOSITION"; id: number }
   | {
       type: "CREATE_ARTICLE";
@@ -611,10 +611,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               fiche_technique: action.fiche_technique,
               matiere: action.matiere,
               quantite_necessaire: action.quantite_necessaire,
+              prix_unitaire: action.prix_unitaire,
             });
             break;
           case "PATCH_COMPOSITION":
-            await api.patch(detail(endpoints.compositions, action.id), { quantite_necessaire: action.quantite_necessaire });
+            await api.patch(detail(endpoints.compositions, action.id), {
+              ...(action.quantite_necessaire !== undefined && { quantite_necessaire: action.quantite_necessaire }),
+              ...(action.prix_unitaire !== undefined && { prix_unitaire: action.prix_unitaire }),
+            });
             break;
           case "DELETE_COMPOSITION":
             await api.del(detail(endpoints.compositions, action.id));

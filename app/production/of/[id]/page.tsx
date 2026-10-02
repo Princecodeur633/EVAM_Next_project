@@ -23,7 +23,7 @@ import {
 } from "@/lib/labels";
 import { nextOfStatut, useStore } from "@/lib/store";
 import type { OrdreFabrication } from "@/lib/types";
-import { cn, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
+import { cn, formatDa, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
 
 type Onglet = "synthese" | "besoins" | "sorties" | "etapes" | "eau" | "lots" | "historique";
 
@@ -226,11 +226,14 @@ export default function OfDetailPage() {
   );
 }
 
-function Bloc({ titre, action, children }: { titre: string; action?: ReactNode; children: ReactNode }) {
+function Bloc({ titre, action, meta, children }: { titre: string; action?: ReactNode; meta?: string; children: ReactNode }) {
   return (
     <Panel className="overflow-hidden">
       <div className="px-4 py-3 border-b border-line flex items-center justify-between gap-3">
-        <h2 className="text-[13px] font-semibold">{titre}</h2>
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h2 className="text-[13px] font-semibold">{titre}</h2>
+          {meta && <span className="text-[12px] text-muted num truncate">{meta}</span>}
+        </div>
         {action}
       </div>
       {children}
@@ -312,6 +315,8 @@ function BesoinsMatieres({ of, modifiable }: { of: OrdreFabrication; modifiable:
   const besoins = state.besoinsMatieres.filter((b) => b.ordre_fabrication === of.id);
   const demandes = state.demandesMatieres.filter((d) => d.ordre_fabrication === of.id);
   const dejaDemandees = demandes.some((d) => d.statut !== "ANNULEE");
+  // Aucune donnée financière n'est jamais transmise à l'Agent Production.
+  const voitMontants = role !== "AGENT_PRODUCTION";
 
   const action = !modifiable ? undefined : !dejaDemandees ? (
     can("DEMANDER_MATIERES_OF") && besoins.length > 0 ? (
@@ -335,15 +340,20 @@ function BesoinsMatieres({ of, modifiable }: { of: OrdreFabrication; modifiable:
 
   return (
     <div className="space-y-4">
-      <Bloc titre="Besoins théoriques" action={action}>
+      <Bloc
+        titre="Besoins théoriques"
+        action={action}
+        meta={voitMontants && of.montant_total_matieres != null ? `Montant total : ${formatDa(num(of.montant_total_matieres))}` : undefined}
+      >
         <DataTable
-          emptyText={role === "AGENT_PRODUCTION" ? "Les besoins matières ne sont pas transmis à votre poste." : "Aucun besoin : fiche technique manquante ou OF pas encore calculé."}
+          emptyText="Aucun besoin : fiche technique manquante ou OF pas encore calculé."
           columns={[
             { key: "m", label: "Matière" },
             { key: "q", label: "Théorique", className: "text-right" },
             { key: "d", label: "Disponible", className: "text-right" },
             { key: "x", label: "Manquant", className: "text-right" },
             { key: "s", label: "Situation" },
+            ...(voitMontants ? [{ key: "mt", label: "Montant", className: "text-right" }] : []),
           ]}
           rows={besoins.map((b) => {
             const manquant = b.manquant != null ? num(b.manquant) : 0;
@@ -353,6 +363,7 @@ function BesoinsMatieres({ of, modifiable }: { of: OrdreFabrication; modifiable:
               d: <span className="num">{b.stock_disponible != null ? formatQty(num(b.stock_disponible), 3) : "—"}</span>,
               x: <span className={cn("num", manquant > 0 && "text-danger font-semibold")}>{b.manquant != null ? formatQty(manquant, 3) : "—"}</span>,
               s: b.situation ? <StatusBadge tone={manquant > 0 ? "danger" : "success"}>{b.situation}</StatusBadge> : "—",
+              ...(voitMontants ? { mt: <span className="num">{b.montant != null ? formatDa(num(b.montant)) : "—"}</span> } : {}),
             };
           })}
         />
@@ -360,13 +371,21 @@ function BesoinsMatieres({ of, modifiable }: { of: OrdreFabrication; modifiable:
       {demandes.length > 0 && (
         <Bloc titre="Demandes au magasin">
           <DataTable
-            columns={[{ key: "n", label: "N°" }, { key: "m", label: "Matière" }, { key: "q", label: "Demandée", className: "text-right" }, { key: "l", label: "Livrée", className: "text-right" }, { key: "s", label: "Statut" }]}
+            columns={[
+              { key: "n", label: "N°" },
+              { key: "m", label: "Matière" },
+              { key: "q", label: "Demandée", className: "text-right" },
+              { key: "l", label: "Livrée", className: "text-right" },
+              { key: "s", label: "Statut" },
+              ...(voitMontants ? [{ key: "mt", label: "Montant", className: "text-right" }] : []),
+            ]}
             rows={demandes.map((d) => ({
               n: d.numero,
               m: articleName(d.matiere),
               q: <span className="num">{formatQty(num(d.quantite_demandee), 3)}</span>,
               l: <span className="num">{d.quantite_livree != null ? formatQty(num(d.quantite_livree), 3) : "—"}</span>,
               s: <StatusBadge tone={d.statut === "LIVREE_A_LA_PRODUCTION" ? "success" : d.statut === "ANNULEE" ? "danger" : d.statut === "PREPAREE" ? "teal" : "info"}>{STATUT_DEMANDE_MATIERE_LABEL[d.statut]}</StatusBadge>,
+              ...(voitMontants ? { mt: <span className="num">{d.montant != null ? formatDa(num(d.montant)) : "—"}</span> } : {}),
             }))}
           />
         </Bloc>

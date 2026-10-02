@@ -350,6 +350,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "famillesArticle",
     "articles",
     "ofList",
+    "besoinsMatieres",
+    "demandesMatieres",
     "demandesComplementaires",
     "suivisProduction",
     "suivisEau",
@@ -532,8 +534,10 @@ export const actions = {
     api.get<ElementComposition[]>(
       `${endpoints.fichesTechniques}${ficheId}/elements_disponibles/${typeArticle ? `?type_article=${typeArticle}` : ""}`,
     ),
-  ajouterElementsComposition: (ficheId: number, elements: { matiere: number; quantite_necessaire: number | string }[]) =>
-    api.post<FicheTechnique>(`${endpoints.fichesTechniques}${ficheId}/ajouter_elements/`, { elements }),
+  ajouterElementsComposition: (
+    ficheId: number,
+    elements: { matiere: number; quantite_necessaire: number | string; prix_unitaire: number | string }[],
+  ) => api.post<FicheTechnique>(`${endpoints.fichesTechniques}${ficheId}/ajouter_elements/`, { elements }),
   livrerDemandeMatiere: (id: number, quantite_livree?: string | number) =>
     api.post<DemandeMatiere>(
       `${endpoints.demandesMatieres}${id}/livrer/`,
