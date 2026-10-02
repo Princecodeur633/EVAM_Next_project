@@ -286,25 +286,23 @@ Accueil · Circuit de livraison · Tournées & flotte · Réclamations
 
 ### 2.11 Chauffeur / Livreur (`CHAUFFEUR`)
 **Carte d'identité**
-- Station : Tournée · Couleur : ambre · Icône : colis
-- Mission : « Consultez uniquement vos tournées et bons de livraison. »
-- Posture : « Vous voyez uniquement votre tournée du jour. »
-- Possède : Mes tournées, Mes BL
-- Ne fait jamais : créer une tournée, confirmer une livraison (réservé au responsable)
-- Règles : seules ses tournées apparaissent dans le menu
+- Station : Tournée (mobile) · Couleur : ambre · Icône : colis
+- Mission : « Suivez l'ordre de passage, faites signer chaque client et signalez tout incident. »
+- Posture : « Vous voyez uniquement votre tournée du jour. La confirmation finale revient au responsable. »
+- Fait : remise au client (signature) + signalement d'incident
+- Ne fait pas : créer une tournée, confirmer la livraison (réservé au responsable) · Ne voit pas : prix, stock, tournées des autres
+- Priorités : 1) suivre l'ordre de passage ; 2) marquer remis avec signature ; 3) signaler tout incident
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Mes livraisons : Bons de livraison, Tournées
-- Pas de Référentiel, pas d'accès supplémentaire.
+**Menu** — 2 entrées (au lieu de 3), en **barre basse sur mobile** :
+Ma tournée (= accueil) · Historique
 
-**Page d'accueil**
-- Actions rapides : Mes bons de livraison, Mes tournées.
-- KPI : Tournées du jour, BL à livrer, Livrés aujourd'hui.
-- Files de travail : Bons à livrer, Tournées à venir (badge « Aujourd'hui »).
-- Pas de graphique (seul poste avec l'Admin SI à ne pas en avoir).
+**Accueil = Ma tournée du jour**
+- KPI : Tournées du jour, À livrer, Livrés.
+- **Cartes de BL dans l'ordre de passage** (ordre de création des BL, faute de champ dédié côté serveur), prochain arrêt mis en avant : client, adresse, articles et quantités, statut de paiement, incident éventuel.
+- Sur chaque carte : **[Marquer remis]** (tiroir : articles + case « le client a signé le bon ») et **[Problème]** (tiroir : motifs rapides + motif obligatoire).
+- Données issues du bon de livraison lui-même (client, adresse, articles, paiement transmis par le serveur) : le chauffeur ne lit ni commandes, ni clients, ni factures.
 
-**Écrans accessibles** : Accueil · Bons de livraison (liste + détail — actions « Marquer remis au client » / « Signaler un problème » réservées à ce poste) · Tournées (lecture, uniquement les siennes).
+**Écrans accessibles** : Ma tournée · Historique (BL regroupés par jour) · Fiche BL (remise et incident, barre d'action au-dessus de la barre basse).
 
 ### 2.12 Comptabilité / DAF (`COMPTABILITE_DAF`)
 **Carte d'identité**

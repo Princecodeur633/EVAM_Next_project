@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, ArrowUpRight, CheckCircle2, CircleSlash, Eye, EyeOff, Info, Landmark, Lock, Unlock, Vault } from "lucide-react";
 import { AgentHome } from "@/components/AgentHome";
+import { ChauffeurHome } from "@/components/ChauffeurHome";
 import { DonutChart, KpiCard } from "@/components/charts";
 import { ACCENT_CLASS, ACCENT_SOFT, ITEM_ICONS, LABEL_ICONS, ROLE_ICONS } from "@/components/icons";
 import { StatusBadge } from "@/components/ui";
@@ -26,6 +27,7 @@ export default function AccueilPage() {
   const { state, currentUser, articleName, clientName, userName } = useStore();
   if (!currentUser) return null;
   if (currentUser.role === "AGENT_PRODUCTION") return <AgentHome />;
+  if (currentUser.role === "CHAUFFEUR") return <ChauffeurHome />;
 
   const role = currentUser.role;
   const profile = ROLE_PROFILES[role];

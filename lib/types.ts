@@ -842,6 +842,12 @@ export interface BonLivraison {
   confirme_par: number | null;
   date_generation: string;
   date_livraison: string | null;
+  /** Enrichissements du serializer (lecture) : utiles au chauffeur, qui ne lit ni commandes ni clients. */
+  commande_numero?: string;
+  client_nom?: string;
+  client_adresse?: string;
+  articles?: { code: string; designation: string; quantite: string }[];
+  statut_paiement?: string;
 }
 
 export interface TransfertDepot {

@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { AlertTriangle, ArrowLeft, CheckCircle2, HandHelping, PackageCheck } from "lucide-react";
 import { BlBadge, PaiementBadge } from "@/components/badges";
-import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
-import { Button, DataTable, Guard, PageHeader, Panel, inputClass } from "@/components/ui";
+import { RemiseDrawer, SignalerDrawer } from "@/components/livraison";
+import { Button, DataTable, Guard, PageHeader, Panel } from "@/components/ui";
 import { endpoints } from "@/lib/api";
 import { TYPE_COMMANDE_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/nav";
@@ -20,6 +20,7 @@ export default function BlDetailPage() {
   const bl = state.bonsLivraison.find((b) => b.id === Number(id));
   const [busy, setBusy] = useState(false);
   const [signaler, setSignaler] = useState(false);
+  const [remise, setRemise] = useState(false);
   if (!bl) return <p className="text-[13px] text-muted">Bon de livraison introuvable.</p>;
 
   const cmd = state.commandes.find((c) => c.id === bl.commande);
@@ -45,8 +46,9 @@ export default function BlDetailPage() {
   }
 
   const resume: [string, React.ReactNode][] = [
-    ["Commande", cmd ? <Link href={`/commercial/commandes/${cmd.id}`} className="text-primary hover:underline num">{cmd.numero}</Link> : "—"],
-    ["Client", cmd ? clientName(cmd.client) : "—"],
+    ["Commande", cmd && role !== "CHAUFFEUR" ? <Link href={`/commercial/commandes/${cmd.id}`} className="text-primary hover:underline num">{cmd.numero}</Link> : (bl.commande_numero ?? "—")],
+    ["Client", cmd ? clientName(cmd.client) : (bl.client_nom ?? "—")],
+    ...(bl.client_adresse ? ([["Adresse", bl.client_adresse]] as [string, React.ReactNode][]) : []),
     ["Type", cmd ? TYPE_COMMANDE_LABEL[cmd.type_commande] : "—"],
     ["Tournée", tournee ? `${tournee.numero} · ${formatDate(tournee.date_tournee)}` : "Non affecté"],
     ["Chauffeur / véhicule", tournee ? `${userName(chauffeur?.utilisateur)} · ${vehicule?.immatriculation ?? "—"}` : "—"],
@@ -59,7 +61,7 @@ export default function BlDetailPage() {
       <Link href={role && canAccess(role, "/distribution") ? "/distribution?etape=bl" : "/distribution/bl"} className="inline-flex items-center gap-1 text-[12px] text-muted hover:text-ink">
         <ArrowLeft size={13} /> Bons de livraison
       </Link>
-      <PageHeader eyebrow="Bon de livraison" title={bl.numero} status={<BlBadge status={bl.statut} />} description={cmd ? `${cmd.numero} · ${clientName(cmd.client)}` : undefined} />
+      <PageHeader eyebrow="Bon de livraison" title={bl.numero} status={<BlBadge status={bl.statut} />} description={cmd ? `${cmd.numero} · ${clientName(cmd.client)}` : bl.client_nom} />
 
       {bl.incident_livraison && (
         <Guard variant="warn" title="Incident signalé par le chauffeur">
@@ -108,7 +110,11 @@ export default function BlDetailPage() {
               { key: "a", label: "Article" },
               { key: "q", label: "Quantité", className: "text-right" },
             ]}
-            rows={lignes.map((l) => ({ a: articleName(l.article), q: <span className="num">{formatQty(num(l.quantite), 0)}</span> }))}
+            rows={
+              lignes.length
+                ? lignes.map((l) => ({ a: articleName(l.article), q: <span className="num">{formatQty(num(l.quantite), 0)}</span> }))
+                : (bl.articles ?? []).map((l) => ({ a: l.designation, q: <span className="num">{formatQty(num(l.quantite), 0)}</span> }))
+            }
           />
         </Panel>
       </div>
@@ -116,7 +122,8 @@ export default function BlDetailPage() {
       <Historique endpoint={endpoints.bonsLivraison} id={bl.id} />
 
       {(peutConfirmer || peutRemettre || peutSignaler) && (
-        <div className="sticky bottom-0 z-20 -mx-3 sm:mx-0 px-3 sm:px-4 py-3 border-t sm:border border-line bg-surface/95 backdrop-blur-md sm:rounded-[10px] shadow-[var(--shadow)] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className={cn("sticky z-20", role === "CHAUFFEUR" ? "bottom-[calc(72px+env(safe-area-inset-bottom))] lg:bottom-0" : "bottom-0")}>
+        <div className="-mx-3 sm:mx-0 px-3 sm:px-4 py-3 border-t sm:border border-line bg-surface/95 backdrop-blur-md sm:rounded-[10px] shadow-[var(--shadow)] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <p className={cn("text-[12px] flex-1", peutConfirmer && bloqueParPaiement ? "text-danger font-medium" : "text-muted")}>
             {peutConfirmer && bloqueParPaiement ? "Facture non soldée : la livraison d’une commande au comptant ne peut pas être confirmée." : peutConfirmer ? "Confirmez une fois le client livré." : "Indiquez la remise au client ou signalez un problème."}
           </p>
@@ -126,7 +133,7 @@ export default function BlDetailPage() {
             </Button>
           )}
           {peutRemettre && (
-            <Button variant="secondary" disabled={busy} onClick={() => void run({ type: "LIVRER_BL", id: bl.id })}>
+            <Button variant={peutConfirmer ? "secondary" : "success"} disabled={busy} onClick={() => setRemise(true)}>
               <HandHelping size={14} /> Remis au client
             </Button>
           )}
@@ -136,46 +143,11 @@ export default function BlDetailPage() {
             </Button>
           )}
         </div>
+        </div>
       )}
 
       {signaler && <SignalerDrawer blId={bl.id} numero={bl.numero} onClose={() => setSignaler(false)} />}
+      {remise && <RemiseDrawer bl={bl} onClose={() => setRemise(false)} />}
     </div>
-  );
-}
-
-function SignalerDrawer({ blId, numero, onClose }: { blId: number; numero: string; onClose: () => void }) {
-  const { dispatch } = useStore();
-  const [motif, setMotif] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  async function submit() {
-    setSaving(true);
-    const ok = await dispatch({ type: "SIGNALER_PROBLEME_BL", id: blId, motif: motif.trim() });
-    setSaving(false);
-    if (ok) onClose();
-  }
-
-  return (
-    <Drawer
-      open
-      onClose={onClose}
-      title="Signaler un problème"
-      subtitle={numero}
-      icon={<AlertTriangle size={17} />}
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button variant="danger" disabled={!motif.trim() || saving} onClick={() => void submit()}>
-            {saving ? "Envoi…" : "Signaler"}
-          </Button>
-        </>
-      }
-    >
-      <DrawerSection title="Problème">
-        <textarea className={cn(inputClass, "h-28 py-2 resize-none")} value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Client absent, colis endommagé, refus…" autoFocus />
-      </DrawerSection>
-    </Drawer>
   );
 }

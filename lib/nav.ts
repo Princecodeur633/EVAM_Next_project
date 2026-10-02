@@ -272,9 +272,12 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.reclamations,
     ]),
   ],
+  // Poste mobile : 2 entrées en barre basse ; l’accueil est la tournée du jour.
   CHAUFFEUR: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("liv", "Mes livraisons", "truck", [I.bl, I.tournees]),
+    g("liv", "Tournée", "truck", [
+      { href: "/accueil", label: "Ma tournée", hint: "BL du jour dans l’ordre de passage" },
+      { href: "/distribution/bl", label: "Historique", hint: "Mes livraisons passées" },
+    ]),
   ],
   COMPTABILITE_DAF: [
     g("poste", "Menu", "home", [I.accueil]),
@@ -285,7 +288,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
 };
 
 /** Postes dont le menu s’affiche en barre basse sur mobile (saisie terrain). */
-export const BOTTOM_NAV_ROLES: Profil[] = ["AGENT_PRODUCTION"];
+export const BOTTOM_NAV_ROLES: Profil[] = ["AGENT_PRODUCTION", "CHAUFFEUR"];
 
 export function navForRole(role: Profil): NavGroup[] {
   const base = ROLE_MENU[role];
