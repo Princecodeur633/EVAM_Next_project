@@ -10,7 +10,7 @@ import { actions } from "@/lib/api";
 import { STATUT_FT_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import type { ElementComposition, FicheTechnique } from "@/lib/types";
-import { cn, formatDate, formatQty, num } from "@/lib/utils";
+import { cn, formatDa, formatDate, formatQty, num } from "@/lib/utils";
 
 const BASE = "/parametrage/fiches-techniques";
 
@@ -164,10 +164,14 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
   const { state, dispatch, articleName, userName } = useStore();
   const compo = state.compositions.filter((c) => c.fiche_technique === ft.id);
   const editable = writable && ft.statut === "BROUILLON";
+  // Le prix d'un élément reste modifiable après validation (seules les quantités et matières sont
+  // figées) ; une fiche archivée est intégralement verrouillée, prix compris.
+  const prixEditable = writable && ft.statut !== "ARCHIVEE";
   const [disponibles, setDisponibles] = useState<ElementComposition[]>([]);
   const [adding, setAdding] = useState(false);
   const [matiere, setMatiere] = useState(0);
   const [qty, setQty] = useState("");
+  const [prix, setPrix] = useState("");
   const [validating, setValidating] = useState(false);
 
   // Liste de choix calculée par le backend (matières actives, pas encore dans la fiche, jamais de
@@ -188,15 +192,19 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
   const uniteChoisie = disponibles.find((d) => d.id === matiere)?.unite_mesure;
 
   async function add() {
-    const ok = await dispatch({ type: "CREATE_COMPOSITION", fiche_technique: ft.id, matiere, quantite_necessaire: Number(qty) });
+    const ok = await dispatch({ type: "CREATE_COMPOSITION", fiche_technique: ft.id, matiere, quantite_necessaire: Number(qty), prix_unitaire: Number(prix) });
     if (ok) {
       setMatiere(0);
       setQty("");
+      setPrix("");
       setAdding(false);
     }
   }
   async function saveQty(id: number, quantite: number) {
     return dispatch({ type: "PATCH_COMPOSITION", id, quantite_necessaire: quantite });
+  }
+  async function savePrix(id: number, prixUnitaire: number) {
+    return dispatch({ type: "PATCH_COMPOSITION", id, prix_unitaire: prixUnitaire });
   }
   async function validate() {
     setValidating(true);
@@ -220,6 +228,12 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
             {ft.date_validation && ` · validée le ${formatDate(ft.date_validation)}${ft.valide_par ? ` par ${userName(ft.valide_par)}` : ""}`}
           </p>
         </div>
+        {ft.cout_matieres_par_unite != null && (
+          <div className="shrink-0 text-right">
+            <p className="text-[10.5px] uppercase tracking-wide text-muted">Coût matières / unité</p>
+            <p className="text-[18px] font-semibold num">{formatDa(num(ft.cout_matieres_par_unite))}</p>
+          </div>
+        )}
       </header>
 
       <div className="px-4 sm:px-5 py-4 flex-1">
@@ -235,7 +249,7 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
         </div>
 
         {editable && adding && (
-          <div className="mb-3 rounded-[9px] border border-primary/30 bg-primary-soft/40 p-3 grid sm:grid-cols-[minmax(0,1fr)_150px_auto] gap-2 items-end">
+          <div className="mb-3 rounded-[9px] border border-primary/30 bg-primary-soft/40 p-3 grid sm:grid-cols-[minmax(0,1fr)_130px_130px_auto] gap-2 items-end">
             <label className="block min-w-0">
               <span className="block text-[11px] uppercase tracking-wide text-muted mb-1 font-medium">Matière</span>
               <select className={inputClass} value={matiere} onChange={(e) => setMatiere(Number(e.target.value))} autoFocus>
@@ -253,8 +267,12 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
               </span>
               <input className={cn(inputClass, "text-right num")} type="number" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
             </label>
+            <label className="block">
+              <span className="block text-[11px] uppercase tracking-wide text-muted mb-1 font-medium">Prix unitaire (FCFA)</span>
+              <input className={cn(inputClass, "text-right num")} type="number" min="0" step="any" value={prix} onChange={(e) => setPrix(e.target.value)} />
+            </label>
             <div className="flex gap-2">
-              <Button disabled={!matiere || !(Number(qty) > 0)} onClick={() => void add()}>
+              <Button disabled={!matiere || !(Number(qty) > 0) || prix.trim() === "" || Number(prix) < 0} onClick={() => void add()}>
                 <Check size={14} /> Ajouter
               </Button>
               <Button variant="ghost" onClick={() => setAdding(false)} aria-label="Annuler">
@@ -276,6 +294,8 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
                 <tr className="bg-surface-2 border-b border-line text-[11px] uppercase tracking-[0.08em] text-muted">
                   <th className="px-3 py-2 font-medium">Matière</th>
                   <th className="px-3 py-2 font-medium text-right">Quantité / unité</th>
+                  <th className="px-3 py-2 font-medium text-right">Prix unitaire</th>
+                  <th className="px-3 py-2 font-medium text-right">Montant / unité</th>
                   {editable && <th className="px-3 py-2 w-[52px]" />}
                 </tr>
               </thead>
@@ -295,6 +315,16 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
                           {c.unite_mesure && <span className="text-muted ml-1">{UNITE_LABEL[c.unite_mesure]}</span>}
                         </span>
                       )}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {prixEditable ? (
+                        <PrixInput value={num(c.prix_unitaire)} onSave={(p) => savePrix(c.id, p)} />
+                      ) : (
+                        <span className="text-[13px] num">{formatDa(num(c.prix_unitaire))}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <span className="text-[13px] num text-muted">{c.montant_par_unite != null ? formatDa(num(c.montant_par_unite)) : "—"}</span>
                     </td>
                     {editable && (
                       <td className="px-3 py-2 text-right">
@@ -323,7 +353,9 @@ function FicheEditor({ ft, writable, canValidate }: { ft: FicheTechnique; writab
         </footer>
       ) : ft.statut !== "BROUILLON" ? (
         <footer className="px-4 sm:px-5 py-3 border-t border-line bg-surface-2/60 rounded-b-[10px] text-[12px] text-muted flex items-center gap-2">
-          <Lock size={13} /> Fiche {STATUT_FT_LABEL[ft.statut].toLowerCase()} : la composition n’est plus modifiable.
+          <Lock size={13} />
+          Fiche {STATUT_FT_LABEL[ft.statut].toLowerCase()} : matières et quantités ne changent plus
+          {prixEditable ? " ; seul le prix unitaire reste ajustable (sans effet sur les OF déjà créés)." : ", prix compris."}
         </footer>
       ) : null}
     </div>
@@ -378,6 +410,57 @@ function QtyInput({ value, unite, onSave }: { value: number; unite?: string; onS
         }}
       />
       {unite && <span className="text-[12px] text-muted w-8 text-left">{unite}</span>}
+    </div>
+  );
+}
+
+/** Prix unitaire modifiable directement dans le tableau (0 autorisé, contrairement à la quantité). */
+function PrixInput({ value, onSave }: { value: number; onSave: (p: number) => Promise<boolean> }) {
+  const [draft, setDraft] = useState(String(value));
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  useEffect(() => setDraft(String(value)), [value]);
+
+  async function commit() {
+    const p = Number(draft);
+    if (!(p >= 0) || draft.trim() === "") {
+      setDraft(String(value));
+      setState("error");
+      return;
+    }
+    if (p === value) return;
+    setState("saving");
+    const ok = await onSave(p);
+    setState(ok ? "saved" : "error");
+    if (!ok) setDraft(String(value));
+  }
+
+  return (
+    <div className="inline-flex items-center justify-end gap-1.5">
+      {state === "saved" && <Check size={13} className="text-success" aria-label="Enregistré" />}
+      <input
+        className={cn(
+          "h-8 w-24 rounded-[6px] px-2 text-[12.5px] text-right num bg-surface border transition-colors outline-none",
+          state === "error" ? "border-danger" : "border-line-strong hover:border-primary/50 focus:border-primary",
+          state === "saving" && "opacity-60",
+        )}
+        type="number"
+        min="0"
+        step="any"
+        value={draft}
+        aria-label="Prix unitaire"
+        onChange={(e) => {
+          setDraft(e.target.value);
+          setState("idle");
+        }}
+        onBlur={() => void commit()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setDraft(String(value));
+            setState("idle");
+          }
+        }}
+      />
     </div>
   );
 }
