@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
+  ShieldAlert,
   PencilLine,
   Binoculars,
   BookOpenText,
@@ -13,7 +14,6 @@ import {
   Contact,
   Droplets,
   FileOutput,
-  FilePlus2,
   FileText,
   FlaskConical,
   HandCoins,
@@ -97,7 +97,7 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/approvisionnement/commandes": ShoppingCart,
   "/approvisionnement/receptions": PackageCheck,
   "/commercial/commandes": ClipboardList,
-  "/commercial/commandes/nouvelle": FilePlus2,
+  "/commercial/facturation": Receipt,
   "/commercial/clients": Users,
   "/commercial/avoirs": Undo2,
   "/commercial/impayes": CalendarClock,
@@ -113,6 +113,8 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/comptabilite/export-sage": FileOutput,
   "/comptabilite/clotures": Lock,
   "/comptabilite/ecritures": BookOpenText,
+  "/comptabilite/ecarts": Vault,
+  "/comptabilite/parametres": Calculator,
   "/stocks/valorisation": Scale,
   "/reclamations": MessageSquareWarning,
   "/parametrage": SlidersHorizontal,
@@ -135,6 +137,14 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
 export const LABEL_ICONS: Record<string, LucideIcon> = {
   Encaissements: Wallet,
   Supervision: Binoculars,
+  Approvisionnement: ShoppingCart,
+  Caisse: Wallet,
+  "Circuit de livraison": Truck,
+  "Tournées & flotte": Route,
+  "Ma tournée": Route,
+  Historique: History,
+  Contrôle: ShieldAlert,
+  Fiscalité: Percent,
   "Mes OF": ClipboardList,
   Saisir: PencilLine,
 };

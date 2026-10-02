@@ -43,7 +43,6 @@ const I = {
   suiviEau: { href: "/production/suivi-eau", label: "Suivi eau", hint: "Captage et embouteillage" },
   pertes: { href: "/production/pertes", label: "Pertes", hint: "Pertes et rebuts" },
   qualite: { href: "/production/qualite", label: "Lots qualité", hint: "Contrôle et libération" },
-  ofRecus: { href: "/production/qualite/of", label: "OF reçus", hint: "Production terminée, à contrôler" },
   besoinsOf: { href: "/production/besoins", label: "Besoins matières", hint: "Besoins théoriques" },
   sorties: { href: "/production/demandes-matieres", label: "Matières atelier", hint: "Sorties et retours" },
   stock: { href: "/stocks", label: "Situation", hint: "Stock disponible" },
@@ -54,7 +53,6 @@ const I = {
   cf: { href: "/approvisionnement/commandes", label: "Commandes fournisseurs", hint: "Commandes d’achat" },
   rec: { href: "/approvisionnement/receptions", label: "Réceptions", hint: "Réceptions magasin" },
   cmd: { href: "/commercial/commandes", label: "Commandes", hint: "Commandes clients" },
-  cmdNew: { href: "/commercial/commandes/nouvelle", label: "Nouvelle commande", hint: "Créer une commande" },
   clients: { href: "/commercial/clients", label: "Clients", hint: "Fiches clients" },
   factures: { href: "/caisse", label: "Factures", hint: "Suivi des factures" },
   encaissements: { href: "/caisse", label: "Encaissements", hint: "Factures à encaisser" },
@@ -113,9 +111,27 @@ const SUPERVISION: HubTab[] = [
 ];
 
 const COUTS_MARGES: HubTab[] = [
-  { label: "Coûts réels", href: "/couts" },
-  { label: "Coûts standards", href: "/couts/marges" },
-  { label: "Valorisation du stock", href: "/stocks/valorisation" },
+  { label: "Réels", href: "/couts" },
+  { label: "Standards & marges", href: "/couts/marges" },
+  { label: "Valorisation", href: "/stocks/valorisation" },
+];
+
+const DAF_CONTROLE: HubTab[] = [
+  { label: "Anomalies", href: "/comptabilite/brouillards" },
+  { label: "Impayés", href: "/commercial/impayes" },
+  { label: "Écarts de caisse", href: "/comptabilite/ecarts" },
+];
+
+const DAF_COMPTA: HubTab[] = [
+  { label: "Écritures", href: "/comptabilite/ecritures" },
+  { label: "Exports", href: "/comptabilite/export-sage" },
+  { label: "Clôtures", href: "/comptabilite/clotures" },
+  { label: "Paramètres comptables", href: "/comptabilite/parametres" },
+];
+
+const DAF_CAISSE: HubTab[] = [
+  { label: "Sessions", href: "/caisse/cloture" },
+  { label: "Décaissements", href: "/caisse/decaissements" },
 ];
 
 const ANOMALIES_ECRITURES: HubTab[] = [
@@ -145,6 +161,26 @@ export const REF_TABS: NavItem[] = [
   { href: "/parametrage/clients", label: "Clients" },
   { href: "/parametrage/fournisseurs", label: "Fournisseurs" },
   { href: "/parametrage/fiscalite", label: "Codes fiscaux" },
+];
+
+/** « Catalogue » du Responsable Achat. */
+const ACHATS_CATALOGUE: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles" },
+  { href: "/parametrage/matieres", label: "Matières" },
+];
+
+/** Hub « Stock » du Magasinier. */
+const STOCK_MAGASIN: NavItem[] = [
+  { href: "/stocks", label: "Situation" },
+  { href: "/stocks/mouvements", label: "Mouvements" },
+  { href: "/stocks/inventaires", label: "Inventaires" },
+  { href: "/parametrage/depots", label: "Dépôts" },
+];
+
+/** « Fiches » du Responsable Qualité : articles et fiches techniques en lecture. */
+const QUALITE_FICHES: NavItem[] = [
+  { href: "/parametrage/produits", label: "Articles" },
+  { href: "/parametrage/fiches-techniques", label: "Fiches techniques" },
 ];
 
 /** Référentiel du Responsable Production (fiches techniques en lecture). */
@@ -194,53 +230,95 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.accueil,
     ]),
   ],
+  // Menu à plat : 5 entrées ; les « OF reçus » deviennent l’onglet « À créer » des lots.
   RESPONSABLE_QUALITE: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("qualite", "Qualité", "check", [I.ofRecus, I.qualite, I.ft, I.reclamations]),
+    g("qualite", "Qualité", "check", [
+      I.accueil,
+      I.qualite,
+      I.reclamations,
+      { ...I.stock, label: "Stock" },
+      { href: "/parametrage/produits", label: "Fiches", hint: "Articles et fiches techniques (lecture)", hub: QUALITE_FICHES },
+    ]),
   ],
+  // Menu à plat : 6 entrées ; mouvements, inventaires et dépôts sont des onglets de « Stock ».
   MAGASINIER: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("magasin", "Magasin", "boxes", [I.sorties, I.stock, I.mvt, I.inv, I.da]),
-    g("rec", "Réceptions & quai", "cart", [I.rec, I.prep, I.reclamations]),
+    g("magasin", "Magasin", "boxes", [
+      I.accueil,
+      { ...I.sorties, label: "Servir l’atelier", hint: "Livrer les matières demandées" },
+      I.prep,
+      I.rec,
+      { ...I.stock, label: "Stock", hint: "Situation, mouvements, inventaires, dépôts", hub: STOCK_MAGASIN },
+      I.reclamations,
+    ]),
   ],
+  // Menu à plat : 5 entrées ; besoins, demandes, commandes et réceptions sont les étapes du flux « Approvisionnement ».
   RESPONSABLE_ACHATS: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("appro", "Achats", "cart", [I.apBesoins, I.da, I.cf, I.rec]),
-    g("stock", "Stocks", "boxes", [I.stock]),
+    g("appro", "Achats", "cart", [
+      I.accueil,
+      { href: "/approvisionnement", label: "Approvisionnement", hint: "Besoins → demandes → commandes → réceptions" },
+      { href: "/parametrage/fournisseurs", label: "Fournisseurs", hint: "Fiches fournisseurs" },
+      { ...I.stock, label: "Stock" },
+      { href: "/parametrage/produits", label: "Catalogue", hint: "Articles et matières", hub: ACHATS_CATALOGUE },
+    ]),
   ],
+  // Menu à plat : 6 entrées ; factures, impayés et avoirs sont des onglets de « Facturation ».
   COMMERCIAL: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("vente", "Commercial", "handshake", [I.cmd, I.cmdNew, I.clients, I.factures, I.avoirs, I.impayes, I.reclamations]),
+    g("vente", "Vente", "handshake", [
+      I.accueil,
+      I.cmd,
+      { href: "/commercial/facturation", label: "Facturation", hint: "Factures, impayés, avoirs" },
+      { href: "/parametrage/clients", label: "Clients", hint: "Fiches et conditions" },
+      { href: "/parametrage/tarifs", label: "Tarifs", hint: "Prix de vente" },
+      I.reclamations,
+    ]),
   ],
+  // Menu à plat : 4 entrées (encaissement d’une facture et factures non soldées sont dans « Caisse »).
   CAISSIER: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("caisse", "Caisse", "banknote", [I.encaissements, I.sessions, I.decaissements]),
+    g("caisse", "Caisse", "banknote", [
+      I.accueil,
+      { href: "/caisse", label: "Caisse", hint: "Encaisser les factures" },
+      I.decaissements,
+      { href: "/caisse/cloture", label: "Ma session", hint: "Solde, clôture et écart" },
+    ]),
   ],
+  // Menu à plat : 4 entrées ; préparations et BL sont des étapes du « Circuit de livraison ».
   RESPONSABLE_DISTRIBUTION: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("liv", "Distribution", "truck", [I.prep, I.bl, I.tournees, I.reclamations]),
-    g("vente", "Commandes", "handshake", [I.cmd]),
+    g("liv", "Logistique", "truck", [
+      I.accueil,
+      { href: "/distribution", label: "Circuit de livraison", hint: "Commandes → préparations → BL → livrées" },
+      { href: "/distribution/tournees", label: "Tournées & flotte", hint: "Tournées, véhicules, chauffeurs" },
+      I.reclamations,
+    ]),
   ],
+  // Poste mobile : 2 entrées en barre basse ; l’accueil est la tournée du jour.
   CHAUFFEUR: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("liv", "Mes livraisons", "truck", [I.bl, I.tournees]),
+    g("liv", "Tournée", "truck", [
+      { href: "/accueil", label: "Ma tournée", hint: "BL du jour dans l’ordre de passage" },
+      { href: "/distribution/bl", label: "Historique", hint: "Mes livraisons passées" },
+    ]),
   ],
+  // Menu à plat : 7 entrées, chacune à onglets.
   COMPTABILITE_DAF: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("fin", "Comptabilité", "ledger", [I.anomalies, I.ecritures, I.exports, I.clotures, I.parametresCompta, I.audit, I.impayes]),
-    g("couts", "Coûts", "coins", [I.couts, I.marges, I.valorisation]),
-    g("caisse", "Caisse", "banknote", [I.sessions, I.decaissements]),
+    g("fin", "Finance", "ledger", [
+      I.accueil,
+      { href: "/comptabilite/brouillards", label: "Contrôle", hint: "Anomalies, impayés, écarts de caisse", hub: DAF_CONTROLE },
+      { href: "/comptabilite/ecritures", label: "Comptabilité", hint: "Écritures, exports, clôtures, paramètres", hub: DAF_COMPTA },
+      { ...I.coutsMarges, label: "Coûts", hub: COUTS_MARGES },
+      { href: "/caisse/cloture", label: "Caisse", hint: "Sessions et décaissements", hub: DAF_CAISSE },
+      { href: "/parametrage/fiscalite", label: "Fiscalité", hint: "Familles et codes fiscaux" },
+      I.audit,
+    ]),
   ],
 };
 
 /** Postes dont le menu s’affiche en barre basse sur mobile (saisie terrain). */
-export const BOTTOM_NAV_ROLES: Profil[] = ["AGENT_PRODUCTION"];
+export const BOTTOM_NAV_ROLES: Profil[] = ["AGENT_PRODUCTION", "CHAUFFEUR"];
 
 export function navForRole(role: Profil): NavGroup[] {
   const base = ROLE_MENU[role];
-  const used = new Set(base.flatMap((group) => group.items.map((i) => i.href)));
-  // Le hub « Référentiel » (onglets) remplace la liste des pages.
-  if (used.has("/parametrage")) return base;
+  // Menus à plat (un seul groupe) : le référentiel utile est déjà dans une entrée à onglets.
+  if (base.length === 1) return base;
+  const used = new Set(base.flatMap((group) => group.items.flatMap(itemPatterns)));
   const refItems = PARAM_PAGES.filter((p) => !used.has(p.href) && (canReadParam(role, p.href) || canEditParam(role, p.href)));
   if (refItems.length === 0) return base;
   const ref = g("ref", "Référentiel", "sliders", refItems);
@@ -289,14 +367,14 @@ function matchesExtra(href: string, extra: string) {
 }
 
 const EXTRA_ACCESS: Partial<Record<Profil, string[]>> = {
-  RESPONSABLE_QUALITE: ["/stocks"],
   COMMERCIAL: ["/stocks"],
   RESPONSABLE_DISTRIBUTION: ["/commercial/commandes"],
   CAISSIER: ["/commercial/commandes"],
   RESPONSABLE_PRODUCTION: ["/production/qualite"],
 };
 
-export function canAccess(role: Profil, href: string) {
+export function canAccess(role: Profil, url: string) {
+  const href = url.split(/[?#]/)[0];
   if (["/403", "/login", "/", "/accueil"].includes(href)) return true;
   if (flattenNav(role).some((i) => itemPatterns(i).some((p) => matchesItem(href, p)))) return true;
   const extra = EXTRA_ACCESS[role] ?? [];
@@ -377,19 +455,20 @@ export function breadcrumbs(pathname: string) {
     mouvements: "Mouvements",
     inventaires: "Inventaires",
     alertes: "Stock",
-    approvisionnement: "Achats",
+    approvisionnement: "Approvisionnement",
     demandes: "Demandes d'achat",
     commandes: "Commandes",
     receptions: "Réceptions",
     commercial: "Commercial",
     nouvelle: "Nouvelle",
+    facturation: "Facturation",
     clients: "Clients",
     caisse: "Caisse",
     suspendues: "Factures",
     cloture: "Sessions",
     decaissements: "Décaissements",
     impayes: "Impayés",
-    distribution: "Distribution",
+    distribution: "Circuit de livraison",
     preparations: "Préparations",
     bl: "Bons de livraison",
     tournees: "Tournées",
@@ -399,6 +478,7 @@ export function breadcrumbs(pathname: string) {
     comptabilite: "Comptabilité",
     brouillards: "Anomalies",
     "export-sage": "Exports",
+    ecarts: "Écarts de caisse",
     clotures: "Clôtures",
     parametrage: "Référentiel",
     produits: "Articles",

@@ -44,7 +44,7 @@ export default function ReceptionDetailPage() {
       <Panel>
         <DataTable
           columns={[{ key: "a", label: "Article" }, { key: "q", label: "Qté reçue" }]}
-          rows={lines.map((l) => ({ l: ligneArticle(l.ligne_commande), q: formatQty(num(l.quantite_recue), 2) }))}
+          rows={lines.map((l) => ({ a: ligneArticle(l.ligne_commande), q: formatQty(num(l.quantite_recue), 2) }))}
         />
       </Panel>
     </div>

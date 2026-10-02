@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
-  ArrowLeftRight,
   BadgeAlert,
   Ban,
   CalendarClock,
@@ -572,46 +571,63 @@ function agentProduction(state: AppState, h: HomeHelpers): HomeData {
 
 function qualite(state: AppState, h: HomeHelpers): HomeData {
   const lotsWait = state.lots.filter((l) => l.statut === "EN_ATTENTE");
-  const ofRecus = state.ofList.filter((o) => o.statut === "PRODUCTION_TERMINEE" || o.statut === "EN_CONTROLE");
+  // OF terminés pas encore transformés en lot.
+  const ofRecus = state.ofList.filter(
+    (o) => (o.statut === "PRODUCTION_TERMINEE" || o.statut === "EN_CONTROLE") && !state.lots.some((l) => l.ordre_fabrication === o.id),
+  );
   const bloques = state.lots.filter((l) => l.statut === "BLOQUE" || l.statut === "NON_CONFORME");
   const controlesJour = state.controles.filter((c) => sameDay(c.date_controle));
   const quarantaine = state.retoursPhysiques.filter((r) => r.statut === "EN_QUARANTAINE");
+  const lots = "/production/qualite";
   return {
     actions: [
-      { href: "/production/qualite/of", label: "OF reçus", icon: Inbox },
-      { href: "/production/qualite", label: "Lots qualité", icon: FlaskConical },
+      { href: `${lots}?tab=creer`, label: "Créer les lots", icon: Inbox },
+      { href: `${lots}?tab=controler`, label: "Contrôler", icon: FlaskConical },
     ],
     kpis: [
-      { label: "Lots en attente", value: lotsWait.length, tone: lotsWait.length ? "warning" : "success", icon: FlaskConical, href: "/production/qualite" },
-      { label: "OF à contrôler", value: ofRecus.length, icon: Inbox, href: "/production/qualite/of" },
+      { label: "Lots en attente", value: lotsWait.length, tone: lotsWait.length ? "warning" : "success", icon: FlaskConical, href: `${lots}?tab=controler` },
+      { label: "OF à contrôler", value: ofRecus.length, hint: "Lot à créer", tone: ofRecus.length ? "warning" : "default", icon: Inbox, href: `${lots}?tab=creer` },
       { label: "Contrôles du jour", value: controlesJour.length, hint: `${controlesJour.filter((c) => c.resultat === "CONFORME").length} conforme(s)`, tone: "teal", icon: ClipboardCheck },
-      { label: "Lots bloqués", value: bloques.length, hint: "Bloqués ou non conformes", tone: bloques.length ? "danger" : "success", icon: Ban, href: "/production/qualite" },
+      { label: "Lots bloqués", value: bloques.length, hint: "Bloqués ou non conformes", tone: bloques.length ? "danger" : "success", icon: Ban, href: `${lots}?tab=bloques` },
     ],
     sections: [
+      section({
+        id: "of",
+        title: "OF reçus",
+        icon: Inbox,
+        href: `${lots}?tab=creer`,
+        tone: "warning",
+        empty: "Aucun OF en attente de lot.",
+        all: ofRecus.map((o) => ({
+          href: `${lots}?tab=creer`,
+          title: o.numero,
+          detail: `${h.articleName(o.article)} · ${formatQty(num(o.quantite_a_produire), 0)}`,
+          badge: { label: "Lot à créer", tone: "warning" },
+        })),
+      }),
       section({
         id: "lots",
         title: "Lots à contrôler",
         icon: FlaskConical,
-        href: "/production/qualite",
+        href: `${lots}?tab=controler`,
         tone: "warning",
         empty: "Aucun lot en attente.",
         all: lotsWait.map((l) => ({
-          href: `/production/qualite/${l.id}`,
+          href: `${lots}/${l.id}`,
           title: l.numero_lot,
           detail: `${h.articleName(l.article)} · ${formatQty(num(l.quantite), 0)}`,
           meta: formatDate(l.date_production),
         })),
       }),
-      section({ id: "of", title: "OF reçus de la production", icon: Inbox, href: "/production/qualite/of", empty: "Aucun OF à contrôler.", all: ofRecus.map((o) => ofTask(o, h)) }),
       section({
         id: "bloques",
-        title: "Lots bloqués ou non conformes",
+        title: "Lots bloqués",
         icon: Ban,
-        href: "/production/qualite",
+        href: `${lots}?tab=bloques`,
         tone: "danger",
         empty: "Aucun lot bloqué.",
         all: bloques.map((l) => ({
-          href: `/production/qualite/${l.id}`,
+          href: `${lots}/${l.id}`,
           title: l.numero_lot,
           detail: h.articleName(l.article),
           badge: { label: STATUT_LOT_LABEL[l.statut], tone: "danger" },
@@ -619,9 +635,10 @@ function qualite(state: AppState, h: HomeHelpers): HomeData {
       }),
       section({
         id: "retours",
-        title: "Retours clients en quarantaine",
+        title: "Retours en quarantaine",
         icon: MessageSquareWarning,
         href: "/reclamations",
+        tone: "warning",
         empty: "Aucun retour en quarantaine.",
         all: quarantaine.map((r) => ({
           href: `/reclamations/${r.reclamation}`,
@@ -633,7 +650,7 @@ function qualite(state: AppState, h: HomeHelpers): HomeData {
     ],
     chart: {
       title: "Lots par statut",
-      href: "/production/qualite",
+      href: lots,
       kind: "donut",
       centerLabel: "lots",
       data: countBy(state.lots, (l) => l.statut, (k) => STATUT_LOT_LABEL[k as keyof typeof STATUT_LOT_LABEL] ?? k),
@@ -652,7 +669,7 @@ function magasinier(state: AppState, h: HomeHelpers): HomeData {
   return {
     actions: [
       { href: "/production/demandes-matieres", label: "Servir l’atelier", icon: PackageMinus },
-      { href: "/stocks/mouvements", label: "Mouvements", icon: ArrowLeftRight },
+      { href: "/approvisionnement/receptions", label: "Réceptionner", icon: Truck },
     ],
     kpis: [
       { label: "Matières à servir", value: aServir.length, tone: aServir.length ? "warning" : "success", icon: PackageMinus, href: "/production/demandes-matieres" },
@@ -680,6 +697,7 @@ function magasinier(state: AppState, h: HomeHelpers): HomeData {
         title: "Préparations de commandes",
         icon: PackageOpen,
         href: "/distribution/preparations",
+        tone: "warning",
         empty: "Aucune préparation en cours.",
         all: preps.map((p) => ({
           href: `/distribution/preparations/${p.id}`,
@@ -695,7 +713,7 @@ function magasinier(state: AppState, h: HomeHelpers): HomeData {
         href: "/approvisionnement/receptions",
         empty: "Aucune livraison attendue.",
         all: attendues.map((c) => ({
-          href: "/approvisionnement/receptions",
+          href: `/approvisionnement/receptions?cf=${c.id}`,
           title: c.numero,
           detail: `Commandée le ${formatDate(c.date_commande)}`,
           badge: { label: STATUT_CF_LABEL[c.statut], tone: c.statut === "PARTIELLEMENT_RECUE" ? "warning" : "info" },
@@ -734,59 +752,62 @@ function achats(state: AppState, h: HomeHelpers): HomeData {
   const fournisseur = (id: number) => state.fournisseurs.find((f) => f.id === id)?.nom ?? `Fournisseur n°${id}`;
   return {
     actions: [
-      { href: "/approvisionnement/demandes", label: "Demandes d’achat", icon: FileText },
-      { href: "/approvisionnement/commandes", label: "Commandes fournisseurs", icon: ShoppingCart },
+      { href: "/approvisionnement", label: "Approvisionnement", icon: ShoppingCart },
     ],
     kpis: [
-      { label: "Demandes à approuver", value: daWait.length, tone: daWait.length ? "warning" : "success", icon: FileText, href: "/approvisionnement/demandes" },
-      { label: "Besoins à couvrir", value: besoins.length, icon: ListTodo, href: "/approvisionnement/besoins" },
-      { label: "Commandes à envoyer", value: brouillons.length, tone: brouillons.length ? "warning" : "default", icon: ShoppingCart, href: "/approvisionnement/commandes" },
-      { label: "Livraisons attendues", value: attendues.length, tone: "teal", icon: Truck, href: "/approvisionnement/receptions" },
+      { label: "Demandes à approuver", value: daWait.length, tone: daWait.length ? "warning" : "success", icon: FileText, href: "/approvisionnement?etape=demandes" },
+      { label: "Besoins à couvrir", value: besoins.length, icon: ListTodo, href: "/approvisionnement?etape=besoins" },
+      { label: "Commandes à envoyer", value: brouillons.length, tone: brouillons.length ? "warning" : "default", icon: ShoppingCart, href: "/approvisionnement?etape=commandes" },
+      { label: "Livraisons attendues", value: attendues.length, tone: "teal", icon: Truck, href: "/approvisionnement?etape=receptions" },
     ],
     sections: [
+      section({
+        id: "besoins",
+        title: "Besoins non couverts",
+        icon: ListTodo,
+        href: "/approvisionnement?etape=besoins",
+        tone: "warning",
+        empty: "Tous les besoins sont couverts.",
+        all: besoins.map((b) => ({
+          href: "/approvisionnement?etape=besoins",
+          title: h.articleName(b.article),
+          detail: `${formatQty(num(b.quantite_besoin), 2)} à couvrir`,
+          badge:
+            b.origine === "SEUIL_ALERTE"
+              ? { label: "Sous seuil", tone: "danger" }
+              : { label: b.origine === "AUTO_PRODUCTION" ? "Production" : "Manuel", tone: "neutral" },
+        })),
+      }),
       section({
         id: "da",
         title: "Demandes en attente d’approbation",
         icon: FileText,
-        href: "/approvisionnement/demandes",
+        href: "/approvisionnement?etape=demandes",
         tone: "warning",
         empty: "Aucune demande en attente.",
         all: daWait.map((d) => ({
-          href: "/approvisionnement/demandes",
+          href: "/approvisionnement?etape=demandes",
           title: `Demande n°${d.id}`,
           detail: `${h.articleName(d.article)} · ${formatQty(num(d.quantite_demandee), 2)}`,
           meta: `par ${h.userName(d.demandeur)}`,
         })),
       }),
       section({
-        id: "besoins",
-        title: "Besoins non couverts",
-        icon: ListTodo,
-        href: "/approvisionnement/besoins",
-        empty: "Tous les besoins sont couverts.",
-        all: besoins.map((b) => ({
-          href: "/approvisionnement/besoins",
-          title: h.articleName(b.article),
-          detail: `${formatQty(num(b.quantite_besoin), 2)} à couvrir`,
-          badge: { label: b.origine === "AUTO_PRODUCTION" ? "Production" : "Manuel", tone: "neutral" },
-        })),
-      }),
-      section({
         id: "brouillons",
         title: "Commandes prêtes à envoyer",
         icon: ShoppingCart,
-        href: "/approvisionnement/commandes",
+        href: "/approvisionnement?etape=commandes",
         empty: "Aucune commande en brouillon.",
-        all: brouillons.map((c) => ({ href: "/approvisionnement/commandes", title: c.numero, detail: fournisseur(c.fournisseur), badge: { label: "Brouillon", tone: "neutral" } })),
+        all: brouillons.map((c) => ({ href: "/approvisionnement?etape=commandes", title: c.numero, detail: fournisseur(c.fournisseur), badge: { label: "Brouillon", tone: "neutral" } })),
       }),
       section({
         id: "attendues",
         title: "Livraisons attendues",
         icon: Truck,
-        href: "/approvisionnement/receptions",
+        href: "/approvisionnement?etape=receptions",
         empty: "Aucune livraison attendue.",
         all: attendues.map((c) => ({
-          href: "/approvisionnement/receptions",
+          href: "/approvisionnement?etape=receptions",
           title: c.numero,
           detail: `${fournisseur(c.fournisseur)} · commandée le ${formatDate(c.date_commande)}`,
           badge: { label: STATUT_CF_LABEL[c.statut], tone: c.statut === "PARTIELLEMENT_RECUE" ? "warning" : "info" },
@@ -797,7 +818,7 @@ function achats(state: AppState, h: HomeHelpers): HomeData {
     chart: {
       title: "Commandes fournisseurs",
       subtitle: "Par statut",
-      href: "/approvisionnement/commandes",
+      href: "/approvisionnement?etape=commandes",
       kind: "donut",
       centerLabel: "cmd.",
       data: countBy(state.commandesFournisseur, (c) => c.statut, (k) => STATUT_CF_LABEL[k as keyof typeof STATUT_CF_LABEL] ?? k),
@@ -814,14 +835,14 @@ function commercial(state: AppState, h: HomeHelpers): HomeData {
   const bloques = state.clients.filter((c) => c.bloque);
   return {
     actions: [
-      { href: "/commercial/commandes/nouvelle", label: "Nouvelle commande", icon: FilePlus2 },
-      { href: "/commercial/clients", label: "Clients", icon: Users },
+      { href: "/commercial/commandes?nouvelle=1", label: "Nouvelle commande", icon: FilePlus2 },
+      { href: "/parametrage/clients", label: "Clients", icon: Users },
     ],
     kpis: [
-      { label: "Facturé ce mois", value: formatDa(caMois), tone: "success", icon: Receipt, href: "/caisse" },
+      { label: "Facturé ce mois", value: formatDa(caMois), tone: "success", icon: Receipt, href: "/commercial/facturation" },
       { label: "Commandes à valider", value: brouillons.length, tone: brouillons.length ? "warning" : "default", icon: ClipboardList, href: "/commercial/commandes" },
-      { label: "Factures non payées", value: impayees.length, hint: formatDa(sum(impayees, (f) => f.montant_total)), icon: Wallet, href: "/caisse" },
-      { label: "Factures échues", value: echues.length, tone: echues.length ? "danger" : "success", icon: CalendarClock, href: "/commercial/impayes" },
+      { label: "Factures non payées", value: impayees.length, hint: formatDa(sum(impayees, (f) => f.montant_total)), icon: Wallet, href: "/commercial/facturation?onglet=impayes" },
+      { label: "Factures échues", value: echues.length, tone: echues.length ? "danger" : "success", icon: CalendarClock, href: "/commercial/facturation?onglet=impayes" },
     ],
     sections: [
       section({
@@ -843,15 +864,24 @@ function commercial(state: AppState, h: HomeHelpers): HomeData {
         id: "echues",
         title: "Factures échues",
         icon: CalendarClock,
-        href: "/commercial/impayes",
+        href: "/commercial/facturation?onglet=impayes",
         tone: "danger",
         empty: "Aucune facture en retard.",
         all: echues.map((f) => ({
-          href: "/commercial/impayes",
+          href: `/commercial/commandes/${f.commande}`,
           title: f.numero,
           detail: `${h.clientName(f.client)} · ${formatDa(num(f.montant_total))}`,
           badge: { label: `Échue le ${formatDate(f.date_echeance ?? "")}`, tone: "danger" },
         })),
+      }),
+      section({
+        id: "bloques",
+        title: "Clients bloqués",
+        icon: Ban,
+        href: "/parametrage/clients",
+        tone: "warning",
+        empty: "Aucun client bloqué.",
+        all: bloques.map((c) => ({ href: `/parametrage/clients?client=${c.id}`, title: c.nom, detail: c.code, badge: { label: "Bloqué", tone: "danger" } })),
       }),
       section({
         id: "reclamations",
@@ -865,14 +895,6 @@ function commercial(state: AppState, h: HomeHelpers): HomeData {
           detail: `${h.clientName(r.client)} · ${TYPE_PROBLEME_LABEL[r.type_probleme] ?? r.type_probleme}`,
           badge: { label: STATUT_RECLAMATION_LABEL[r.statut], tone: r.statut === "OUVERTE" ? "warning" : "info" },
         })),
-      }),
-      section({
-        id: "bloques",
-        title: "Clients bloqués",
-        icon: Ban,
-        href: "/commercial/clients",
-        empty: "Aucun client bloqué.",
-        all: bloques.map((c) => ({ href: "/commercial/clients", title: c.nom, detail: c.code, badge: { label: "Bloqué", tone: "danger" } })),
       }),
     ],
     chart: {
@@ -897,21 +919,14 @@ function caissier(state: AppState, h: HomeHelpers): HomeData {
   const factureNum = (id: number) => state.factures.find((f) => f.id === id)?.numero ?? `Facture n°${id}`;
   return {
     cash: { principale, maCaisse, session, caisses: state.caisses.filter((c) => c.actif && !c.est_principale) },
+    // Session fermée : le bouton unique « Ouvrir ma session » est dans le bandeau caisse.
     actions: session
       ? [
           { href: "/caisse", label: "Encaisser", icon: Wallet },
-          { href: "/caisse/cloture", label: "Clôturer la session", icon: Vault },
+          { href: "/caisse/cloture", label: "Ma session", icon: Vault },
         ]
-      : [{ href: "/caisse/cloture", label: "Ouvrir une session", icon: Vault }],
+      : [],
     kpis: [
-      {
-        label: "Session de caisse",
-        value: session ? "Ouverte" : "Fermée",
-        hint: session ? `Solde ${formatDa(num(session.solde_theorique_actuel ?? session.solde_ouverture))}` : "Ouvrez une session pour encaisser",
-        tone: session ? "success" : "warning",
-        icon: Vault,
-        href: "/caisse/cloture",
-      },
       { label: "Factures à encaisser", value: aEncaisser.length, hint: formatDa(sum(aEncaisser, (f) => f.montant_total)), tone: aEncaisser.length ? "warning" : "default", icon: Receipt, href: "/caisse" },
       { label: "Encaissé aujourd’hui", value: formatDa(sum(encJour, (e) => e.montant)), hint: `${encJour.length} encaissement(s)`, tone: "teal", icon: Wallet },
       { label: "Décaissé aujourd’hui", value: formatDa(sum(decJour, (d) => d.montant)), hint: `${decJour.length} sortie(s)`, icon: HandCoins, href: "/caisse/decaissements" },
@@ -925,7 +940,7 @@ function caissier(state: AppState, h: HomeHelpers): HomeData {
         tone: "warning",
         empty: "Aucune facture en attente.",
         all: [...aEncaisser].sort(byDateDesc((f) => f.date_emission)).map((f) => ({
-          href: `/caisse/encaissement/${f.id}`,
+          href: `/caisse?facture=${f.id}`,
           title: f.numero,
           detail: `${h.clientName(f.client)} · ${formatDa(num(f.montant_total))}`,
           badge: f.statut === "PARTIELLEMENT_PAYEE" ? { label: "Partiel", tone: "warning" } : undefined,
@@ -935,10 +950,10 @@ function caissier(state: AppState, h: HomeHelpers): HomeData {
         id: "enc",
         title: "Encaissements du jour",
         icon: Wallet,
-        href: "/caisse/cloture",
+        href: "/caisse",
         empty: "Aucun encaissement aujourd’hui.",
         all: [...encJour].sort(byDateDesc((e) => e.date_encaissement)).map((e) => ({
-          href: "/caisse/cloture",
+          href: `/caisse?facture=${e.facture}`,
           title: e.numero,
           detail: `${factureNum(e.facture)} · ${formatDa(num(e.montant))}`,
           badge: { label: MODE_PAIEMENT_LABEL[e.mode_paiement], tone: "teal" },
@@ -975,49 +990,36 @@ function distribution(state: AppState, h: HomeHelpers): HomeData {
   const pretes = state.preparations.filter((p) => p.statut === "PRETE");
   const enLivraison = state.bonsLivraison.filter((b) => b.statut === "EN_LIVRAISON");
   const tourneesJour = state.tournees.filter((t) => sameDay(t.date_tournee));
-  const reclamations = state.reclamations.filter((r) => r.statut !== "CLOTUREE");
   const cmd = (id: number) => state.commandes.find((c) => c.id === id);
   const vehicule = (id: number) => state.vehicules.find((v) => v.id === id)?.immatriculation ?? `Véhicule n°${id}`;
   const chauffeurNom = (id: number) => h.userName(state.chauffeurs.find((c) => c.id === id)?.utilisateur);
   return {
     actions: [
-      { href: "/distribution/preparations", label: "Préparations", icon: PackageOpen },
-      { href: "/distribution/tournees", label: "Tournées", icon: Route },
+      { href: "/distribution", label: "Circuit de livraison", icon: Truck },
+      { href: "/distribution/tournees", label: "Tournées & flotte", icon: Route },
     ],
     kpis: [
-      { label: "Commandes à lancer", value: aLancer.length, tone: aLancer.length ? "warning" : "success", icon: ClipboardList, href: "/commercial/commandes" },
-      { label: "Préparations en cours", value: enCours.length, icon: PackageOpen, href: "/distribution/preparations" },
-      { label: "Prêtes à sortir", value: pretes.length, tone: pretes.length ? "teal" : "default", icon: PackageCheck, href: "/distribution/preparations" },
-      { label: "En livraison", value: enLivraison.length, hint: `${tourneesJour.length} tournée(s) aujourd’hui`, icon: Truck, href: "/distribution/bl" },
+      { label: "Commandes à lancer", value: aLancer.length, tone: aLancer.length ? "warning" : "success", icon: ClipboardList, href: "/distribution?etape=commandes" },
+      { label: "Préparations en cours", value: enCours.length, icon: PackageOpen, href: "/distribution?etape=preparations" },
+      { label: "Prêtes à sortir", value: pretes.length, tone: pretes.length ? "teal" : "default", icon: PackageCheck, href: "/distribution?etape=preparations" },
+      { label: "En livraison", value: enLivraison.length, hint: `${tourneesJour.length} tournée(s) aujourd’hui`, icon: Truck, href: "/distribution?etape=bl" },
     ],
     sections: [
       section({
         id: "lancer",
         title: "Commandes validées à préparer",
         icon: ClipboardList,
-        href: "/distribution/preparations",
+        href: "/distribution?etape=commandes",
         tone: "warning",
         empty: "Toutes les commandes validées sont lancées.",
-        all: aLancer.map((c) => ({ href: `/commercial/commandes/${c.id}`, title: c.numero, detail: h.clientName(c.client), meta: formatDate(c.date_commande) })),
-      }),
-      section({
-        id: "preps",
-        title: "Préparations",
-        icon: PackageOpen,
-        href: "/distribution/preparations",
-        empty: "Aucune préparation en cours.",
-        all: [...pretes, ...enCours].map((p) => ({
-          href: `/distribution/preparations/${p.id}`,
-          title: cmd(p.commande)?.numero ?? `Préparation n°${p.id}`,
-          detail: h.clientName(cmd(p.commande)?.client),
-          badge: { label: STATUT_PREP_LABEL[p.statut], tone: p.statut === "PRETE" ? "teal" : p.statut === "EN_PREPARATION" ? "warning" : "info" },
-        })),
+        all: aLancer.map((c) => ({ href: "/distribution?etape=commandes", title: c.numero, detail: h.clientName(c.client), meta: formatDate(c.date_commande) })),
       }),
       section({
         id: "bl",
         title: "Livraisons en cours",
         icon: Truck,
-        href: "/distribution/bl",
+        href: "/distribution?etape=bl",
+        tone: "info",
         empty: "Aucune livraison en cours.",
         all: enLivraison.map((b) => ({ href: `/distribution/bl/${b.id}`, title: b.numero, detail: h.clientName(cmd(b.commande)?.client), badge: { label: STATUT_BL_LABEL[b.statut], tone: "info" } })),
       }),
@@ -1026,21 +1028,10 @@ function distribution(state: AppState, h: HomeHelpers): HomeData {
         title: "Tournées du jour",
         icon: Route,
         href: "/distribution/tournees",
+        pinned: true,
         empty: "Aucune tournée prévue aujourd’hui.",
-        all: tourneesJour.map((t) => ({ href: "/distribution/tournees", title: t.numero, detail: `${chauffeurNom(t.chauffeur)} · ${vehicule(t.vehicule)}` })),
+        all: tourneesJour.map((t) => ({ href: `/distribution/tournees?tournee=${t.id}`, title: t.numero, detail: `${chauffeurNom(t.chauffeur)} · ${vehicule(t.vehicule)}` })),
       }),
-      ...(reclamations.length
-        ? [
-            section({
-              id: "reclamations",
-              title: "Réclamations ouvertes",
-              icon: MessageSquareWarning,
-              href: "/reclamations",
-              empty: "",
-              all: reclamations.map((r) => ({ href: `/reclamations/${r.id}`, title: r.numero, detail: h.clientName(r.client), badge: { label: STATUT_RECLAMATION_LABEL[r.statut], tone: "warning" } })),
-            }),
-          ]
-        : []),
     ],
     chart: {
       title: "Bons de livraison",
@@ -1108,8 +1099,8 @@ function daf(state: AppState, h: HomeHelpers): HomeData {
   const ecarts = state.ecartsCaisse.filter((e) => e.valide_par == null);
   return {
     actions: [
-      { href: "/comptabilite/export-sage", label: "Exports comptables", icon: FileOutput },
-      { href: "/comptabilite/clotures", label: "Clôtures", icon: Lock },
+      { href: "/comptabilite/brouillards", label: "Contrôle", icon: AlertTriangle },
+      { href: "/comptabilite/ecritures", label: "Comptabilité", icon: Lock },
     ],
     kpis: [
       { label: "Anomalies à traiter", value: anomalies.length, tone: anomalies.length ? "danger" : "success", icon: AlertTriangle, href: "/comptabilite/brouillards" },
@@ -1137,6 +1128,7 @@ function daf(state: AppState, h: HomeHelpers): HomeData {
         title: "Factures échues",
         icon: CalendarClock,
         href: "/commercial/impayes",
+        tone: "danger",
         empty: "Aucune facture en retard.",
         all: echues.map((f) => ({ href: "/commercial/impayes", title: f.numero, detail: `${h.clientName(f.client)} · ${formatDa(num(f.montant_total))}`, badge: { label: `Échue le ${formatDate(f.date_echeance ?? "")}`, tone: "danger" } })),
       }),
@@ -1144,10 +1136,11 @@ function daf(state: AppState, h: HomeHelpers): HomeData {
         id: "ecarts",
         title: "Écarts de caisse à valider",
         icon: Vault,
-        href: "/caisse/cloture",
+        href: "/comptabilite/ecarts",
+        tone: "warning",
         empty: "Aucun écart en attente.",
         all: ecarts.map((e) => ({
-          href: "/caisse/cloture",
+          href: "/comptabilite/ecarts",
           title: `Session n°${e.session_caisse}`,
           detail: e.justification || "Sans justification",
           badge: { label: formatDa(num(e.montant_ecart)), tone: num(e.montant_ecart) < 0 ? "danger" : "warning" },

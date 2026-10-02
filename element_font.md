@@ -160,190 +160,173 @@ Mes OF · Saisir · Accueil
 
 ### 2.5 Responsable Qualité (`RESPONSABLE_QUALITE`)
 **Carte d'identité**
-- Station : Laboratoire / lots · Couleur : vert · Icône : coche
-- Mission : « Contrôlez les lots. Seuls les lots libérés peuvent être vendus. »
+- Station : Contrôle et libération · Couleur : vert · Icône : coche
+- Mission : « Transformez chaque OF terminé en lot, contrôlez-le, puis libérez-le ou bloquez-le. Seuls les lots libérés se vendent. »
 - Posture : « Contrôle conforme ou non conforme, puis libération ou blocage. »
-- Possède : Lots, Contrôles qualité, Libération / blocage
-- Ne fait jamais : modifier le planning, vendre un lot en attente
-- Règles : un contrôle met à jour le statut du lot ; on ne libère un lot que s'il est conforme
+- Fait : lots, contrôles, libération, blocage, contrôle des retours
+- Ne fait pas : modifier le planning, vendre un lot en attente · Ne voit pas : commandes, prix, caisse
+- Priorités : 1) transformer chaque OF terminé en lot ; 2) contrôler (Conforme / Non conforme) ; 3) libérer ou bloquer ; 4) traiter les retours clients
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Qualité : OF reçus, Lots qualité, Fiches techniques (lecture), Réclamations
-- Référentiel : Articles (lecture seule — Fiches techniques déjà dans le menu Qualité)
-- *Accès supplémentaire* : Situation de stock (`/stocks`, lecture).
+**Menu (sidebar)** — un seul groupe « Qualité », 5 entrées (au lieu de 6) :
+Accueil · Lots qualité · Réclamations · Stock · Fiches
+- **Fiches** (hub à onglets, lecture) : Articles · Fiches techniques.
+- L'ancien écran « OF reçus » devient l'onglet « À créer » des lots (`/production/qualite/of` redirige).
 
 **Page d'accueil**
-- Actions rapides : OF reçus, Lots qualité.
-- KPI : Lots en attente, OF à contrôler, Contrôles du jour (+ conformes), Lots bloqués.
-- Files de travail : Lots à contrôler, OF reçus de la production, Lots bloqués ou non conformes, Retours clients en quarantaine.
+- Actions rapides : Créer les lots, Contrôler.
+- KPI : Lots en attente, OF à contrôler (lot à créer), Contrôles du jour (+ conformes), Lots bloqués.
+- Files de travail : OF reçus, Lots à contrôler, Lots bloqués, Retours en quarantaine.
 - Graphique : camembert « Lots par statut ».
 
-**Écrans accessibles** : Accueil · Lots qualité (liste + détail) · OF reçus · Fiches techniques (lecture) · Réclamations (liste + détail) · Situation de stock (lecture) · Référentiel : Articles (lecture).
+**Écrans accessibles** : Accueil · Lots qualité (onglets + fiche lot) · Réclamations (liste + détail) · Situation de stock · Fiches (Articles, Fiches techniques en lecture).
 
 ### 2.6 Magasinier (`MAGASINIER`)
 **Carte d'identité**
-- Station : Magasin · Couleur : ambre · Icône : boîtes
-- Mission : « Sorties matières, mouvements, inventaires, réceptions et préparations. »
+- Station : Magasin et quai · Couleur : ambre · Icône : boîtes
+- Mission : « Livrez les matières à l'atelier, sortez les commandes préparées, réceptionnez les fournisseurs et tenez les inventaires. »
 - Posture : « Chaque mouvement a une origine. Disponible = physique − bloquée − réservée. »
-- Possède : Stock, Mouvements, Inventaires, Sorties matières, Réceptions, Préparations
-- Ne fait jamais : modifier un prix de vente, encaisser
-- Règles : un mouvement met à jour le stock immédiatement ; on confirme la préparation puis la sortie magasin
+- Fait : livraisons matières, sorties, réceptions, inventaires, dépôts
+- Ne fait pas : prix, encaissement · Ne voit pas : factures, caisse, coûts
+- Priorités : 1) livrer les matières à l'atelier (partiel possible) ; 2) confirmer la préparation puis la sortie magasin ; 3) réceptionner ; 4) inventaires
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Magasin : Matières atelier, Situation, Mouvements, Inventaires, Demandes d'achat
-- Réceptions & quai : Réceptions, Préparations, Réclamations
-- Référentiel : Dépôts (écriture) + Fiches techniques (lecture)
+**Menu (sidebar)** — un seul groupe « Magasin », 6 entrées (au lieu de 11) :
+Accueil · Servir l'atelier · Préparations · Réceptions · Stock · Réclamations
+- **Stock** (hub à onglets) : Situation · Mouvements · Inventaires · Dépôts.
 
 **Page d'accueil**
-- Actions rapides : Servir l'atelier, Mouvements.
+- Actions rapides : Servir l'atelier, Réceptionner.
 - KPI : Matières à servir, Préparations clients, Réceptions attendues, Articles sous seuil.
-- Files de travail : Matières à servir à l'atelier, Préparations de commandes, Livraisons fournisseurs attendues, Articles sous le seuil, Inventaires en cours (si au moins un en cours).
+- Files dans l'ordre d'urgence : Matières à servir, Préparations, Livraisons fournisseurs attendues (ouvre directement le tiroir de réception), Articles sous le seuil, puis Inventaires en cours s'il y en a.
 - Graphique : camembert « Mouvements de stock » (7 derniers jours).
 
-**Écrans accessibles** : Accueil · Matières atelier · Situation de stock · Mouvements de stock · Inventaires (liste + détail) · Demandes d'achat (lecture) · Réceptions achat (liste + détail) · Préparations (liste + détail) · Réclamations · Référentiel : Dépôts, Fiches techniques (lecture).
+**Écrans accessibles** : Accueil · Servir l'atelier · Préparations (liste + fiche) · Réceptions · Stock (Situation, Mouvements, Inventaires, Dépôts) · Réclamations.
 
 ### 2.7 Responsable Achat (`RESPONSABLE_ACHATS`)
 **Carte d'identité**
 - Station : Approvisionnement · Couleur : teal · Icône : chariot
-- Mission : « Fournisseurs, demandes, commandes et réceptions. »
+- Mission : « Couvrez les besoins, traitez les demandes d'achat, envoyez les commandes et suivez les réceptions. »
 - Posture : « Le stock matières suit le reçu, pas le commandé. »
-- Possède : Fournisseurs, Demandes d'achat, Commandes fournisseurs, Réceptions
-- Ne fait jamais : lancer un OF, modifier une fiche client
-- Règles : approuver/rejeter une demande est réservé à ce poste ; envoyer une commande la transmet au fournisseur
+- Fait : fournisseurs, DA (approuver / rejeter), commandes, réceptions
+- Ne fait pas : lancer un OF, modifier un client · Ne voit pas : ventes, caisse, production
+- Priorités : 1) couvrir les besoins sous seuil ; 2) approuver / rejeter les DA ; 3) créer et envoyer les commandes ; 4) suivre les réceptions
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Achats : Besoins d'achat, Demandes d'achat, Commandes fournisseurs, Réceptions
-- Stocks : Situation
-- Référentiel : Articles, Matières, Fournisseurs (écriture)
+**Menu (sidebar)** — un seul groupe « Achats », 5 entrées (au lieu de 9) :
+Accueil · Approvisionnement · Fournisseurs · Stock · Catalogue
+- **Catalogue** (hub à onglets) : Articles · Matières.
 
 **Page d'accueil**
-- Actions rapides : Demandes d'achat, Commandes fournisseurs.
-- KPI : Demandes à approuver, Besoins à couvrir, Commandes à envoyer, Livraisons attendues.
-- Files de travail : Demandes en attente d'approbation, Besoins non couverts, Commandes prêtes à envoyer, Livraisons attendues, Articles sous le seuil.
+- Action rapide : Approvisionnement.
+- KPI : Demandes à approuver, Besoins à couvrir, Commandes à envoyer, Livraisons attendues (chacun ouvre l'étape correspondante du flux).
+- Files dans l'ordre du flux : Besoins non couverts (badge « Sous seuil »), Demandes en attente d'approbation, Commandes prêtes à envoyer, Livraisons attendues, puis Articles sous le seuil.
 - Graphique : camembert « Commandes fournisseurs » par statut.
 
-**Écrans accessibles** : Accueil · Besoins d'approvisionnement · Demandes d'achat · Commandes fournisseurs · Réceptions achat (liste + détail) · Situation de stock · Référentiel : Articles, Matières, Fournisseurs (liste + fiche).
+**Écrans accessibles** : Accueil · Approvisionnement (et les anciens écrans Besoins, Demandes, Commandes, Réceptions) · Fournisseurs · Situation de stock · Catalogue (Articles, Matières).
 
 ### 2.8 Commercial (`COMMERCIAL`)
 **Carte d'identité**
 - Station : Vente · Couleur : bleu marine · Icône : poignée de main
-- Mission : « Clients, tarifs, commandes et factures. Consultez le stock, ne le modifiez pas. »
+- Mission : « Créez les commandes, validez-les, facturez, puis suivez les impayés et les clients bloqués. »
 - Posture : « Vous ne forcez pas le stock. Les lots non libérés ne sont pas vendables. »
-- Possède : Clients, Commandes, Lignes, Factures, Tarifs
-- Ne fait jamais : encaisser, modifier le stock, livrer
-- Règles : un client bloqué ne peut plus commander ; la commande suit le circuit brouillon → facturée
+- Fait : clients, tarifs, commandes, factures, avoirs, réclamations · Voit : stock en lecture
+- Ne fait pas : encaisser, modifier le stock, livrer
+- Priorités : 1) créer la commande ; 2) ajouter les lignes ; 3) valider ; 4) facturer ; 5) suivre impayés et clients bloqués
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Commercial : Commandes, Nouvelle commande, Clients, Factures, Avoirs, Impayés, Réclamations
-- Référentiel : Clients, Tarifs (écriture) + Articles (lecture)
-- *Accès supplémentaire* : Situation de stock (`/stocks`, lecture).
+**Menu (sidebar)** — un seul groupe « Vente », 6 entrées (au lieu de 11) :
+Accueil · Commandes · Facturation · Clients · Tarifs · Réclamations
 
 **Page d'accueil**
-- Actions rapides : Nouvelle commande, Clients.
+- Actions rapides : Nouvelle commande (ouvre le tiroir), Clients.
 - KPI : Facturé ce mois, Commandes à valider, Factures non payées, Factures échues.
-- Files de travail : Commandes en brouillon, Factures échues, Réclamations ouvertes, Clients bloqués.
+- Files : Commandes en brouillon, Factures échues, Clients bloqués, Réclamations ouvertes.
 - Graphique : camembert « Commandes par statut ».
 
-**Écrans accessibles** : Accueil · Commandes clients (liste + détail + nouvelle commande) · Clients · Avoirs · Impayés · Réclamations (liste + détail) · Situation de stock (lecture) · Référentiel : Clients, Tarifs (liste + fiche), Articles (lecture).
+**Écrans accessibles** : Accueil · Commandes (liste + fiche) · Facturation (Factures, Impayés, Avoirs) · Clients · Tarifs · Réclamations · Situation de stock (lecture).
 
 ### 2.9 Caissier (`CAISSIER`)
 **Carte d'identité**
 - Station : Caisse · Couleur : vert · Icône : billet
-- Mission : « Ouvrez une session, encaissez les factures, clôturez. Justifiez un écart, ne le supprimez jamais. »
+- Mission : « Ouvrez votre session, encaissez les factures, demandez un décaissement si besoin, puis clôturez en justifiant l'écart. »
 - Posture : « Le caissier ne modifie ni commande, ni prix, ni stock. »
-- Possède : Sessions de caisse, Encaissements, Écarts (justification)
-- Ne fait jamais : supprimer un écart, valider un BL, exporter la comptabilité
-- Règles : la clôture compare solde théorique et solde compté ; un écart doit être justifié
+- Fait : encaisser, demander un décaissement, clôturer
+- Ne fait pas : supprimer un écart, valider un BL, exporter · Ne voit pas : prix, stock, autres sessions
+- Priorités : 1) ouvrir la session ; 2) encaisser les factures ; 3) demander un décaissement si besoin ; 4) clôturer et justifier l'écart
+- Sans caisse affectée : bandeau bloquant « contactez l'Admin SI » (accueil, Caisse, Ma session, Décaissements).
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Caisse : Encaissements (`/caisse`), Sessions de caisse (`/caisse/cloture`), Décaissements
-- *Accès supplémentaire* : Commandes clients (`/commercial/commandes`, lecture).
-- Pas de Référentiel.
+**Menu (sidebar)** — un seul groupe « Caisse », 4 entrées (les anciens écrans « Encaissement » et « Factures non soldées » sont intégrés à Caisse) :
+Accueil · Caisse · Décaissements · Ma session
 
 **Page d'accueil**
-- Actions rapides : si session ouverte → Encaisser + Clôturer la session ; sinon → Ouvrir une session.
-- **Bandeau caisse** (bloc « cash », exclusif à ce poste) : solde de la caisse principale, solde de sa caisse personnelle et statut de session, autres caisses actives.
-- KPI : Session de caisse (ouverte/fermée), Factures à encaisser, Encaissé aujourd'hui, Décaissé aujourd'hui.
-- Files de travail : Factures à encaisser, Encaissements du jour, Écarts à justifier (si applicable).
-- Graphique : camembert « Encaissements du jour » par mode de paiement.
+- **Bandeau caisse en tête** : solde de la caisse principale (masquable), ma caisse, état de la session ; si la session est fermée, **bouton unique [Ouvrir ma session]**.
+- Actions rapides (session ouverte) : Encaisser, Ma session.
+- KPI : Factures à encaisser, Encaissé aujourd'hui, Décaissé aujourd'hui.
+- Files : Factures à encaisser (ouvrent la facture dans Caisse), Encaissements du jour, Écarts à justifier.
+- Graphique : camembert des encaissements du jour par mode de paiement.
 
-**Écrans accessibles** : Accueil · Factures et encaissements (`/caisse`) · Sessions de caisse / Clôture · Décaissements · Factures non soldées (`/caisse/suspendues`) · Commandes clients (lecture).
+**Écrans accessibles** : Accueil · Caisse · Décaissements · Ma session · Commandes (lecture, depuis une facture).
 
 ### 2.10 Responsable Distribution (`RESPONSABLE_DISTRIBUTION`)
 **Carte d'identité**
 - Station : Logistique · Couleur : teal · Icône : camion
-- Mission : « Véhicules, chauffeurs, tournées, préparations et livraisons. »
-- Posture : « Circuit : commande → préparation → sortie magasin → bon de livraison → signature client. »
-- Possède : Tournées, Véhicules, Chauffeurs, Préparations, Bons de livraison
-- Ne fait jamais : encaisser, modifier le stock hors transfert
-- Règles : confirmer une livraison enregistre la signature du client
+- Mission : « Lancez la préparation des commandes validées, créez les BL, affectez-les aux tournées et confirmez les livraisons. »
+- Posture : « Circuit : commande → préparation → sortie magasin → bon de livraison → livraison confirmée. »
+- Fait : préparations, BL, tournées, véhicules, chauffeurs · Voit : commandes en lecture
+- Ne fait pas : encaisser, modifier le stock hors transfert
+- Priorités : 1) lancer la préparation des commandes validées ; 2) créer le BL et l'affecter à une tournée ; 3) confirmer la livraison une fois le paiement soldé
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Distribution : Préparations, Bons de livraison, Tournées, Réclamations
-- Commandes : Commandes (lecture/consultation des commandes à préparer)
-- Pas de Référentiel.
+**Menu (sidebar)** — un seul groupe « Logistique », 4 entrées (au lieu de 6) :
+Accueil · Circuit de livraison · Tournées & flotte · Réclamations
 
 **Page d'accueil**
-- Actions rapides : Préparations, Tournées.
-- KPI : Commandes à lancer, Préparations en cours, Prêtes à sortir, En livraison.
-- Files de travail : Commandes validées à préparer, Préparations, Livraisons en cours, Tournées du jour, Réclamations ouvertes (si existantes).
+- Actions rapides : Circuit de livraison, Tournées & flotte.
+- KPI : Commandes à lancer, Préparations en cours, Prêtes à sortir, En livraison (chacun ouvre l'étape du circuit).
+- Files : Commandes validées à préparer, Livraisons en cours, Tournées du jour.
 - Graphique : camembert « Bons de livraison » par statut.
 
-**Écrans accessibles** : Accueil · Préparations (liste + détail) · Bons de livraison (liste + détail) · Tournées · Réclamations (liste + détail) · Commandes clients (lecture).
+**Écrans accessibles** : Accueil · Circuit de livraison (+ fiches préparation et BL) · Tournées & flotte · Réclamations · Commandes (lecture).
 
 ### 2.11 Chauffeur / Livreur (`CHAUFFEUR`)
 **Carte d'identité**
-- Station : Tournée · Couleur : ambre · Icône : colis
-- Mission : « Consultez uniquement vos tournées et bons de livraison. »
-- Posture : « Vous voyez uniquement votre tournée du jour. »
-- Possède : Mes tournées, Mes BL
-- Ne fait jamais : créer une tournée, confirmer une livraison (réservé au responsable)
-- Règles : seules ses tournées apparaissent dans le menu
+- Station : Tournée (mobile) · Couleur : ambre · Icône : colis
+- Mission : « Suivez l'ordre de passage, faites signer chaque client et signalez tout incident. »
+- Posture : « Vous voyez uniquement votre tournée du jour. La confirmation finale revient au responsable. »
+- Fait : remise au client (signature) + signalement d'incident
+- Ne fait pas : créer une tournée, confirmer la livraison (réservé au responsable) · Ne voit pas : prix, stock, tournées des autres
+- Priorités : 1) suivre l'ordre de passage ; 2) marquer remis avec signature ; 3) signaler tout incident
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Mes livraisons : Bons de livraison, Tournées
-- Pas de Référentiel, pas d'accès supplémentaire.
+**Menu** — 2 entrées (au lieu de 3), en **barre basse sur mobile** :
+Ma tournée (= accueil) · Historique
 
-**Page d'accueil**
-- Actions rapides : Mes bons de livraison, Mes tournées.
-- KPI : Tournées du jour, BL à livrer, Livrés aujourd'hui.
-- Files de travail : Bons à livrer, Tournées à venir (badge « Aujourd'hui »).
-- Pas de graphique (seul poste avec l'Admin SI à ne pas en avoir).
+**Accueil = Ma tournée du jour**
+- KPI : Tournées du jour, À livrer, Livrés.
+- **Cartes de BL dans l'ordre de passage** (ordre de création des BL, faute de champ dédié côté serveur), prochain arrêt mis en avant : client, adresse, articles et quantités, statut de paiement, incident éventuel.
+- Sur chaque carte : **[Marquer remis]** (tiroir : articles + case « le client a signé le bon ») et **[Problème]** (tiroir : motifs rapides + motif obligatoire).
+- Données issues du bon de livraison lui-même (client, adresse, articles, paiement transmis par le serveur) : le chauffeur ne lit ni commandes, ni clients, ni factures.
 
-**Écrans accessibles** : Accueil · Bons de livraison (liste + détail — actions « Marquer remis au client » / « Signaler un problème » réservées à ce poste) · Tournées (lecture, uniquement les siennes).
+**Écrans accessibles** : Ma tournée · Historique (BL regroupés par jour) · Fiche BL (remise et incident, barre d'action au-dessus de la barre basse).
 
 ### 2.12 Comptabilité / DAF (`COMPTABILITE_DAF`)
 **Carte d'identité**
-- Station : Finance · Couleur : ardoise (slate) · Icône : registre
-- Mission : « Coûts, anomalies, exports comptables et clôtures. »
-- Posture : « Pas de saisie d'écriture libre : vous contrôlez et exportez. »
-- Possède : Coûts, Anomalies, Exports, Clôtures, Journal
-- Ne fait jamais : saisir un mouvement de stock, lancer un OF
-- Règles : recalculer un coût réel avant d'exporter ; exports disponibles : ventes, encaissements, achats, journal
+- Station : Finance · Couleur : ardoise · Icône : registre
+- Mission : « Fixez la fiscalité, traitez anomalies et écarts, recalculez les coûts, exportez puis clôturez la période. »
+- Posture : « Pas de saisie d'écriture libre : vous contrôlez, exportez et clôturez. »
+- Fait : fiscalité, anomalies, exports, clôtures, coûts, autorisation de décaissement
+- Ne fait pas : mouvement de stock, lancer un OF, saisir une écriture · Ne voit pas : atelier, préparations
+- Priorités : 0) fixer la fiscalité ; 1) traiter anomalies et écarts de caisse ; 2) recalculer les coûts ; 3) exporter ; 4) clôturer la période ; 5) autoriser les décaissements
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Comptabilité : Anomalies, Écritures, Exports comptables, Clôtures, Paramètres comptables, Journal d'audit, Impayés
-- Coûts : Coûts réels, Coûts standards, Valorisation du stock
-- Caisse : Sessions de caisse, Décaissements
-- Référentiel : Codes fiscaux (écriture)
+**Menu (sidebar)** — un seul groupe « Finance », 7 entrées (au lieu de 14) :
+Accueil · Contrôle · Comptabilité · Coûts · Caisse · Fiscalité · Journal d'audit
+- **Contrôle** (onglets) : Anomalies · Impayés · Écarts de caisse.
+- **Comptabilité** (onglets) : Écritures · Exports · Clôtures · Paramètres comptables, avec la **frise de clôture** en tête.
+- **Coûts** (onglets) : Réels · Standards & marges · Valorisation.
+- **Caisse** (onglets) : Sessions · Décaissements.
 
 **Page d'accueil**
-- Actions rapides : Exports comptables, Clôtures.
+- Actions rapides : Contrôle, Comptabilité.
 - KPI : Anomalies à traiter, Encaissé ce mois, Factures impayées, Dernière clôture.
-- Files de travail : Anomalies à traiter, Factures échues, Écarts de caisse à valider, Derniers exports.
-- Graphique : barres horizontales « Anomalies par type » (ouvertes).
+- Files : Anomalies à traiter, Factures échues, Écarts de caisse à valider, Derniers exports.
+- Graphique : barres « Anomalies par type ».
 
-**Écrans accessibles** : Accueil · Anomalies · Écritures comptables · Exports comptables · Clôtures comptables · Paramètres comptables · Journal d'audit · Impayés · Coûts réels · Coûts standards et marges · Valorisation du stock · Sessions de caisse / Clôture · Décaissements · Référentiel : Codes fiscaux.
-
----
+**Écrans accessibles** : Accueil · Contrôle · Comptabilité · Coûts · Caisse · Fiscalité · Journal d'audit.
 
 ## 3. Catalogue détaillé des écrans (par domaine)
 
@@ -422,34 +405,26 @@ Mes OF · Saisir · Accueil
 **Formulaires en tiroir** (bouton d'en-tête selon l'onglet) : Demande complémentaire (`CREATE_COMPLEMENT`), Sortie manuelle (`CREATE_SORTIE`, motif obligatoire si complémentaire), Retour matière (`CREATE_RETOUR_MAT`).
 
 ### 3.3 Qualité
-#### Lots — `/production/qualite`
-**Objectif :** enregistrer un lot, le contrôler, puis le libérer.
-**Tableau :** Lot, Article, OF, Qté, Statut (badge), Date de production. Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_LOT`) : Article, Quantité, Date de production, OF d'origine (optionnel), Péremption (optionnelle). Bouton « Créer le lot ».
+#### Lots qualité — `/production/qualite`
+**Onglets avec compteurs** (`?tab=`) : **À créer** (OF terminés ou en contrôle sans lot ; bouton **« Créer le lot »** en fin de ligne → tiroir : quantité pré-remplie, date de production, péremption) · **À contrôler** (En attente) · **À libérer** (Conforme) · **Libérés** · **Bloqués** (Bloqué ou Non conforme). Recherche commune ; ligne de lot cliquable → fiche.
+*La Direction (Supervision) voit les mêmes onglets sans « À créer ».*
 
-#### OF reçus — `/production/qualite/of`
-**Objectif :** file d'attente des OF dont la production est terminée, à transformer en lot. Écran de consultation : Numéro, Article, Quantité produite, Responsable, Statut OF, Lot (« Créé » ou lien « À créer → »), Fin de production.
-
-#### Détail d'un lot — `/production/qualite/[id]`
-**En-tête :** numéro, badge de statut, description (article, OF, quantité, date).
-**Contenu :**
-- Panneau **Résultat du contrôle** (droit `CREATE_CONTROLE`) : champ Observations, boutons **« Conforme »** / **« Non conforme »**.
-- Une fois contrôlé : résultat affiché en lecture seule.
-- Bouton **« Libérer le lot »** (droit `LIBERER_LOT`, si statut Conforme).
-- Bouton **« Bloquer »** (droit `BLOQUER_LOT`, avec motif = champ Observations).
-- Bandeaux d'alerte : « Lot libéré — vendable » (vert) ou « Lot bloqué — non vendable » (rouge).
-- Composant Historique.
+#### Fiche lot — `/production/qualite/[id]` (gabarit B)
+- **Gauche :** bandeau d'état (« Lot libéré — vendable » vert, « Lot bloqué — non vendable » rouge, sinon « non vendable pour l'instant ») + synthèse (article, OF, quantité, production, péremption).
+- **Droite :** panneau **Résultat du contrôle** (contrôleur, date, observations) avec champ Observations, qui sert aussi de motif de blocage.
+- **Barre fixe en bas :** **[Non conforme] [Conforme]** (droit `CREATE_CONTROLE`, lot en attente), puis **[Libérer le lot]** (droit `LIBERER_LOT`, lot conforme) ou **[Bloquer]** (droit `BLOQUER_LOT`, motif obligatoire).
+- Historique.
 
 ### 3.4 Stocks
 #### Situation de stock — `/stocks`
-**Objectif :** stock disponible par article et dépôt. Tableau : Article, Dépôt, Physique, Bloquée, Réservée, Disponible. Ligne cliquable → fiche article.
+**Objectif :** stock disponible par article et dépôt. Filtres : recherche, dépôt, « Sous seuil ». Tableau : Article, Dépôt, Physique, Bloquée, Réservée, Disponible (rouge si nul, orange sous le minimum). Ligne cliquable → fiche article.
 
 #### Fiche stock d'un article — `/stocks/article/[id]`
 En-tête = code/désignation/type/unité de l'article. Tableau par dépôt : Dépôt, Physique, Disponible. Lecture seule.
 
 #### Inventaires — `/stocks/inventaires`
-**Tableau :** Dépôt, Date, Statut (En cours/Clôturé), Créé par. Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_INVENTAIRE`) : Dépôt, Date. Bouton « Ouvrir ».
+**Tableau :** Dépôt, Date, Statut (badge), Ouvert par ; inventaires en cours en tête. Ligne cliquable → détail.
+**[+ Ouvrir un inventaire]** (droit `CREATE_INVENTAIRE`) → tiroir : Dépôt, Date du comptage.
 
 #### Détail d'un inventaire — `/stocks/inventaires/[id]`
 **En-tête :** dépôt, statut, date, créateur ; bouton **« Clôturer »** (droit `CLOTURER_INVENTAIRE`, si en cours).
@@ -458,8 +433,8 @@ En-tête = code/désignation/type/unité de l'article. Tableau par dépôt : Dé
 Composant Historique en bas de page.
 
 #### Mouvements de stock — `/stocks/mouvements`
-**Tableau :** N°, Type, Article, Dépôt, Qté, Saisi par, Date.
-**Formulaire** (droit `CREATE_MVT`) : Article, Dépôt, Type (Entrée/Sortie/Transfert/Ajustement/Retour), Quantité. Bouton « Créer ».
+**Tableau :** N°, Type (badge), Article, Dépôt, Quantité, Origine / motif, Saisi par, Date. Filtres : recherche, type, dépôt.
+**[+ Mouvement manuel]** (droit `CREATE_MVT`) → tiroir limité à **Ajustement** ou **Transfert**, avec Article, Dépôt, Quantité et **motif obligatoire** (les autres mouvements naissent des documents).
 
 #### Valorisation du stock (CMUP) — `/stocks/valorisation`
 **Objectif :** valeur du stock au coût moyen unitaire pondéré, recalculé automatiquement à chaque entrée en stock.
@@ -469,6 +444,14 @@ Composant Historique en bas de page.
 *(Note : `/stocks/alertes` n'est qu'une redirection technique vers `/stocks`, sans contenu propre.)*
 
 ### 3.5 Achats / Approvisionnement
+#### Approvisionnement — `/approvisionnement` (Responsable Achat)
+**Frise de flux en haut** avec compteurs : Besoins (à couvrir) → Demandes (à traiter) → Commandes (à envoyer) → Réceptions (attendues) ; chaque pastille est un onglet (`?etape=`). Tableau dessous, recherche et vue « À traiter / Tout ».
+**Actions de ligne :** Besoin → **[Créer la DA]** · DA en attente → **[Approuver] [Rejeter]** · DA approuvée → **[Créer la commande]** (tiroir pré-rempli) · Commande brouillon → **[Envoyer]** · Commande attendue → **[Réceptionner]** (tiroir de réception).
+**Boutons d'en-tête** selon l'étape : Nouvelle demande (tiroir), Nouvelle commande.
+
+#### Commande fournisseur (tiroir)
+Fournisseur + lignes (article, quantité, prix — prix du catalogue fournisseur proposé) dans un seul formulaire, total en direct ; **[Envoyer]** fixe en bas (ou « Enregistrer le brouillon »). Pour une commande existante : onglets **Commande · Réceptions · Historique**.
+
 #### Besoins d'approvisionnement — `/approvisionnement/besoins`
 **Tableau :** Article, Qté, Origine (Production / Stock sous seuil / Saisie manuelle), Satisfait (Oui/Non), action.
 **Actions :** bouton **« Créer la DA »** par ligne non satisfaite (droit `CREER_DA_DEPUIS_BESOIN`). Pas de formulaire de création (besoins générés automatiquement).
@@ -483,9 +466,9 @@ Composant Historique en bas de page.
 **Formulaires** (droit `CREATE_CF`) : 1) Création de commande — Fournisseur, Demande d'achat d'origine (optionnelle, limitée aux DA approuvées) ; 2) Ajout de ligne — Commande, Article, Quantité, Prix.
 **Actions :** « Créer commande », « Ajouter ligne », « Envoyer » (droit `ENVOYER_CF`, si Brouillon).
 
-#### Réceptions achat — `/approvisionnement/receptions`
-**Tableau :** Commande, Réceptionnée par, Conforme (Oui/Non), Date. Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_RECEPTION`) : Commande fournisseur. Bouton « Créer réception ».
+#### Réceptions — `/approvisionnement/receptions`
+**Onglets :** À réceptionner (commandes fournisseurs envoyées ou partiellement reçues, lignes restantes, bouton **« Réceptionner »**) · Réceptions effectuées (commande, réceptionnée par, conformité, date ; ligne cliquable → détail).
+**Tiroir unique de réception** (droit `CREATE_RECEPTION`, ouvrable par `?cf=`) : lignes de la commande (article, commandé, déjà reçu, reste dû), colonne **« Qté reçue »** pré-remplie avec le reste dû, **écart calculé en direct** (✓, manque en orange, excédent en rouge), observations ; conformité déduite des écarts ; **[Valider la réception]** en bas (crée la réception et ses lignes en une fois).
 
 #### Détail d'une réception — `/approvisionnement/receptions/[id]`
 **Tableau :** Article, Qté reçue.
@@ -493,54 +476,55 @@ Composant Historique en bas de page.
 
 ### 3.6 Commercial
 #### Commandes clients (liste) — `/commercial/commandes`
-**Tableau :** N°, Client, Type, Statut (badge), Date. Ligne cliquable → détail.
-**Action :** bouton « Nouvelle commande » (droit `CREATE_COMMANDE`) dans le header.
+**Pastilles de statut** (En cours, chaque statut, Toutes) + recherche. **Tableau :** N°, Client, Type, Montant, Statut, Date. Ligne cliquable → fiche.
+**[+ Nouvelle commande]** (droit `CREATE_COMMANDE`, aussi via `?nouvelle=1`) → tiroir : client (bloqués grisés, non sélectionnables), type (Comptant / Contrat) → **« Créer et ouvrir »** ouvre directement la fiche de la commande.
 
-#### Nouvelle commande — `/commercial/commandes/nouvelle`
-**Formulaire :** Client (les clients bloqués apparaissent grisés, non sélectionnables), Type (Vente au comptant / Client sous contrat). Bouton « Créer » → redirige vers la liste.
+#### Fiche commande — `/commercial/commandes/[id]` (gabarit B)
+- **Stepper** Brouillon → Validée → En préparation → Livrée → Facturée.
+- **Haut :** client avec **encours en direct** (« factures non soldées / encours autorisé », barre colorée, alerte si la commande ferait dépasser).
+- **Centre :** tableau des lignes (article, quantité, prix, montant) avec le **stock disponible en information** sur chaque ligne ; **[+ Ligne]** en brouillon : article, quantité, **prix automatique** (tarif client sinon public ; ajout impossible sans tarif).
+- **Droite :** total HT + **bloc facture** (numéro, statut, HT, taxes, TTC, échéance ; alerte et « Générer les lignes » si code fiscal manquant).
+- **Barre fixe :** **[Valider]** (brouillon avec lignes, client non bloqué) → **[Facturer]** (tiroir d'aperçu HT / accise / centimes / TVA / TTC estimé, puis « Émettre la facture ») → **[PDF]**.
+- Historique.
 
-#### Détail commande — `/commercial/commandes/[id]`
-**En-tête :** numéro, badge de statut, boutons **« Valider »** (droit `CREATE_COMMANDE`, si Brouillon) et **« Émettre facture »** (droit `CREATE_FACTURE`, si au moins une ligne).
-**Contenu :**
-- `StatusStepper` : Brouillon → Validée → En préparation → Livrée → Facturée.
-- Panneau d'ajout de ligne (droit `CREATE_COMMANDE`) : Article, Quantité, Prix unitaire (calculé automatiquement selon le tarif client).
-- Bloc Facture (si émise) : numéro, statut, montant HT, taxes (TVA/accise/centimes), total TTC, échéance ; bouton **« Générer les lignes »** (droit `GENERER_LIGNES_FACTURE`, avec avertissement sur les articles sans code fiscal) ; bouton **« Télécharger en PDF »**.
-- Composant Historique.
-
-#### Clients — `/commercial/clients`
-**Tableau (lecture seule) :** Code, Nom, Type, Encours, Bloqué (Oui/Non).
-
-#### Avoirs — `/commercial/avoirs`
-**Tableau :** N°, Client, Montant, Statut (Émis/Utilisé/Annulé), Date, Motif.
-**Formulaires :** « Émettre un avoir » (droit `CREATE_AVOIR` : Client, Montant, Facture d'origine optionnelle, Motif) ; « Utiliser un avoir sur une facture » (droit `UTILISER_AVOIR` : Avoir émis, Facture, bouton « Appliquer »).
-
-#### Impayés — `/commercial/impayes`
-**Objectif :** factures à crédit non soldées, échéance dépassée, triées par retard décroissant.
-**Tableau (chargé via API dédiée) :** Facture, Client, Échéance, Montant, Payé, Restant, Retard (badge rouge si > 30 jours, orange sinon). Écran de consultation uniquement.
+#### Facturation — `/commercial/facturation`
+**Onglets** (`?onglet=`) :
+- **Factures** : non soldées / toutes ; N°, client, émission, échéance (rouge si échue), montant TTC, statut, PDF ; ligne → fiche commande.
+- **Impayés** : factures échues non soldées triées par retard ; bandeau et montants en rouge au-delà de 30 jours.
+- **Avoirs** : liste (montant, facture d'origine, motif, statut) ; **[Émettre un avoir]** (tiroir : client, facture d'origine, montant, motif) et **[Appliquer]** par avoir émis (tiroir : facture non soldée du client).
 
 ### 3.7 Distribution
 #### Préparations (liste) — `/distribution/preparations`
-**Tableau :** #, Commande, Statut, action. Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_PREP`) : Commande à préparer. Bouton « Lancer ».
-**Actions par ligne :** « Confirmer préparation » (droit `PREP_CONFIRMER`, si « À préparer »), « Confirmer sortie » (droit `PREP_SORTIE`, si « En préparation »).
+**Tableau :** Commande, Client, Statut (badge), Lancée le, Préparée par. Filtres : recherche, À traiter / Sorties / Toutes. Ligne cliquable → fiche.
+**[+ Lancer une préparation]** (droit `CREATE_PREP`) → tiroir : commandes validées sans préparation.
 
 #### Détail préparation — `/distribution/preparations/[id]`
-**En-tête :** numéro de commande liée, statut, client. Boutons **« Confirmer préparation »** et **« Confirmer sortie magasin »** selon statut et droits. Panneau « Lancée par / Préparée par ». Composant Historique.
+Stepper (À préparer → En préparation → Sortie magasin), synthèse, articles à sortir avec disponible (si les lignes sont transmises au poste), Historique.
+**Barre fixe en bas :** **[Confirmer préparation]** (droit `PREP_CONFIRMER`) puis **[Confirmer sortie]** (droit `PREP_SORTIE`).
+**Erreur « stock insuffisant »** : affichée en Guard rouge avec l'article, le dépôt, la quantité demandée et le **disponible réel** ; aucune sortie n'est enregistrée (tout ou rien).
+
+#### Circuit de livraison — `/distribution` (Responsable Distribution)
+**Frise** avec compteurs : Commandes à servir → Préparations → Bons de livraison → Livrées ; chaque étape est un onglet (`?etape=`), recherche commune.
+- Commandes à servir (validées sans préparation) : statut de paiement, **[Lancer la préparation]**.
+- Préparations (au magasin) : ligne → fiche préparation.
+- Bons de livraison : préparations sorties sans BL avec **[Créer le BL]** (tiroir : tournée du jour ou à venir) + BL en livraison (tournée, paiement, incident) → fiche BL.
+- Livrées : BL terminés.
 
 #### Bons de livraison (liste) — `/distribution/bl`
-**Tableau :** N°, Commande, Statut (badge), Signature (Oui/Non). Ligne cliquable → détail.
-**Formulaire** (droit `CREATE_BL`) : Commande, Tournée (optionnelle). Bouton « Créer BL ».
+**Tableau :** N°, Commande, Statut (badge), Signature (Oui/Non). Ligne cliquable → détail. (Écran du chauffeur ; le Responsable Distribution passe par le circuit.)
 
-#### Détail bon de livraison — `/distribution/bl/[id]`
-**En-tête :** numéro, badge de statut, commande liée. Boutons :
-- **« Marquer remis au client »** (droit `LIVRER_BL`, si En livraison, sans signature déjà enregistrée).
-- **« Signaler un problème »** (droit `SIGNALER_PROBLEME_BL`, saisie du motif via une invite de saisie, obligatoire) — réservé notamment au Chauffeur.
-- **« Confirmer la livraison »** (droit `CONFIRMER_BL`, si pas encore Livrée) — réservé au Responsable Distribution.
-Bandeau d'alerte si un incident a été signalé par le chauffeur. Composant Historique.
+#### Fiche bon de livraison — `/distribution/bl/[id]` (gabarit B)
+- **Statut de paiement de la facture en évidence** (montant, badge, règle comptant / contrat) — masqué pour le chauffeur.
+- Résumé : commande, client, type, tournée, chauffeur / véhicule, signature, génération ; articles livrés.
+- **Guard orange « Incident signalé par le chauffeur »** ; Guard vert une fois la livraison confirmée.
+- **Barre fixe :** **[Confirmer la livraison]** (droit `CONFIRMER_BL`), **grisé « Facture non soldée »** si la commande est au comptant et la facture pas payée ; pour le chauffeur : « Remis au client » et « Signaler un problème » (tiroir avec motif).
+- Historique.
 
-#### Tournées — `/distribution/tournees`
-**Tableau :** N°, Chauffeur, Véhicule, Date.
-**Formulaires :** « Véhicule » (droit `CREATE_VEHICULE` : Immatriculation, Type) ; « Chauffeur » (droit `CREATE_CHAUFFEUR` : Utilisateur profil Chauffeur, N° de permis) ; « Créer une tournée » (droit `CREATE_TOURNEE` : Chauffeur, Véhicule, Date).
+#### Tournées & flotte — `/distribution/tournees`
+**Onglets** Tournées · Véhicules · Chauffeurs ; formulaires de création en **tiroir** (bouton d'en-tête selon l'onglet).
+- **Tournées :** à gauche la liste (aujourd'hui et à venir / passées, nombre de BL), à droite les **BL de la tournée sélectionnée** (`?tournee=`).
+- Véhicules : immatriculation, type, nombre de tournées, statut. Chauffeurs : nom, permis, nombre de tournées (seuls les comptes Chauffeur sans fiche sont proposés).
+*Chauffeur : « Mes tournées », sans les onglets de flotte.*
 
 ### 3.8 Réclamations
 #### Réclamations (liste) — `/reclamations`
@@ -549,55 +533,56 @@ Bandeau d'alerte si un incident a été signalé par le chauffeur. Composant His
 **Formulaire** (droit `CREATE_RECLAMATION`) : Client, Article, Quantité, Type de problème (Produit défectueux / manquant / Erreur de référence / Emballage endommagé / Produit périmé / Autre), Description, case « Produit retourné ».
 
 #### Détail réclamation — `/reclamations/[id]`
-Parcours séquentiel, chaque étape n'apparaissant que lorsque la précédente est franchie :
-1. Récapitulatif (lecture seule).
-2. **Retour physique** (droit `CREATE_RETOUR_PHYSIQUE`) : Quantité retournée → « Réceptionner en quarantaine ».
-3. **Contrôle retour** (droit `CREATE_CONTROLE_RETOUR`) : Résultat (Récupérable direct / avec intervention / Non récupérable), Observations → « Enregistrer le contrôle » (la décision — réintégration, reconditionnement ou rebut — s'applique automatiquement).
-4. **Reconditionnement** (si applicable, droit `TERMINER_RECONDITIONNEMENT`) : Quantité reconditionnée → « Terminer & réintégrer ».
-5. **Solution client** (droit `CREATE_SOLUTION`) : Type (Remplacement / Avoir / Remboursement), Montant → « Appliquer la solution » (clôture automatiquement la réclamation).
-Composant Historique.
+**Parcours vertical** : seules les étapes franchies (pastille verte, date) et l'étape courante (surlignée, « Étape en cours », avec son formulaire) sont visibles :
+1. Réclamation enregistrée (récapitulatif).
+2. **Retour physique en quarantaine** (si produit retourné ; droit `CREATE_RETOUR_PHYSIQUE`) : quantité → « Réceptionner en quarantaine ».
+3. **Contrôle du retour** (droit `CREATE_CONTROLE_RETOUR`) : résultat en boutons (Récupérable directement / avec intervention / Non récupérable), observations → « Enregistrer le contrôle » ; la décision s'applique automatiquement.
+4. **Reconditionnement** (si créé ; droit `TERMINER_RECONDITIONNEMENT`) : quantité → « Terminer & réintégrer ».
+5. **Solution client et clôture** (droit `CREATE_SOLUTION`) : type, montant (avoir / remboursement) → « Appliquer la solution ».
+Historique en bas.
 
 ### 3.9 Caisse
-#### Factures et encaissements — `/caisse`
-**Objectif :** ouvrir une session de caisse puis encaisser.
-**Tableau :** Facture, Client, Montant, Statut (badge), lien PDF, action d'encaissement.
-**Actions :** **« Ouvrir ma session »** (si aucune session ouverte, caisse affectée, droit `ENCAISSER`) ; par ligne de facture émise, sélecteur de mode de paiement (Espèces/Mobile money/Virement/Chèque) + bouton **« Encaisser »** (droit `ENCAISSER`, sur sa propre session ouverte uniquement).
+#### Caisse — `/caisse` (Caissier)
+- **Barre de session fixe en haut** : caisse, état (ouverte avec solde théorique / fermée avec solde repris) et **[Ouvrir ma session]** ou **[Clôturer]** (→ Ma session) ; bandeau rouge bloquant si aucune caisse n'est affectée.
+- **Gauche (60 %)** : factures en onglets **À encaisser** (émises) / **Non soldées** (partiellement payées), recherche par n° ou client ; chaque ligne affiche le restant dû et un lien « Voir la commande » (lecture).
+- **Droite (40 %, fixe)** : facture sélectionnée (`?facture=`), **restant dû** (total, déjà payé), **mode de paiement** en gros boutons (Espèces, Mobile money, Virement, Chèque), montant (pré-rempli, paiement partiel possible), grand bouton **[Encaisser]** en bas.
+- `/caisse/encaissement/[id]` redirige vers `/caisse?facture=id`.
 
-#### Sessions de caisse (Clôture) — `/caisse/cloture`
-**Objectif :** clôturer une session en saisissant le solde compté ; le solde théorique est calculé automatiquement.
-**Tableau :** Caisse, Caissier, Statut, Ouverture, Décaissements, Théorique, action.
-**Formulaire inline** (sur sa propre session ouverte, droit `CLOTURER_CAISSE`) : Solde compté, Justification (obligatoire en cas d'écart) → bouton **« Clôturer »**.
-**Panneau Écarts de caisse** : liste des écarts enregistrés avec leur justification (lecture seule).
+#### Ma session — `/caisse/cloture`
+**Caissier :** session ouverte avec le **solde théorique calculé** (ouverture + encaissements par mode − décaissements effectués) ; **solde compté** à saisir, **écart en direct**, **justification obligatoire si écart**, **[Clôturer]**. Session fermée : [Ouvrir ma session]. En dessous : mes sessions (théorique, compté, écart) et **mes écarts en lecture seule**.
+**Autres postes (Comptabilité, Admin) :** tableau de toutes les sessions et des écarts ; la clôture reste réservée au caissier de la session.
 
 #### Factures non soldées — `/caisse/suspendues`
-Tableau en lecture seule : N°, Client, Montant, Statut (Émise/Partiellement payée).
+Lecture : factures émises ou partiellement payées (N°, Client, Montant, Statut). Remplacé pour le caissier par l'onglet « Non soldées » de Caisse.
 
 #### Décaissements — `/caisse/decaissements`
-**Objectif :** sortie de caisse en 3 temps — demande, autorisation/refus, exécution.
-**Panneau « Nouvelle demande »** (droit `CREATE_DECAISSEMENT`, sur sa session ouverte) : Montant, Bénéficiaire, Motif → bouton « Demander ».
-**Vue Direction** (droit `AUTORISER_DECAISSEMENT` sans droit de demande) : deux colonnes — à gauche **« À autoriser »**, une carte par demande (montant en grand, motif, bénéficiaire, caisse, date, champ « Motif de refus », boutons **« Autoriser »** / **« Refuser »**, refus impossible sans motif) ; à droite **« Historique »** (liste filtrable Tous/Autorisés/Effectués/Refusés).
-**Panneau « À autoriser »** (autres postes ayant le droit, ex. Comptabilité) : par demande en attente — montant, motif, champ « Motif si refus », boutons « Autoriser » / « Refuser ».
-**Tableau général :** N°, Session, Montant, Bénéficiaire, Statut (badge : En attente d'autorisation/Autorisé/Refusé/Effectué), Autorisé/refusé par, Date, Motif, action **« Effectuer la sortie »** (droit `EFFECTUER_DECAISSEMENT`, réservée au caissier désigné, une fois Autorisé).
+**Caissier :** à gauche **Nouvelle demande** (montant, bénéficiaire, motif obligatoire ; sur sa session ouverte) ; à droite **ses demandes** avec leur statut, et **[Effectuer la sortie]** uniquement sur ses demandes autorisées.
+**Direction :** à autoriser à gauche, historique à droite (voir 2.2).
+**Comptabilité / Admin :** panneau « À autoriser » et tableau général.
 
 ### 3.10 Comptabilité
-#### Anomalies — `/comptabilite/brouillards`
-**Objectif :** écarts de stock/caisse, dépassements matières, lots vendus trop tôt, impayés, péremptions — détectés automatiquement, jamais saisis.
-**Bouton d'en-tête :** **« Lancer la détection »** (droit `DETECTER_ANOMALIES`), affiche ensuite le nombre détecté/résolu automatiquement.
-**Tableau :** Type, Module, Description (+ commentaire de traitement si traitée), Statut (badge), Date, action.
-**Actions par ligne (si non traitée) :** **« Prendre en charge »** (droit `RESOUDRE_ANOMALIE`, si Détectée), champ Commentaire, boutons **« Résoudre »** / **« Ignorer »** (commentaire obligatoire pour les deux).
+#### Anomalies — `/comptabilite/brouillards` (onglet de « Contrôle »)
+**En haut :** **[Lancer la détection]** (droit `DETECTER_ANOMALIES`) puis bilan (détectées / résolues automatiquement).
+**Tableau :** Type (+ module), Description (+ commentaire de traitement), Statut, Détectée le ; filtres Ouvertes / Traitées / Toutes, type, recherche.
+**Par ligne :** **[Prendre en charge]** (si détectée) → **[Traiter]** ouvre un tiroir : description, **commentaire obligatoire**, **[Résoudre]** / **[Ignorer]**.
+
+#### Écarts de caisse — `/comptabilite/ecarts` (onglet de « Contrôle »)
+Lecture : écarts constatés à la clôture des sessions (caisse, caissier, montant, justification, validation) ; vue À valider / Tous, total. Un écart ne se supprime jamais.
+
+#### Frise de clôture (écrans « Comptabilité », DAF et Admin)
+En tête des onglets Écritures, Exports, Clôtures et Paramètres, pour la période à clôturer (mois précédent tant qu'il est ouvert) : **① Coûts recalculés → ② Écritures → ③ Export (journal couvrant la période, toutes écritures exportées) → ④ Clôture**. Une étape dont la précédente n'est pas remplie est grisée avec son motif ; chaque étape mène à son écran. Calcul indicatif, le serveur reste juge.
 
 #### Clôtures comptables — `/comptabilite/clotures`
-**Tableau :** Période, Type (Mensuelle/Annuelle), Validée par, Date.
-**Formulaire** (droit `CREATE_CLOTURE`) : Période (AAAA-MM ou AAAA), Type → bouton « Clôturer la période ».
+**Tableau :** Période, Type (Mensuelle/Annuelle), Validée par, Date (plus récentes en tête).
+**Formulaire** (droit `CREATE_CLOTURE`) : Période (pré-remplie avec la période à clôturer), Type → **« Clôturer la période »**, grisé avec motif tant que l'étape précédente de la frise n'est pas remplie ou si la période est déjà clôturée.
 
 #### Écritures comptables — `/comptabilite/ecritures`
 **Objectif :** journal comptable en lecture seule, généré automatiquement à partir des documents.
 **Tableau :** Numéro, Journal, Date, Pièce, Libellé, Débit, Crédit, Exportée (Oui/Non). Aucune saisie possible.
 
 #### Exports comptables (Sage) — `/comptabilite/export-sage`
-**Tableau :** Type (Ventes/Encaissements/Achats/Journal), Période, Généré le, action.
-**Formulaire** (droit `CREATE_EXPORT`) : Type, Date de début, Date de fin → bouton « Générer ».
-**Action :** **« Télécharger CSV »** par export existant (toujours visible, pas de garde de droit).
+**Tableau :** Type (Ventes/Encaissements/Achats/Journal), Période, Généré le, **[Télécharger CSV]** (plus récents en tête).
+**Formulaire** (droit `CREATE_EXPORT`) : Type (Journal par défaut), Début et Fin (pré-remplis avec la période à clôturer) → **[Générer]**.
 
 #### Paramètres comptables — `/comptabilite/parametres`
 **Objectif :** plan de comptes et seuils de contrôle automatiques, modifiables sans intervention technique.
@@ -639,10 +624,9 @@ Redirige vers le premier onglet accessible. Pour l'Admin SI (entrée « Référe
 **Liste :** Dépôt, Rôle (Système/Standard), Articles (nb), Statut. Clic → panneau latéral de détail (stock présent par article, statistiques) plutôt qu'une page séparée.
 **Création** (droit `CREATE_DEPOT`, sauf pour l'Admin SI dont les dépôts système sont pilotés par le code) : Nom, Adresse.
 
-#### Clients — `/parametrage/clients` et fiche `/parametrage/clients/[id]`
-**Liste :** Code, Nom, Type, Téléphone, Encours autorisé, Délai de paiement, Statut (Bloqué/Actif).
-**Formulaire de création :** Nom, Type (Particulier/Société/Contrat), Téléphone, Adresse, Encours autorisé, Délai de paiement.
-**Fiche :** Identité, Conditions commerciales (encours, délai, case « Compte bloqué ») ; tableau des tarifs spécifiques au client (si le poste a lecture sur les Tarifs).
+#### Clients — `/parametrage/clients`
+**Tableau :** Code, Nom, Type, Téléphone, Encours (utilisé / autorisé), Paiement, Statut ; clients bloqués en tête. Filtres : recherche, statut, type.
+**Tiroir** (clic sur une ligne, `?client=`, ou **[+ Nouveau client]**) : Identité ; Conditions commerciales (encours autorisé, délai de paiement, case **« Compte bloqué »**) ; **tarifs spécifiques du client** en bas (article, prix, validité, statut) si le poste lit les Tarifs.
 
 #### Tarifs — `/parametrage/tarifs` et fiche `/parametrage/tarifs/[id]`
 **Liste :** Article, Client (ou « Public »), Prix, Début, Fin, Statut (En vigueur/À venir/Expiré).
@@ -653,10 +637,11 @@ Redirige vers le premier onglet accessible. Pour l'Admin SI (entrée « Référe
 **Liste :** Code, Nom, Contact, Téléphone, Email, Statut. Formulaire de création : Nom, Contact, Téléphone, Email, Adresse.
 **Fiche :** Identité et coordonnées, panneau Gestion (géré par / créé le, lecture seule + case « Fournisseur actif »).
 
-#### Codes fiscaux — `/parametrage/fiscalite`
-**Objectif :** matrice fiscale (familles fiscales + codes TVA/accise/centimes) ; les taux ne se choisissent jamais à la vente, ils sont dérivés du code rattaché à l'article.
-**Tableau :** Code, Famille, TVA %, Accise %, Centimes %, Exonéré, Actif.
-**Panneaux :** « Familles fiscales » (ajout + activation/désactivation) ; « Nouveau code fiscal » (code généré automatiquement — Famille, TVA %, Centimes %, Accise %, case Exonéré).
+#### Fiscalité — `/parametrage/fiscalite`
+**Objectif :** matrice fiscale ; les taux ne se choisissent jamais à la vente, ils viennent du code rattaché à l'article. Étape 0 du DAF (alerte si des produits finis n'ont pas de code fiscal).
+- **Gauche :** familles fiscales (nombre de codes, activer / désactiver, ajout en bas).
+- **Droite :** codes de la famille sélectionnée (code, TVA ou « Exonéré », accise, centimes, nombre d'articles, statut).
+- **Tiroir « Nouveau code »** : famille, case Exonéré, TVA %, accise %, centimes % — **code généré automatiquement**.
 
 #### Autres écrans de référence (listes fixes ou informatifs, sans saisie)
 - **Motifs de pertes** (`/parametrage/causes-pertes`) : liste fixe des motifs de perte (non éditable).

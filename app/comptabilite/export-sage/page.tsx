@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { periodeACloturer } from "@/components/comptabilite";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { TYPE_EXPORT_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -10,9 +11,12 @@ import type { TypeExport } from "@/lib/types";
 
 export default function ExportsPage() {
   const { state, dispatch, can } = useStore();
-  const [type, setType] = useState<TypeExport>("VENTES");
-  const [debut, setDebut] = useState(new Date().toISOString().slice(0, 10));
-  const [fin, setFin] = useState(new Date().toISOString().slice(0, 10));
+  // Par défaut : le journal de la période à clôturer (étape ③ de la frise).
+  const periode = periodeACloturer(state);
+  const [y, m] = periode.split("-").map(Number);
+  const [type, setType] = useState<TypeExport>("JOURNAL");
+  const [debut, setDebut] = useState(`${periode}-01`);
+  const [fin, setFin] = useState(new Date(y, m, 0).toISOString().slice(0, 10));
 
   return (
     <div className="space-y-4">
@@ -34,7 +38,8 @@ export default function ExportsPage() {
       <Panel>
         <DataTable
           columns={[{ key: "t", label: "Type" }, { key: "p", label: "Période" }, { key: "d", label: "Généré" }, { key: "act", label: "" }]}
-          rows={state.exportsComptables.map((e) => ({
+          emptyText="Aucun export généré."
+          rows={[...state.exportsComptables].sort((a, b) => b.date_generation.localeCompare(a.date_generation)).map((e) => ({
             t: TYPE_EXPORT_LABEL[e.type_export] ?? e.type_export,
             p: `${formatDate(e.periode_debut)} → ${formatDate(e.periode_fin)}`,
             d: formatDate(e.date_generation),
