@@ -1099,8 +1099,8 @@ function daf(state: AppState, h: HomeHelpers): HomeData {
   const ecarts = state.ecartsCaisse.filter((e) => e.valide_par == null);
   return {
     actions: [
-      { href: "/comptabilite/export-sage", label: "Exports comptables", icon: FileOutput },
-      { href: "/comptabilite/clotures", label: "Clôtures", icon: Lock },
+      { href: "/comptabilite/brouillards", label: "Contrôle", icon: AlertTriangle },
+      { href: "/comptabilite/ecritures", label: "Comptabilité", icon: Lock },
     ],
     kpis: [
       { label: "Anomalies à traiter", value: anomalies.length, tone: anomalies.length ? "danger" : "success", icon: AlertTriangle, href: "/comptabilite/brouillards" },
@@ -1128,6 +1128,7 @@ function daf(state: AppState, h: HomeHelpers): HomeData {
         title: "Factures échues",
         icon: CalendarClock,
         href: "/commercial/impayes",
+        tone: "danger",
         empty: "Aucune facture en retard.",
         all: echues.map((f) => ({ href: "/commercial/impayes", title: f.numero, detail: `${h.clientName(f.client)} · ${formatDa(num(f.montant_total))}`, badge: { label: `Échue le ${formatDate(f.date_echeance ?? "")}`, tone: "danger" } })),
       }),
@@ -1135,10 +1136,11 @@ function daf(state: AppState, h: HomeHelpers): HomeData {
         id: "ecarts",
         title: "Écarts de caisse à valider",
         icon: Vault,
-        href: "/caisse/cloture",
+        href: "/comptabilite/ecarts",
+        tone: "warning",
         empty: "Aucun écart en attente.",
         all: ecarts.map((e) => ({
-          href: "/caisse/cloture",
+          href: "/comptabilite/ecarts",
           title: `Session n°${e.session_caisse}`,
           detail: e.justification || "Sans justification",
           badge: { label: formatDa(num(e.montant_ecart)), tone: num(e.montant_ecart) < 0 ? "danger" : "warning" },

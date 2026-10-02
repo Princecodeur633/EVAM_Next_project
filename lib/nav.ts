@@ -111,9 +111,27 @@ const SUPERVISION: HubTab[] = [
 ];
 
 const COUTS_MARGES: HubTab[] = [
-  { label: "Coûts réels", href: "/couts" },
-  { label: "Coûts standards", href: "/couts/marges" },
-  { label: "Valorisation du stock", href: "/stocks/valorisation" },
+  { label: "Réels", href: "/couts" },
+  { label: "Standards & marges", href: "/couts/marges" },
+  { label: "Valorisation", href: "/stocks/valorisation" },
+];
+
+const DAF_CONTROLE: HubTab[] = [
+  { label: "Anomalies", href: "/comptabilite/brouillards" },
+  { label: "Impayés", href: "/commercial/impayes" },
+  { label: "Écarts de caisse", href: "/comptabilite/ecarts" },
+];
+
+const DAF_COMPTA: HubTab[] = [
+  { label: "Écritures", href: "/comptabilite/ecritures" },
+  { label: "Exports", href: "/comptabilite/export-sage" },
+  { label: "Clôtures", href: "/comptabilite/clotures" },
+  { label: "Paramètres comptables", href: "/comptabilite/parametres" },
+];
+
+const DAF_CAISSE: HubTab[] = [
+  { label: "Sessions", href: "/caisse/cloture" },
+  { label: "Décaissements", href: "/caisse/decaissements" },
 ];
 
 const ANOMALIES_ECRITURES: HubTab[] = [
@@ -279,11 +297,17 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/distribution/bl", label: "Historique", hint: "Mes livraisons passées" },
     ]),
   ],
+  // Menu à plat : 7 entrées, chacune à onglets.
   COMPTABILITE_DAF: [
-    g("poste", "Menu", "home", [I.accueil]),
-    g("fin", "Comptabilité", "ledger", [I.anomalies, I.ecritures, I.exports, I.clotures, I.parametresCompta, I.audit, I.impayes]),
-    g("couts", "Coûts", "coins", [I.couts, I.marges, I.valorisation]),
-    g("caisse", "Caisse", "banknote", [I.sessions, I.decaissements]),
+    g("fin", "Finance", "ledger", [
+      I.accueil,
+      { href: "/comptabilite/brouillards", label: "Contrôle", hint: "Anomalies, impayés, écarts de caisse", hub: DAF_CONTROLE },
+      { href: "/comptabilite/ecritures", label: "Comptabilité", hint: "Écritures, exports, clôtures, paramètres", hub: DAF_COMPTA },
+      { ...I.coutsMarges, label: "Coûts", hub: COUTS_MARGES },
+      { href: "/caisse/cloture", label: "Caisse", hint: "Sessions et décaissements", hub: DAF_CAISSE },
+      { href: "/parametrage/fiscalite", label: "Fiscalité", hint: "Familles et codes fiscaux" },
+      I.audit,
+    ]),
   ],
 };
 
@@ -454,6 +478,7 @@ export function breadcrumbs(pathname: string) {
     comptabilite: "Comptabilité",
     brouillards: "Anomalies",
     "export-sage": "Exports",
+    ecarts: "Écarts de caisse",
     clotures: "Clôtures",
     parametrage: "Référentiel",
     produits: "Articles",

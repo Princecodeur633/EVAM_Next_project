@@ -306,29 +306,27 @@ Ma tournée (= accueil) · Historique
 
 ### 2.12 Comptabilité / DAF (`COMPTABILITE_DAF`)
 **Carte d'identité**
-- Station : Finance · Couleur : ardoise (slate) · Icône : registre
-- Mission : « Coûts, anomalies, exports comptables et clôtures. »
-- Posture : « Pas de saisie d'écriture libre : vous contrôlez et exportez. »
-- Possède : Coûts, Anomalies, Exports, Clôtures, Journal
-- Ne fait jamais : saisir un mouvement de stock, lancer un OF
-- Règles : recalculer un coût réel avant d'exporter ; exports disponibles : ventes, encaissements, achats, journal
+- Station : Finance · Couleur : ardoise · Icône : registre
+- Mission : « Fixez la fiscalité, traitez anomalies et écarts, recalculez les coûts, exportez puis clôturez la période. »
+- Posture : « Pas de saisie d'écriture libre : vous contrôlez, exportez et clôturez. »
+- Fait : fiscalité, anomalies, exports, clôtures, coûts, autorisation de décaissement
+- Ne fait pas : mouvement de stock, lancer un OF, saisir une écriture · Ne voit pas : atelier, préparations
+- Priorités : 0) fixer la fiscalité ; 1) traiter anomalies et écarts de caisse ; 2) recalculer les coûts ; 3) exporter ; 4) clôturer la période ; 5) autoriser les décaissements
 
-**Menu (sidebar)**
-- Menu : Accueil
-- Comptabilité : Anomalies, Écritures, Exports comptables, Clôtures, Paramètres comptables, Journal d'audit, Impayés
-- Coûts : Coûts réels, Coûts standards, Valorisation du stock
-- Caisse : Sessions de caisse, Décaissements
-- Référentiel : Codes fiscaux (écriture)
+**Menu (sidebar)** — un seul groupe « Finance », 7 entrées (au lieu de 14) :
+Accueil · Contrôle · Comptabilité · Coûts · Caisse · Fiscalité · Journal d'audit
+- **Contrôle** (onglets) : Anomalies · Impayés · Écarts de caisse.
+- **Comptabilité** (onglets) : Écritures · Exports · Clôtures · Paramètres comptables, avec la **frise de clôture** en tête.
+- **Coûts** (onglets) : Réels · Standards & marges · Valorisation.
+- **Caisse** (onglets) : Sessions · Décaissements.
 
 **Page d'accueil**
-- Actions rapides : Exports comptables, Clôtures.
+- Actions rapides : Contrôle, Comptabilité.
 - KPI : Anomalies à traiter, Encaissé ce mois, Factures impayées, Dernière clôture.
-- Files de travail : Anomalies à traiter, Factures échues, Écarts de caisse à valider, Derniers exports.
-- Graphique : barres horizontales « Anomalies par type » (ouvertes).
+- Files : Anomalies à traiter, Factures échues, Écarts de caisse à valider, Derniers exports.
+- Graphique : barres « Anomalies par type ».
 
-**Écrans accessibles** : Accueil · Anomalies · Écritures comptables · Exports comptables · Clôtures comptables · Paramètres comptables · Journal d'audit · Impayés · Coûts réels · Coûts standards et marges · Valorisation du stock · Sessions de caisse / Clôture · Décaissements · Référentiel : Codes fiscaux.
-
----
+**Écrans accessibles** : Accueil · Contrôle · Comptabilité · Coûts · Caisse · Fiscalité · Journal d'audit.
 
 ## 3. Catalogue détaillé des écrans (par domaine)
 
@@ -563,24 +561,28 @@ Lecture : factures émises ou partiellement payées (N°, Client, Montant, Statu
 **Comptabilité / Admin :** panneau « À autoriser » et tableau général.
 
 ### 3.10 Comptabilité
-#### Anomalies — `/comptabilite/brouillards`
-**Objectif :** écarts de stock/caisse, dépassements matières, lots vendus trop tôt, impayés, péremptions — détectés automatiquement, jamais saisis.
-**Bouton d'en-tête :** **« Lancer la détection »** (droit `DETECTER_ANOMALIES`), affiche ensuite le nombre détecté/résolu automatiquement.
-**Tableau :** Type, Module, Description (+ commentaire de traitement si traitée), Statut (badge), Date, action.
-**Actions par ligne (si non traitée) :** **« Prendre en charge »** (droit `RESOUDRE_ANOMALIE`, si Détectée), champ Commentaire, boutons **« Résoudre »** / **« Ignorer »** (commentaire obligatoire pour les deux).
+#### Anomalies — `/comptabilite/brouillards` (onglet de « Contrôle »)
+**En haut :** **[Lancer la détection]** (droit `DETECTER_ANOMALIES`) puis bilan (détectées / résolues automatiquement).
+**Tableau :** Type (+ module), Description (+ commentaire de traitement), Statut, Détectée le ; filtres Ouvertes / Traitées / Toutes, type, recherche.
+**Par ligne :** **[Prendre en charge]** (si détectée) → **[Traiter]** ouvre un tiroir : description, **commentaire obligatoire**, **[Résoudre]** / **[Ignorer]**.
+
+#### Écarts de caisse — `/comptabilite/ecarts` (onglet de « Contrôle »)
+Lecture : écarts constatés à la clôture des sessions (caisse, caissier, montant, justification, validation) ; vue À valider / Tous, total. Un écart ne se supprime jamais.
+
+#### Frise de clôture (écrans « Comptabilité », DAF et Admin)
+En tête des onglets Écritures, Exports, Clôtures et Paramètres, pour la période à clôturer (mois précédent tant qu'il est ouvert) : **① Coûts recalculés → ② Écritures → ③ Export (journal couvrant la période, toutes écritures exportées) → ④ Clôture**. Une étape dont la précédente n'est pas remplie est grisée avec son motif ; chaque étape mène à son écran. Calcul indicatif, le serveur reste juge.
 
 #### Clôtures comptables — `/comptabilite/clotures`
-**Tableau :** Période, Type (Mensuelle/Annuelle), Validée par, Date.
-**Formulaire** (droit `CREATE_CLOTURE`) : Période (AAAA-MM ou AAAA), Type → bouton « Clôturer la période ».
+**Tableau :** Période, Type (Mensuelle/Annuelle), Validée par, Date (plus récentes en tête).
+**Formulaire** (droit `CREATE_CLOTURE`) : Période (pré-remplie avec la période à clôturer), Type → **« Clôturer la période »**, grisé avec motif tant que l'étape précédente de la frise n'est pas remplie ou si la période est déjà clôturée.
 
 #### Écritures comptables — `/comptabilite/ecritures`
 **Objectif :** journal comptable en lecture seule, généré automatiquement à partir des documents.
 **Tableau :** Numéro, Journal, Date, Pièce, Libellé, Débit, Crédit, Exportée (Oui/Non). Aucune saisie possible.
 
 #### Exports comptables (Sage) — `/comptabilite/export-sage`
-**Tableau :** Type (Ventes/Encaissements/Achats/Journal), Période, Généré le, action.
-**Formulaire** (droit `CREATE_EXPORT`) : Type, Date de début, Date de fin → bouton « Générer ».
-**Action :** **« Télécharger CSV »** par export existant (toujours visible, pas de garde de droit).
+**Tableau :** Type (Ventes/Encaissements/Achats/Journal), Période, Généré le, **[Télécharger CSV]** (plus récents en tête).
+**Formulaire** (droit `CREATE_EXPORT`) : Type (Journal par défaut), Début et Fin (pré-remplis avec la période à clôturer) → **[Générer]**.
 
 #### Paramètres comptables — `/comptabilite/parametres`
 **Objectif :** plan de comptes et seuils de contrôle automatiques, modifiables sans intervention technique.
@@ -635,10 +637,11 @@ Redirige vers le premier onglet accessible. Pour l'Admin SI (entrée « Référe
 **Liste :** Code, Nom, Contact, Téléphone, Email, Statut. Formulaire de création : Nom, Contact, Téléphone, Email, Adresse.
 **Fiche :** Identité et coordonnées, panneau Gestion (géré par / créé le, lecture seule + case « Fournisseur actif »).
 
-#### Codes fiscaux — `/parametrage/fiscalite`
-**Objectif :** matrice fiscale (familles fiscales + codes TVA/accise/centimes) ; les taux ne se choisissent jamais à la vente, ils sont dérivés du code rattaché à l'article.
-**Tableau :** Code, Famille, TVA %, Accise %, Centimes %, Exonéré, Actif.
-**Panneaux :** « Familles fiscales » (ajout + activation/désactivation) ; « Nouveau code fiscal » (code généré automatiquement — Famille, TVA %, Centimes %, Accise %, case Exonéré).
+#### Fiscalité — `/parametrage/fiscalite`
+**Objectif :** matrice fiscale ; les taux ne se choisissent jamais à la vente, ils viennent du code rattaché à l'article. Étape 0 du DAF (alerte si des produits finis n'ont pas de code fiscal).
+- **Gauche :** familles fiscales (nombre de codes, activer / désactiver, ajout en bas).
+- **Droite :** codes de la famille sélectionnée (code, TVA ou « Exonéré », accise, centimes, nombre d'articles, statut).
+- **Tiroir « Nouveau code »** : famille, case Exonéré, TVA %, accise %, centimes % — **code généré automatiquement**.
 
 #### Autres écrans de référence (listes fixes ou informatifs, sans saisie)
 - **Motifs de pertes** (`/parametrage/causes-pertes`) : liste fixe des motifs de perte (non éditable).

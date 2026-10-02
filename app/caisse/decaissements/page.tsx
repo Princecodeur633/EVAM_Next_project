@@ -129,7 +129,7 @@ function DecaissementsCaissier() {
 }
 
 function DecaissementsGeneral() {
-  const { state, dispatch, can, userName, currentUser } = useStore();
+  const { state, dispatch, can, userName, currentUser, role } = useStore();
   // Le circuit est en 3 temps : le caissier DEMANDE (sur sa propre session
   // ouverte), la Direction/Comptabilité AUTORISE ou REFUSE, puis le caissier
   // EFFECTUE la sortie d'argent — jamais de choix « Autorisé par » à la saisie.
@@ -142,7 +142,7 @@ function DecaissementsGeneral() {
   const [motifRefus, setMotifRefus] = useState<Record<number, string>>({});
   const rafraichirAAutoriser = () => void actions.decaissementsAAutoriser().then(setAAutoriser);
   // Direction / DAF : écran de décision (à autoriser + historique) ; caissier : demande + tableau.
-  const valideur = can("AUTORISER_DECAISSEMENT") && !can("CREATE_DECAISSEMENT");
+  const valideur = role === "DIRECTION" || role === "COMPTABILITE_DAF";
   const [enCours, setEnCours] = useState<number | null>(null);
   const [fHisto, setFHisto] = useState<"TOUS" | "AUTORISE" | "EFFECTUE" | "REFUSE">("TOUS");
   const historique = [...state.decaissements]
@@ -174,7 +174,7 @@ function DecaissementsGeneral() {
         title="Décaissements"
         description="Sortie de caisse en 3 temps : le caissier demande, la Direction ou la Comptabilité/DAF autorise ou refuse, puis le caissier effectue la sortie d'argent."
       />
-      {can("CREATE_DECAISSEMENT") && (
+      {can("CREATE_DECAISSEMENT") && !valideur && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <h2 className="col-span-full text-[13px] font-semibold">Nouvelle demande</h2>
           {maSession ? (

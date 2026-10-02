@@ -483,6 +483,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "stock",
     "clients",
     "factures",
+    "caisses",
     "sessionsCaisse",
     "encaissements",
     "journal",

@@ -1,166 +1,207 @@
 "use client";
 
 import { useState } from "react";
-import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
-import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
-import { useStore } from "@/lib/store";
+import { Percent, Plus } from "lucide-react";
+import { Drawer, DrawerSection } from "@/components/Drawer";
+import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { api } from "@/lib/api";
 import { endpoints } from "@/lib/api/resources";
-import { num } from "@/lib/utils";
+import { useStore } from "@/lib/store";
+import type { FamilleFiscale } from "@/lib/types";
+import { cn, num } from "@/lib/utils";
 
+/** Fiscalité : familles à gauche, codes de la famille à droite, création de code en tiroir (code généré). */
 export default function FiscalitePage() {
-  const { state, canEditParam, dispatch, familleFiscaleName } = useStore();
+  const { state, canEditParam, dispatch, role } = useStore();
   const canEdit = canEditParam("/parametrage/fiscalite");
-  const [famille, setFamille] = useState(0);
-  const [nouvelleFamille, setNouvelleFamille] = useState("");
+  const [choix, setChoix] = useState<number | null>(null);
+  const [nouvelle, setNouvelle] = useState("");
+  const [creation, setCreation] = useState(false);
+  const familles = [...state.famillesFiscales].sort((a, b) => Number(b.actif) - Number(a.actif) || a.nom.localeCompare(b.nom, "fr"));
+  const famille = familles.find((f) => f.id === choix) ?? familles[0] ?? null;
+  const codes = famille ? state.codesFiscaux.filter((c) => c.famille_fiscale === famille.id) : [];
+  const nbCodes = (f: FamilleFiscale) => state.codesFiscaux.filter((c) => c.famille_fiscale === f.id).length;
+  const sansCode = state.articles.filter((a) => a.actif && a.type_article === "PRODUIT_FINI" && !a.code_fiscal).length;
+
+  return (
+    <div className="space-y-4 max-w-[1440px]">
+      <PageHeader
+        eyebrow={role === "COMPTABILITE_DAF" ? "Finance · étape 0" : "Référentiel"}
+        title="Fiscalité"
+        description="Matrice fiscale EVAM. Les taux ne se choisissent jamais à la vente : ils viennent du code fiscal rattaché à l’article."
+        actions={
+          canEdit && famille ? (
+            <Button onClick={() => setCreation(true)}>
+              <Plus size={15} /> Nouveau code
+            </Button>
+          ) : null
+        }
+      />
+      {sansCode > 0 && (
+        <p className="text-[12.5px] rounded-[9px] border border-warning/30 bg-warning-soft px-3.5 py-2.5">
+          <span className="font-semibold text-warning">{sansCode} produit(s) fini(s) sans code fiscal</span> : leurs factures ne pourront pas être générées.
+        </p>
+      )}
+
+      <div className="grid lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)] gap-4 items-start">
+        {/* Gauche : familles fiscales */}
+        <Panel className="overflow-hidden lg:sticky lg:top-[72px]">
+          <h2 className="px-4 py-3 border-b border-line text-[13px] font-semibold">Familles fiscales</h2>
+          {familles.length === 0 ? (
+            <p className="px-4 py-8 text-center text-[12.5px] text-muted">Aucune famille fiscale.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {familles.map((f) => {
+                const actif = f.id === famille?.id;
+                return (
+                  <li key={f.id} className={cn("flex items-center border-l-2", actif ? "bg-primary-soft border-primary" : "border-transparent")}>
+                    <button type="button" onClick={() => setChoix(f.id)} className="flex-1 min-w-0 text-left px-4 py-2.5 hover:bg-surface-2/60">
+                      <span className={cn("block text-[13px] truncate", actif ? "font-semibold" : "font-medium", !f.actif && "line-through text-muted")}>{f.nom}</span>
+                      <span className="block text-[11.5px] text-muted">{nbCodes(f)} code(s)</span>
+                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="text-[11.5px] text-muted hover:text-primary px-3"
+                        onClick={() => void dispatch({ type: "TOGGLE_VALEUR_LISTE", liste: "famille_fiscale", id: f.id, actif: !f.actif })}
+                      >
+                        {f.actif ? "Désactiver" : "Activer"}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {canEdit && (
+            <div className="p-3 border-t border-line flex gap-2">
+              <input className={cn(inputClass, "h-8 text-[12.5px]")} value={nouvelle} onChange={(e) => setNouvelle(e.target.value)} placeholder="Nouvelle famille…" />
+              <Button
+                className="h-8 px-3"
+                disabled={!nouvelle.trim()}
+                onClick={() => {
+                  void dispatch({ type: "CREATE_VALEUR_LISTE", liste: "famille_fiscale", valeur: nouvelle.trim() });
+                  setNouvelle("");
+                }}
+              >
+                <Plus size={14} />
+              </Button>
+            </div>
+          )}
+        </Panel>
+
+        {/* Droite : codes de la famille */}
+        <Panel className="overflow-hidden min-w-0">
+          <div className="px-4 py-3 border-b border-line">
+            <h2 className="text-[13px] font-semibold">{famille ? famille.nom : "Codes fiscaux"}</h2>
+            <p className="text-[11.5px] text-muted">Centimes additionnels exprimés en % de la TVA.</p>
+          </div>
+          <DataTable
+            emptyText={famille ? "Aucun code pour cette famille." : "Choisissez une famille."}
+            columns={[
+              { key: "c", label: "Code" },
+              { key: "t", label: "TVA", className: "text-right" },
+              { key: "a", label: "Accise", className: "text-right" },
+              { key: "ca", label: "Centimes", className: "text-right" },
+              { key: "art", label: "Articles", className: "text-right" },
+              { key: "s", label: "Statut" },
+            ]}
+            rows={codes.map((c) => ({
+              c: <span className="num font-medium">{c.code}</span>,
+              t: <span className="num">{c.exonere ? "Exonéré" : `${num(c.taux_tva)} %`}</span>,
+              a: <span className="num">{num(c.taux_accise)} %</span>,
+              ca: <span className="num">{num(c.taux_centimes_additionnels)} %</span>,
+              art: <span className="num">{state.articles.filter((a) => a.code_fiscal === c.id).length}</span>,
+              s: c.actif ? <StatusBadge tone="success">Actif</StatusBadge> : <StatusBadge tone="neutral">Inactif</StatusBadge>,
+            }))}
+          />
+        </Panel>
+      </div>
+
+      {creation && famille && <NouveauCodeDrawer famille={famille} onClose={() => setCreation(false)} />}
+    </div>
+  );
+}
+
+function NouveauCodeDrawer({ famille, onClose }: { famille: FamilleFiscale; onClose: () => void }) {
+  const { state, dispatch } = useStore();
+  const [fam, setFam] = useState(famille.id);
   const [tva, setTva] = useState("18");
   const [centimes, setCentimes] = useState("5");
   const [accise, setAccise] = useState("0");
   const [exonere, setExonere] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [q, setQ] = useState("");
-  const [fFamille, setFFamille] = useState("");
-  const [fStatut, setFStatut] = useState<"TOUS" | "ACTIFS" | "INACTIFS">("TOUS");
-  const [fExo, setFExo] = useState("");
-  const codesFiltres = state.codesFiscaux.filter(
-    (c) =>
-      matchSearch(q, c.code, familleFiscaleName(c.famille_fiscale)) &&
-      (!fFamille || String(c.famille_fiscale) === fFamille) &&
-      (fStatut === "TOUS" || (fStatut === "ACTIFS" ? c.actif : !c.actif)) &&
-      (!fExo || (fExo === "OUI" ? c.exonere : !c.exonere)),
-  );
 
-  async function createCode() {
-    setBusy(true);
+  async function submit() {
+    setSaving(true);
     setErr(null);
     try {
       await api.post(endpoints.codesFiscaux, {
-        famille_fiscale: famille,
+        famille_fiscale: fam,
         exonere,
-        taux_tva: tva,
+        taux_tva: exonere ? "0" : tva,
         taux_centimes_additionnels: centimes,
         taux_accise: accise,
         sfec_actif: true,
         actif: true,
       });
-      setFamille(0);
       await dispatch({ type: "REFRESH" });
+      onClose();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Création impossible");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        eyebrow="Référentiel"
-        title="Codes fiscaux"
-        description="Matrice fiscale EVAM. Les taux ne se choisissent jamais à la vente : ils sont dérivés du code rattaché à l’article."
-      />
-      {canEdit && (
-        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-end">
-          <h2 className="col-span-full text-[13px] font-semibold">Familles fiscales</h2>
-          <Field label="Nouvelle famille fiscale">
-            <input className={inputClass} value={nouvelleFamille} onChange={(e) => setNouvelleFamille(e.target.value)} placeholder="Ex : Jus EVAM sucré/aromatisé" />
-          </Field>
-          <Button
-            disabled={!nouvelleFamille.trim()}
-            onClick={() => {
-              void dispatch({ type: "CREATE_VALEUR_LISTE", liste: "famille_fiscale", valeur: nouvelleFamille });
-              setNouvelleFamille("");
-            }}
-          >
-            Ajouter la famille
+    <Drawer
+      open
+      onClose={onClose}
+      title="Nouveau code fiscal"
+      subtitle="Le code (ex. EV-FISC-JUS-18) est généré automatiquement."
+      icon={<Percent size={17} />}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Annuler
           </Button>
-          <ul className="col-span-full flex flex-wrap gap-2">
-            {state.famillesFiscales.map((f) => (
-              <li key={f.id} className="flex items-center gap-1 rounded border border-line px-2 py-1 text-[12px]">
-                <span className={f.actif ? "" : "line-through text-muted"}>{f.nom}</span>
-                <button
-                  className="text-primary text-[11px]"
-                  onClick={() => void dispatch({ type: "TOGGLE_VALEUR_LISTE", liste: "famille_fiscale", id: f.id, actif: !f.actif })}
-                >
-                  {f.actif ? "désactiver" : "activer"}
-                </button>
-              </li>
+          <Button disabled={!fam || saving} onClick={() => void submit()}>
+            {saving ? "Création…" : "Créer le code"}
+          </Button>
+        </>
+      }
+    >
+      <DrawerSection title="Famille">
+        <select className={inputClass} value={fam} onChange={(e) => setFam(Number(e.target.value))}>
+          {state.famillesFiscales
+            .filter((f) => f.actif || f.id === fam)
+            .map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nom}
+              </option>
             ))}
-          </ul>
-        </Panel>
-      )}
-      {canEdit && (
-        <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-end">
-          <h2 className="col-span-full text-[13px] font-semibold">Nouveau code fiscal</h2>
-          <p className="col-span-full text-[12px] text-muted -mt-2">
-            Le code (ex. « EV-FISC-JUS-18 ») est généré automatiquement à partir de la famille et du taux — inutile de le saisir.
-          </p>
-          <Field label="Famille fiscale">
-            <select className={inputClass} value={famille} onChange={(e) => setFamille(Number(e.target.value))}>
-              <option value={0}>—</option>
-              {state.famillesFiscales.filter((f) => f.actif).map((f) => (
-                <option key={f.id} value={f.id}>{f.nom}</option>
-              ))}
-            </select>
-          </Field>
+        </select>
+      </DrawerSection>
+      <DrawerSection title="Taux">
+        <label className="flex items-center gap-2.5 rounded-[9px] border border-line px-3.5 py-2.5 text-[13px] cursor-pointer">
+          <input type="checkbox" className="h-4 w-4" checked={exonere} onChange={(e) => setExonere(e.target.checked)} />
+          Exonéré de TVA
+        </label>
+        <div className="grid grid-cols-3 gap-3">
           <Field label="TVA %">
-            <input className={inputClass} value={tva} onChange={(e) => setTva(e.target.value)} />
-          </Field>
-          <Field label="Centimes % (de la TVA)">
-            <input className={inputClass} value={centimes} onChange={(e) => setCentimes(e.target.value)} />
+            <input className={cn(inputClass, "num text-right")} value={exonere ? "0" : tva} disabled={exonere} onChange={(e) => setTva(e.target.value)} />
           </Field>
           <Field label="Accise %">
-            <input className={inputClass} value={accise} onChange={(e) => setAccise(e.target.value)} />
+            <input className={cn(inputClass, "num text-right")} value={accise} onChange={(e) => setAccise(e.target.value)} />
           </Field>
-          <label className="flex items-center gap-2 text-[13px] pb-2">
-            <input type="checkbox" checked={exonere} onChange={(e) => setExonere(e.target.checked)} />
-            Exonéré de TVA
-          </label>
-          {err && <p className="col-span-full text-[13px] text-danger">{err}</p>}
-          <Button disabled={busy || !famille} onClick={() => void createCode()}>
-            Créer le code fiscal
-          </Button>
-        </Panel>
-      )}
-      <Panel className="overflow-hidden">
-        <FilterBar
-          shown={codesFiltres.length}
-          total={state.codesFiscaux.length}
-          active={!!q || !!fFamille || !!fExo || fStatut !== "TOUS"}
-          onReset={() => { setQ(""); setFFamille(""); setFExo(""); setFStatut("TOUS"); }}
-        >
-          <SearchInput value={q} onChange={setQ} placeholder="Code ou famille…" />
-          <Segmented label="Statut" value={fStatut} onChange={setFStatut} options={[
-            { value: "TOUS", label: "Tous" },
-            { value: "ACTIFS", label: "Actifs", count: state.codesFiscaux.filter((c) => c.actif).length },
-            { value: "INACTIFS", label: "Inactifs", count: state.codesFiscaux.filter((c) => !c.actif).length },
-          ]} />
-          <FilterSelect label="Famille fiscale" allLabel="Toutes les familles" value={fFamille} onChange={setFFamille} options={state.famillesFiscales.map((f) => ({ value: String(f.id), label: f.nom }))} />
-          <FilterSelect label="TVA" allLabel="TVA : tous" value={fExo} onChange={setFExo} options={[{ value: "OUI", label: "Exonérés de TVA" }, { value: "NON", label: "Soumis à TVA" }]} />
-        </FilterBar>
-        <DataTable
-          emptyText="Aucun code fiscal ne correspond à ces filtres."
-          columns={[
-            { key: "c", label: "Code" },
-            { key: "f", label: "Famille" },
-            { key: "t", label: "TVA" },
-            { key: "a", label: "Accise" },
-            { key: "ca", label: "Centimes" },
-            { key: "e", label: "Exonéré" },
-            { key: "x", label: "Actif" },
-          ]}
-          rows={codesFiltres.map((c) => ({
-            c: c.code,
-            f: familleFiscaleName(c.famille_fiscale),
-            t: `${num(c.taux_tva)} %`,
-            a: `${num(c.taux_accise)} %`,
-            ca: `${num(c.taux_centimes_additionnels)} %`,
-            e: c.exonere ? "Oui" : "Non",
-            x: c.actif ? "Oui" : "Non",
-          }))}
-        />
-      </Panel>
-    </div>
+          <Field label="Centimes %">
+            <input className={cn(inputClass, "num text-right")} value={centimes} onChange={(e) => setCentimes(e.target.value)} />
+          </Field>
+        </div>
+        {err && <p className="text-[12.5px] text-danger">{err}</p>}
+      </DrawerSection>
+    </Drawer>
   );
 }

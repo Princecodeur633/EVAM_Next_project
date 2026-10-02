@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
+  ShieldAlert,
   PencilLine,
   Binoculars,
   BookOpenText,
@@ -112,6 +113,8 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/comptabilite/export-sage": FileOutput,
   "/comptabilite/clotures": Lock,
   "/comptabilite/ecritures": BookOpenText,
+  "/comptabilite/ecarts": Vault,
+  "/comptabilite/parametres": Calculator,
   "/stocks/valorisation": Scale,
   "/reclamations": MessageSquareWarning,
   "/parametrage": SlidersHorizontal,
@@ -140,6 +143,8 @@ export const LABEL_ICONS: Record<string, LucideIcon> = {
   "Tournées & flotte": Route,
   "Ma tournée": Route,
   Historique: History,
+  Contrôle: ShieldAlert,
+  Fiscalité: Percent,
   "Mes OF": ClipboardList,
   Saisir: PencilLine,
 };
