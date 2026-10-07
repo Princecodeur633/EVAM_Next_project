@@ -12,7 +12,7 @@ import {
 } from "react";
 import { ApiError, actions, api, catalog, catalogKeysForRole, detail, endpoints, fetchMoi, loadSession, login as apiLogin, logout as apiLogout, saveSession, type AuthSession, type CatalogKey } from "./api";
 import { canAct, stockArticleTotal, type ActionName } from "./engine";
-import { displayName, ORDRE_STATUTS_OF } from "./labels";
+import { displayName, ORDRE_STATUTS_OF, TYPES_ACHETES } from "./labels";
 import { canEditParam as roleCanEditParam } from "./roles";
 import { tarifEnVigueur } from "./tarifs";
 import type {
@@ -208,7 +208,13 @@ export type Action =
   | { type: "GENERER_RAPPORT"; periode: "JOURNALIER" | "MENSUEL" }
   | { type: "CREATE_VALEUR_LISTE"; liste: ListeValeurs; valeur: string }
   | { type: "TOGGLE_VALEUR_LISTE"; liste: ListeValeurs; id: number; actif: boolean }
-  | { type: "VALORISER_COUT_RETOUR"; id: number; cout_produit_detruit: number };
+  | { type: "VALORISER_COUT_RETOUR"; id: number; cout_produit_detruit: number }
+  /**
+   * Appel API quelconque (modules industriel, qualité, lots, transferts, coûts en cascade...) :
+   * même gestion d'erreur que les autres actions ; `refresh` limite le rechargement aux
+   * collections touchées (sinon tout est rechargé).
+   */
+  | { type: "EXEC"; run: () => Promise<unknown>; refresh?: CatalogKey[] };
 
 function emptyState(): AppState {
   return {
@@ -296,6 +302,24 @@ function emptyState(): AppState {
     seuilsControles: [],
     ecrituresComptables: [],
     rapports: [],
+    activites: [],
+    usines: [],
+    etapesStandard: [],
+    lignesProduction: [],
+    postes: [],
+    equipements: [],
+    circuits: [],
+    changementsSerie: [],
+    lotsMatieres: [],
+    transfertsStock: [],
+    conversions: [],
+    parametresQualite: [],
+    instruments: [],
+    planControle: [],
+    controlesRealises: [],
+    nonConformites: [],
+    naturesCout: [],
+    charges: [],
     lastError: null,
     loading: false,
   };
@@ -480,6 +504,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, lastError: null }));
       try {
         const userId = session?.userId;
+        if (action.type === "EXEC") {
+          await action.run();
+          if (action.refresh) {
+            const fetched = await fetchCatalogs(action.refresh);
+            setState((s) => withDepotId({ ...s, ...fetched }));
+            return true;
+          }
+          await hydrate(loadSession());
+          return true;
+        }
         switch (action.type) {
           case "CREATE_PLAN":
             await api.post(endpoints.plans, {
@@ -1213,7 +1247,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       stockOf: (articleId) => stockArticleTotal(s, articleId),
       tarifFor: (articleId, clientId) => num(tarifEnVigueur(s.tarifs, articleId, clientId ?? null)?.prix_unitaire),
       produitsFinis: s.articles.filter((a) => a.type_article === "PRODUIT_FINI" && a.actif),
-      matieres: s.articles.filter((a) => a.type_article === "MATIERE_PREMIERE" && a.actif),
+      // Articles achetés et consommés (jamais fabriqués) : matières premières, emballages, consommables.
+      matieres: s.articles.filter((a) => TYPES_ACHETES.includes(a.type_article) && a.actif),
       ready,
     };
   }, [currentUser, dispatch, filteredState, ready, role, session, state]);

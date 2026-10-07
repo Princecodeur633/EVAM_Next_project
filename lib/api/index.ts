@@ -1,4 +1,4 @@
-export { api, apiRequest, listAll, login, logout, loadSession, saveSession, fetchMoi, fetchImpayes, fetchTableauDeBordDirection, ApiError } from "./client";
+export { api, apiBlob, apiRequest, apiUpload, listAll, ouvrirPdf, login, logout, loadSession, saveSession, fetchMoi, fetchImpayes, fetchTableauDeBordDirection, ApiError } from "./client";
 export type {
   AuthSession,
   Moi,
@@ -14,4 +14,4 @@ export type {
   ProduitRentable,
 } from "./client";
 export { actions, catalog, catalogKeysForRole, detail, endpoints } from "./resources";
-export type { CatalogKey, EndpointKey } from "./resources";
+export type { CatalogKey, DocumentPdf, EndpointKey, SimulationBesoins } from "./resources";

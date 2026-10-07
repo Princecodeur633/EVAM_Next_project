@@ -1,5 +1,40 @@
-import { api, listAll } from "./client";
+import { api, apiUpload, listAll, ouvrirPdf } from "./client";
 import type {
+  Activite,
+  BonSortieOF,
+  ChangementSerie,
+  Charge,
+  Circuit,
+  ConsommationLotMatiere,
+  ConsommationReelleOF,
+  ControleDoubleCompte,
+  ControleRealise,
+  ConversionUnite,
+  CoutEauTraitee,
+  CoutRevientPeriode,
+  EtapeCircuit,
+  EtapeStandard,
+  Equipement,
+  IndicateursQualite,
+  Instrument,
+  LigneProduction,
+  LigneTransfert,
+  LotMatiere,
+  NatureCout,
+  NonConformite,
+  ParametreEntreprise,
+  ParametreProduction,
+  ParametreQualite,
+  PieceJointeQualite,
+  PointControle,
+  Poste,
+  RepartitionCout,
+  ResultatCalculCascade,
+  TracabiliteLot,
+  TracabiliteLotMatiere,
+  TransfertStock,
+  Usine,
+  VerificationStockOF,
   Amortissement,
   AnnuaireEntry,
   AppNotification,
@@ -171,6 +206,34 @@ export const endpoints = {
   seuilsControles: "/comptabilite/seuils-controles/",
   ecrituresComptables: "/comptabilite/ecritures/",
   rapports: "/reporting/rapports/",
+  // Socle industriel
+  activites: "/industriel/activites/",
+  usines: "/industriel/usines/",
+  etapesStandard: "/industriel/etapes/",
+  lignesProduction: "/industriel/lignes/",
+  postes: "/industriel/postes/",
+  equipements: "/industriel/equipements/",
+  circuits: "/industriel/circuits/",
+  etapesCircuit: "/industriel/etapes-circuit/",
+  // Production
+  changementsSerie: "/production/changements-serie/",
+  parametresProduction: "/production/parametres/",
+  // Stocks
+  lotsMatieres: "/stocks/lots-matieres/",
+  transfertsStock: "/stocks/transferts/",
+  lignesTransfert: "/stocks/lignes-transfert/",
+  conversions: "/referentiel/conversions/",
+  // Contrôle qualité
+  parametresQualite: "/qualite/parametres/",
+  instruments: "/qualite/instruments/",
+  planControle: "/qualite/plan-controle/",
+  controlesRealises: "/qualite/controles-realises/",
+  nonConformites: "/qualite/non-conformites/",
+  piecesJointesQualite: "/qualite/pieces-jointes/",
+  // Coûts en cascade
+  naturesCout: "/couts/natures/",
+  charges: "/couts/charges/",
+  repartitionsCout: "/couts/repartitions/",
 } as const;
 
 export type EndpointKey = keyof typeof endpoints;
@@ -257,11 +320,32 @@ export const catalog = {
   seuilsControles: () => listAll<ParametreControle>(endpoints.seuilsControles),
   ecrituresComptables: () => listAll<EcritureComptable>(endpoints.ecrituresComptables),
   rapports: () => listAll<RapportGenere>(endpoints.rapports),
+  activites: () => listAll<Activite>(endpoints.activites),
+  usines: () => listAll<Usine>(endpoints.usines),
+  etapesStandard: () => listAll<EtapeStandard>(endpoints.etapesStandard),
+  lignesProduction: () => listAll<LigneProduction>(endpoints.lignesProduction),
+  postes: () => listAll<Poste>(endpoints.postes),
+  equipements: () => listAll<Equipement>(endpoints.equipements),
+  circuits: () => listAll<Circuit>(endpoints.circuits),
+  changementsSerie: () => listAll<ChangementSerie>(endpoints.changementsSerie),
+  lotsMatieres: () => listAll<LotMatiere>(endpoints.lotsMatieres),
+  transfertsStock: () => listAll<TransfertStock>(endpoints.transfertsStock),
+  conversions: () => listAll<ConversionUnite>(endpoints.conversions),
+  parametresQualite: () => listAll<ParametreQualite>(endpoints.parametresQualite),
+  instruments: () => listAll<Instrument>(endpoints.instruments),
+  planControle: () => listAll<PointControle>(endpoints.planControle),
+  controlesRealises: () => listAll<ControleRealise>(endpoints.controlesRealises),
+  nonConformites: () => listAll<NonConformite>(endpoints.nonConformites),
+  naturesCout: () => listAll<NatureCout>(endpoints.naturesCout),
+  charges: () => listAll<Charge>(endpoints.charges),
 };
 
 export type CatalogKey = keyof typeof catalog;
 
 const SHARED_CATALOG: CatalogKey[] = ["articles", "stock", "lots"];
+
+/** Socle industriel : lu par les métiers qui s'en servent, écrit par l'Admin SI et la Direction. */
+const INDUSTRIEL: CatalogKey[] = ["activites", "usines", "etapesStandard", "lignesProduction", "postes", "equipements", "circuits"];
 
 const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   // Admin SI : tout sauf commandes, factures, encaissements et tarifs (⛔ cahier des charges).
@@ -315,6 +399,19 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "exportsComptables",
     "clotures",
     "rapports",
+    // Socle industriel (écriture), production, qualité et coûts en lecture
+    ...INDUSTRIEL,
+    "changementsSerie",
+    "lotsMatieres",
+    "transfertsStock",
+    "conversions",
+    "parametresQualite",
+    "instruments",
+    "planControle",
+    "controlesRealises",
+    "nonConformites",
+    "naturesCout",
+    "charges",
   ],
   RESPONSABLE_PRODUCTION: [
     "utilisateurs",
@@ -344,6 +441,15 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "depots",
     "demandesAchat",
     "besoinsAchat",
+    ...INDUSTRIEL,
+    "changementsSerie",
+    "lotsMatieres",
+    "conversions",
+    "parametresQualite",
+    "instruments",
+    "planControle",
+    "controlesRealises",
+    "nonConformites",
   ],
   AGENT_PRODUCTION: [
     "utilisateurs",
@@ -359,6 +465,17 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "pertes",
     "stock",
     "lots",
+    // Étapes, postes et machines pour la saisie atelier ; contrôles de ses OF.
+    "etapesStandard",
+    "lignesProduction",
+    "postes",
+    "equipements",
+    "circuits",
+    "changementsSerie",
+    "conversions",
+    "instruments",
+    "planControle",
+    "controlesRealises",
   ],
   RESPONSABLE_QUALITE: [
     "utilisateurs",
@@ -378,6 +495,16 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "fichesTechniques",
     "compositions",
     "ofList",
+    "depots",
+    ...INDUSTRIEL,
+    "changementsSerie",
+    "lotsMatieres",
+    "conversions",
+    "parametresQualite",
+    "instruments",
+    "planControle",
+    "controlesRealises",
+    "nonConformites",
   ],
   MAGASINIER: [
     "utilisateurs",
@@ -402,6 +529,17 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "commandes",
     "lots",
     "transferts",
+    "fournisseurs",
+    "activites",
+    "usines",
+    "lotsMatieres",
+    "transfertsStock",
+    "conversions",
+    "parametresQualite",
+    "instruments",
+    "planControle",
+    "controlesRealises",
+    "nonConformites",
   ],
   RESPONSABLE_ACHATS: [
     "utilisateurs",
@@ -423,6 +561,11 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "lignesReception",
     "stock",
     "lots",
+    "depots",
+    "activites",
+    "lotsMatieres",
+    "conversions",
+    "nonConformites",
   ],
   COMMERCIAL: [
     "utilisateurs",
@@ -445,6 +588,10 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "lignesFacture",
     "avoirs",
     "reclamations",
+    "activites",
+    "depots",
+    "transfertsStock",
+    "conversions",
   ],
   CAISSIER: [
     "utilisateurs",
@@ -475,6 +622,10 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "factures",
     "lignesFacture",
     "reclamations",
+    // Lieu de sortie des préparations et transferts vers les dépôts extérieurs.
+    "depots",
+    "activites",
+    "transfertsStock",
   ],
   CHAUFFEUR: ["utilisateurs", "articles", "chauffeurs", "tournees", "bonsLivraison"],
   COMPTABILITE_DAF: [
@@ -507,6 +658,17 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "mouvements",
     "decaissements",
     "ecartsCaisse",
+    "depots",
+    ...INDUSTRIEL,
+    "changementsSerie",
+    "transfertsStock",
+    "conversions",
+    "parametresQualite",
+    "instruments",
+    "planControle",
+    "controlesRealises",
+    "naturesCout",
+    "charges",
   ],
 };
 
@@ -621,5 +783,164 @@ export const actions = {
   recalculerCout: (id: number) => api.post<CoutReel>(`${endpoints.coutsReels}${id}/recalculer/`),
   genererRapport: (periode: "JOURNALIER" | "MENSUEL") =>
     api.post<RapportGenere>(`${endpoints.rapports}generer_aujourd_hui/`, { periode }),
+
+  // ---------- Fiches techniques : essai et simulation ----------
+  /** Brouillon -> En test : la composition est figée pendant l'essai. */
+  mettreFicheEnTest: (id: number) => api.post<FicheTechnique>(`${endpoints.fichesTechniques}${id}/mettre_en_test/`),
+  /** En test -> Brouillon : ajustement de la composition après essai. */
+  repasserFicheEnBrouillon: (id: number) => api.post<FicheTechnique>(`${endpoints.fichesTechniques}${id}/repasser_en_brouillon/`),
+  /** Besoins que générerait un OF (unité de référence, rendement, pertes, lignes propres au format). */
+  simulerBesoins: (id: number, quantite: number | string, article?: number) =>
+    api.get<SimulationBesoins>(
+      `${endpoints.fichesTechniques}${id}/simuler_besoins/?quantite=${encodeURIComponent(String(quantite))}${article ? `&article=${article}` : ""}`,
+    ),
+  convertirUnites: (quantite: number | string, de: string, vers: string, article?: number) =>
+    api.get<{ quantite: string; de: string; vers: string; resultat: string }>(
+      `${endpoints.conversions}convertir/?quantite=${encodeURIComponent(String(quantite))}&de=${de}&vers=${vers}${article ? `&article=${article}` : ""}`,
+    ),
+
+  // ---------- OF : lancement, sortie matières, traçabilité ----------
+  /** Lignes actives pouvant produire ce format (choix à la création d'un OF). */
+  lignesCompatibles: (article: number) => api.get<LigneProduction[]>(`${endpoints.lignesProduction}compatibles/?article=${article}`),
+  /** Circuit validé que recevrait un OF (le plus précis : format + ligne > format > activité). */
+  circuitApplicable: (article: number, ligne?: number | null) =>
+    api.get<Circuit | null>(`${endpoints.circuits}applicable/?article=${article}${ligne ? `&ligne=${ligne}` : ""}`),
+  verifierStockOf: (id: number) => api.get<VerificationStockOF>(`${endpoints.ofList}${id}/verifier_stock/`),
+  bonDeSortieOf: (id: number) => api.get<BonSortieOF>(`${endpoints.ofList}${id}/bon_de_sortie/`),
+  lotsConsommesOf: (id: number) => api.get<ConsommationLotMatiere[]>(`${endpoints.ofList}${id}/lots_consommes/`),
+  consommationReelleOf: (id: number) => api.get<ConsommationReelleOF>(`${endpoints.ofList}${id}/consommation_reelle/`),
+  parametresProduction: () => api.get<ParametreProduction>(endpoints.parametresProduction),
+  modifierParametresProduction: (champs: Partial<ParametreProduction>) =>
+    api.patch<ParametreProduction>(`${endpoints.parametresProduction}modifier/`, champs),
+
+  // ---------- Socle industriel ----------
+  validerCircuit: (id: number) => api.post<Circuit>(`${endpoints.circuits}${id}/valider/`),
+  nouvelleVersionCircuit: (id: number) => api.post<Circuit>(`${endpoints.circuits}${id}/nouvelle_version/`),
+  ajouterEtapeCircuit: (corps: Partial<EtapeCircuit> & { circuit: number; etape: number; ordre: number }) =>
+    api.post<EtapeCircuit>(endpoints.etapesCircuit, corps),
+  supprimerEtapeCircuit: (id: number) => api.del(`${endpoints.etapesCircuit}${id}/`),
+
+  // ---------- Lots matières et transferts ----------
+  libererLotMatiere: (id: number) => api.post<LotMatiere>(`${endpoints.lotsMatieres}${id}/liberer/`),
+  bloquerLotMatiere: (id: number) => api.post<LotMatiere>(`${endpoints.lotsMatieres}${id}/bloquer/`),
+  tracabiliteLotMatiere: (id: number) => api.get<TracabiliteLotMatiere>(`${endpoints.lotsMatieres}${id}/tracabilite/`),
+  tracabiliteLot: (id: number) => api.get<TracabiliteLot>(`${endpoints.lots}${id}/tracabilite/`),
+  expedierTransfert: (id: number) => api.post<TransfertStock>(`${endpoints.transfertsStock}${id}/expedier/`),
+  receptionnerTransfert: (id: number) => api.post<TransfertStock>(`${endpoints.transfertsStock}${id}/receptionner/`),
+  annulerTransfert: (id: number) => api.post<TransfertStock>(`${endpoints.transfertsStock}${id}/annuler/`),
+  ajouterLigneTransfert: (corps: { transfert: number; article: number; quantite: number; lot?: number | null }) =>
+    api.post<LigneTransfert>(endpoints.lignesTransfert, corps),
+  supprimerLigneTransfert: (id: number) => api.del(`${endpoints.lignesTransfert}${id}/`),
+
+  // ---------- Contrôle qualité ----------
+  activerPointControle: (id: number) => api.post<PointControle>(`${endpoints.planControle}${id}/activer/`),
+  desactiverPointControle: (id: number) => api.post<PointControle>(`${endpoints.planControle}${id}/desactiver/`),
+  nouvelleVersionPointControle: (id: number) => api.post<PointControle>(`${endpoints.planControle}${id}/nouvelle_version/`),
+  instrumentsAEtalonner: () => api.get<Instrument[]>(`${endpoints.instruments}a_etalonner/`),
+  /** Saisie du résultat : conformité calculée selon le plan ; non conforme -> NC automatique. */
+  enregistrerControle: (
+    id: number,
+    corps: {
+      valeur?: number | string;
+      resultat_qualitatif?: "CONFORME" | "NON_CONFORME";
+      instrument?: number | null;
+      commentaire?: string;
+      reference_echantillon?: string;
+    },
+  ) => api.post<ControleRealise>(`${endpoints.controlesRealises}${id}/enregistrer/`, corps),
+  envoyerAuLaboratoire: (id: number, reference_echantillon: string) =>
+    api.post<ControleRealise>(`${endpoints.controlesRealises}${id}/envoyer_au_laboratoire/`, { reference_echantillon }),
+  annulerControle: (id: number, motif: string) => api.post<ControleRealise>(`${endpoints.controlesRealises}${id}/annuler/`, { motif }),
+  repriseControle: (id: number) => api.post<ControleRealise>(`${endpoints.controlesRealises}${id}/reprise/`),
+  prendreEnChargeNC: (id: number) => api.post<NonConformite>(`${endpoints.nonConformites}${id}/prendre_en_charge/`),
+  cloturerNC: (id: number, decision: string, action_corrective: string) =>
+    api.post<NonConformite>(`${endpoints.nonConformites}${id}/cloturer/`, { decision, action_corrective }),
+  /** Photo ou bulletin d'analyse joint à un contrôle ou à une NC (multipart, champ « fichier »). */
+  joindrePieceQualite: (cible: { resultat?: number; non_conformite?: number }, fichier: File, description = "") => {
+    const form = new FormData();
+    form.append("fichier", fichier);
+    if (description) form.append("description", description);
+    if (cible.resultat) form.append("resultat", String(cible.resultat));
+    if (cible.non_conformite) form.append("non_conformite", String(cible.non_conformite));
+    return apiUpload<PieceJointeQualite>(endpoints.piecesJointesQualite, form);
+  },
+  indicateursQualite: (params?: { du?: string; au?: string; activite?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.du) q.set("du", params.du);
+    if (params?.au) q.set("au", params.au);
+    if (params?.activite) q.set("activite", String(params.activite));
+    return api.get<IndicateursQualite>(`/qualite/indicateurs/${q.toString() ? `?${q}` : ""}`);
+  },
+
+  // ---------- Coûts en cascade (période AAAA-MM) ----------
+  calculerCascade: (periode: string) => api.post<ResultatCalculCascade>("/couts/cascade/calculer/", { periode }),
+  genererAmortissements: (periode: string) => api.post<Charge[]>("/couts/cascade/amortissements/", { periode }),
+  coutRevient: (periode: string) => api.get<CoutRevientPeriode>(`/couts/cascade/cout-revient/?periode=${periode}`),
+  coutEauTraitee: (periode: string) => api.get<CoutEauTraitee[]>(`/couts/cascade/eau-traitee/?periode=${periode}`),
+  controleDoubleCompte: (periode: string) => api.get<ControleDoubleCompte>(`/couts/cascade/controle/?periode=${periode}`),
+  cascadeCharge: (id: number) => api.get<{ charge: Charge; repartitions: RepartitionCout[] }>(`${endpoints.charges}${id}/cascade/`),
+
+  // ---------- Documents imprimés (PDF générés par le backend) ----------
+  entreprise: () => api.get<ParametreEntreprise>("/documents/entreprise/"),
+  modifierEntreprise: (champs: Partial<ParametreEntreprise>) => api.patch<ParametreEntreprise>("/documents/entreprise/", champs),
+  envoyerLogo: (fichier: File) => {
+    const form = new FormData();
+    form.append("logo", fichier);
+    return apiUpload<ParametreEntreprise>("/documents/entreprise/logo/", form);
+  },
+  supprimerLogo: () => api.del("/documents/entreprise/logo/"),
+  /** Ouvre (ou télécharge) un PDF généré par le backend. */
+  pdf: (quoi: DocumentPdf, id: number | null, numero: string, telecharger = false) =>
+    ouvrirPdf(cheminPdf(quoi, id), `${PREFIXE_PDF[quoi]}-${numero}`, telecharger),
+};
+
+/** Documents imprimables générés par le backend (apps/core/documents.py). */
+export type DocumentPdf =
+  | "facture"
+  | "avoir"
+  | "commandeFournisseur"
+  | "recuCaisse"
+  | "bonLivraison"
+  | "bonTransfert"
+  | "bonSortie"
+  | "apercu";
+
+const PREFIXE_PDF: Record<DocumentPdf, string> = {
+  facture: "facture",
+  avoir: "avoir",
+  commandeFournisseur: "bon-commande",
+  recuCaisse: "recu",
+  bonLivraison: "bon-livraison",
+  bonTransfert: "bon-transfert",
+  bonSortie: "bon-sortie",
+  apercu: "apercu-document",
+};
+
+function cheminPdf(quoi: DocumentPdf, id: number | null) {
+  switch (quoi) {
+    case "facture":
+      return `${endpoints.factures}${id}/pdf/`;
+    case "avoir":
+      return `${endpoints.avoirs}${id}/pdf/`;
+    case "commandeFournisseur":
+      return `${endpoints.commandesFournisseur}${id}/pdf/`;
+    case "recuCaisse":
+      return `${endpoints.encaissements}${id}/pdf/`;
+    case "bonLivraison":
+      return `${endpoints.bonsLivraison}${id}/pdf/`;
+    case "bonTransfert":
+      return `${endpoints.transfertsStock}${id}/pdf/`;
+    case "bonSortie":
+      return `${endpoints.ofList}${id}/bon-de-sortie-pdf/`;
+    case "apercu":
+      return "/documents/apercu/";
+  }
+}
+
+/** GET .../fiches-techniques/{id}/simuler_besoins/ */
+export type SimulationBesoins = {
+  article: string;
+  quantite: string;
+  besoins: { matiere: string; designation: string; unite: string; base_calcul: string; quantite: string; montant: string }[];
 };
 
