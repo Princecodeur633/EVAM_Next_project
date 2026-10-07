@@ -1273,7 +1273,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const currentUser = useMemo(() => (session ? toUser(session) : null), [session]);
   const role = currentUser?.role ?? null;
 
-  /** Filtre les données sensibles selon le profil (agent → ses OF, chauffeur → ses tournées/BL). */
+  /**
+   * Filtre les données selon le profil (agent → ses OF). Le Chauffeur n'est pas refiltré : le backend
+   * ne lui renvoie déjà que ses tournées et ses BL, et lui refuse la liste des chauffeurs (un filtrage
+   * ici, fondé sur cette liste, vidait tout).
+   */
   const filteredState = useMemo(() => {
     if (!role || !currentUser) return state;
     const uid = currentUser.id;
@@ -1283,12 +1287,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       s.etapes = s.etapes.filter((e) => s.ofList.some((o) => o.id === e.ordre_fabrication));
       s.pertes = s.pertes.filter((p) => s.ofList.some((o) => o.id === p.ordre_fabrication));
     }
-    if (role === "CHAUFFEUR") {
-      const myChIds = state.chauffeurs.filter((c) => c.utilisateur === uid).map((c) => c.id);
-      s.tournees = s.tournees.filter((t) => myChIds.includes(t.chauffeur));
-      const myTourneeIds = s.tournees.map((t) => t.id);
-      s.bonsLivraison = s.bonsLivraison.filter((b) => b.tournee && myTourneeIds.includes(b.tournee));
-    }
     return s;
   }, [state, role, currentUser]);
 
@@ -1297,7 +1295,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const articleName = (id: number | null | undefined) => {
       if (id == null) return "—";
       const a = s.articles.find((x) => x.id === id);
-      return a ? `${a.code} · ${a.designation}` : `#${id}`;
+      if (a) return `${a.code} · ${a.designation}`;
+      // Profils sans accès à la liste des articles (Distribution…) : désignation reprise des lignes.
+      const l = s.lignesCommande.find((x) => x.article === id && x.article_designation) ?? s.lignesFacture.find((x) => x.article === id && x.article_designation);
+      return l ? `${l.article_code ?? ""} · ${l.article_designation}`.replace(/^ · /, "") : `#${id}`;
     };
     const familleName = (id: number | null | undefined) => {
       if (id == null) return "—";
@@ -1310,7 +1311,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const clientName = (id: number | null | undefined) => {
       if (id == null) return "—";
       const c = s.clients.find((x) => x.id === id);
-      return c ? `${c.code} · ${c.nom}` : `#${id}`;
+      if (c) return `${c.code} · ${c.nom}`;
+      // Profils sans accès à la liste des clients (Caissier…) : nom repris de la facture ou de la commande.
+      const nom = s.factures.find((x) => x.client === id && x.client_nom)?.client_nom ?? s.commandes.find((x) => x.client === id && x.client_nom)?.client_nom;
+      return nom ?? `#${id}`;
     };
     const fournisseurName = (id: number | null | undefined) => {
       if (id == null) return "—";

@@ -906,6 +906,8 @@ export interface Commande {
   statut: StatutCommande;
   cree_par: number;
   date_commande: string;
+  /** Nom du client, envoyé par le backend (utile aux profils qui ne lisent pas les clients). */
+  client_nom?: string;
 }
 
 export interface LigneCommande {
@@ -914,6 +916,9 @@ export interface LigneCommande {
   article: number;
   quantite: string;
   prix_unitaire: string;
+  /** Envoyés par le backend : utiles aux profils qui ne lisent pas les articles. */
+  article_code?: string;
+  article_designation?: string;
 }
 
 export interface Facture {
@@ -927,6 +932,8 @@ export interface Facture {
   statut: StatutFacture;
   date_emission: string;
   date_echeance: string | null;
+  client_nom?: string;
+  commande_numero?: string;
 }
 
 export interface LigneFacture {
@@ -944,6 +951,8 @@ export interface LigneFacture {
   montant_tva: string;
   montant_centimes: string;
   montant_ttc: string;
+  article_code?: string;
+  article_designation?: string;
 }
 
 export interface Avoir {

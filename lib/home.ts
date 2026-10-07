@@ -534,7 +534,7 @@ function respProduction(state: AppState, h: HomeHelpers): HomeData {
       { label: "OF en production", value: enProd.length, hint: `${ofCours.length} OF ouverts`, tone: "teal", icon: ClipboardList, href: "/production/of" },
       { label: "OF à lancer", value: amont.length, hint: "Brouillon → prêt", tone: amont.length ? "warning" : "default", icon: ListChecks, href: "/production/of" },
       { label: "Plans à convertir", value: plans.length, icon: CalendarDays, href: "/production/planning" },
-      { label: "Pertes du jour", value: formatQty(sum(pertesJour, (p) => p.quantite_perte), 0), hint: `${pertesJour.length} déclaration(s)`, tone: pertesJour.length ? "danger" : "success", icon: TrendingDown, href: "/production/pertes" },
+      { label: "Pertes du jour", value: formatQty(sum(pertesJour, (p) => p.quantite_perte), 0), hint: `${pertesJour.length} déclaration(s)`, tone: pertesJour.length ? "danger" : "success", icon: TrendingDown, href: "/production/of" },
     ],
     sections: [
       section({
@@ -593,13 +593,13 @@ function agentProduction(state: AppState, h: HomeHelpers): HomeData {
   return {
     actions: [
       { href: "/production/suivi", label: "Saisir une étape", icon: ListChecks },
-      { href: "/production/pertes", label: "Déclarer une perte", icon: TrendingDown },
+      { href: "/production/suivi?tab=perte", label: "Déclarer une perte", icon: TrendingDown },
     ],
     kpis: [
       { label: "OF en production", value: enProd.length, tone: "teal", icon: ClipboardList, href: "/production/of" },
       { label: "OF prêts à démarrer", value: prets.length, tone: prets.length ? "warning" : "default", icon: PackageCheck, href: "/production/of" },
       { label: "Mes étapes du jour", value: etapesJour.length, icon: ListChecks, href: "/production/suivi" },
-      { label: "Pertes du jour", value: formatQty(sum(pertesJour, (p) => p.quantite_perte), 0), tone: pertesJour.length ? "danger" : "success", icon: TrendingDown, href: "/production/pertes" },
+      { label: "Pertes du jour", value: formatQty(sum(pertesJour, (p) => p.quantite_perte), 0), tone: pertesJour.length ? "danger" : "success", icon: TrendingDown, href: "/production/suivi?tab=perte" },
     ],
     sections: [
       section({ id: "prod", title: "En production", icon: ClipboardList, href: "/production/suivi", empty: "Aucun OF en production.", all: enProd.map((o) => ofTask(o, h)) }),
@@ -609,7 +609,7 @@ function agentProduction(state: AppState, h: HomeHelpers): HomeData {
     chart: {
       title: "Pertes par motif",
       subtitle: "Sur vos OF",
-      href: "/production/pertes",
+      href: "/production/suivi?tab=perte",
       kind: "hbar",
       data: countBy(state.pertes, (p) => p.motif, (k) => MOTIF_PERTE_LABEL[k as keyof typeof MOTIF_PERTE_LABEL] ?? k),
     },

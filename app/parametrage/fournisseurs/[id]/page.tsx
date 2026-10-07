@@ -10,7 +10,7 @@ export default function FournisseurDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, dispatch, can, userName } = useStore();
   const fournisseur = state.fournisseurs.find((f) => f.id === Number(id));
-  const writable = can("CREATE_CF");
+  const writable = can("EDIT_FOURNISSEUR");
 
   const [form, setForm] = useState(() => ({
     nom: fournisseur?.nom ?? "",
