@@ -293,9 +293,12 @@ function MatiereSelect({ value, onChange }: { value: number; onChange: (v: numbe
 }
 
 function SortieDrawer({ onClose }: { onClose: () => void }) {
-  const { dispatch } = useStore();
+  const { state, dispatch } = useStore();
   const [of, setOf] = useState(0);
   const [matiere, setMatiere] = useState(0);
+  const [lot, setLot] = useState(0);
+  // Lots libérés et non périmés de la matière ; le backend vérifie qu’ils sont au magasin de l’usine de l’OF.
+  const lots = state.lotsMatieres.filter((l) => l.article === matiere && l.statut === "LIBERE" && !l.est_perime && Number(l.quantite_restante) > 0);
   const [qty, setQty] = useState("");
   const [type, setType] = useState<TypeSortie>("NORMALE");
   const [motif, setMotif] = useState("");
@@ -305,7 +308,7 @@ function SortieDrawer({ onClose }: { onClose: () => void }) {
 
   async function submit() {
     setSaving(true);
-    const ok = await dispatch({ type: "CREATE_SORTIE", ordre_fabrication: of, matiere, quantite_sortie: Number(qty), type_sortie: type, motif: motif.trim() });
+    const ok = await dispatch({ type: "CREATE_SORTIE", ordre_fabrication: of, matiere, quantite_sortie: Number(qty), type_sortie: type, motif: motif.trim(), lot_matiere: lot || null });
     setSaving(false);
     if (ok) onClose();
   }
@@ -330,7 +333,27 @@ function SortieDrawer({ onClose }: { onClose: () => void }) {
     >
       <DrawerSection title="Sortie">
         <OfSelect value={of} onChange={setOf} />
-        <MatiereSelect value={matiere} onChange={setMatiere} />
+        <MatiereSelect
+          value={matiere}
+          onChange={(m) => {
+            setMatiere(m);
+            setLot(0);
+          }}
+        />
+        {lots.length > 0 && (
+          <Field label="Lot">
+            <select className={inputClass} value={lot} onChange={(e) => setLot(Number(e.target.value))}>
+              <option value={0}>Automatique (DLC la plus proche d’abord)</option>
+              {lots.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.numero}
+                  {l.lot_fournisseur ? ` · fourn. ${l.lot_fournisseur}` : ""} · reste {l.quantite_restante}
+                  {l.date_peremption ? ` · DLC ${l.date_peremption}` : ""} · {l.depot_nom}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Quantité">
             <input type="number" min="0" step="any" className={cn(inputClass, "num text-right")} value={qty} onChange={(e) => setQty(e.target.value)} />

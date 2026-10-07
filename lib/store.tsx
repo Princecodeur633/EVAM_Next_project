@@ -105,7 +105,8 @@ export type Action =
       /** Matière / emballage perdu : la perte est alors valorisée au CMUP par le serveur. */
       matiere?: number | null;
     }
-  | { type: "CREATE_SORTIE"; ordre_fabrication: number; matiere: number; quantite_sortie: number; type_sortie?: string; motif?: string }
+  /** `lot_matiere` : lot imposé ; sinon les lots les plus proches de leur DLC sont consommés. */
+  | { type: "CREATE_SORTIE"; ordre_fabrication: number; matiere: number; quantite_sortie: number; type_sortie?: string; motif?: string; lot_matiere?: number | null }
   | { type: "CREATE_RETOUR_MAT"; ordre_fabrication: number; matiere: number; quantite_retournee: number }
   | { type: "VALIDER_FT"; id: number }
   | { type: "CREATE_FT"; article: number; version?: number }
@@ -694,6 +695,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               quantite_sortie: action.quantite_sortie,
               type_sortie: action.type_sortie ?? "NORMALE",
               motif: action.motif ?? "",
+              lot_matiere: action.lot_matiere ?? null,
             });
             break;
           case "CREATE_RETOUR_MAT":
