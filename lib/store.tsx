@@ -53,7 +53,16 @@ export type Action =
   | { type: "SET_DEPOT"; depotId: number }
   | { type: "CLEAR_ERROR" }
   | { type: "CREATE_PLAN"; article: number; date_prevue: string; quantite_prevue: number; priorite?: string; commentaire?: string }
-  | { type: "CREATE_OF"; article: number; quantite_a_produire: number; plan_production?: number; agents_affectes?: number[] }
+  | {
+      type: "CREATE_OF";
+      article: number;
+      quantite_a_produire: number;
+      plan_production?: number;
+      agents_affectes?: number[];
+      /** Ligne compatible avec le format : fixe l'usine (magasin matières, stock produits finis). */
+      ligne?: number | null;
+      date_prevue?: string | null;
+    }
   | { type: "AVANCER_OF"; id: number }
   | { type: "ANNULER_OF"; id: number; motif: string }
   | { type: "CONVERTIR_PLAN"; id: number; agents_affectes?: number[] }
@@ -65,8 +74,37 @@ export type Action =
   | { type: "REJETER_COMPLEMENT"; id: number }
   | { type: "CREATE_SUIVI_PROD"; ordre_fabrication: number; date: string; heure_debut: string; quantite_entree: number; quantite_produite?: number; quantite_conforme?: number; quantite_rejetee?: number; equipe?: string; arrets?: string; incidents?: string; observations?: string }
   | { type: "CREATE_SUIVI_EAU"; ordre_fabrication: number; volume_capte_l: number; volume_obtenu_traitement_l: number; volume_envoye_embouteillage_l: number; bouteilles_produites: number; bouteilles_conformes: number; bouteilles_rejetees?: number; volume_envoye_traitement_l?: number; nombre_packs?: number }
-  | { type: "CREATE_ETAPE"; ordre_fabrication: number; etape: string; quantite_produite?: number; observations?: string }
-  | { type: "CREATE_PERTE"; ordre_fabrication: number; quantite_perte: number; motif: string; observations?: string; etape?: number; taux_perte?: number }
+  | {
+      type: "CREATE_ETAPE";
+      ordre_fabrication: number;
+      /** Code EtapeStandard (étape du circuit de l'OF s'il en a un). */
+      etape: string;
+      quantite_produite?: number;
+      observations?: string;
+      poste?: number | null;
+      equipement?: number | null;
+      quantite_entree?: number;
+      quantite_rejetee?: number;
+      date_debut?: string;
+      date_fin?: string;
+      duree_arret_min?: number;
+      heures_machine?: number;
+      energie_kwh?: number;
+      energie_mesuree?: boolean;
+    }
+  | {
+      type: "CREATE_PERTE";
+      ordre_fabrication: number;
+      quantite_perte: number;
+      motif: string;
+      observations?: string;
+      etape?: number;
+      taux_perte?: number;
+      nature?: string;
+      etape_code?: string;
+      /** Matière / emballage perdu : la perte est alors valorisée au CMUP par le serveur. */
+      matiere?: number | null;
+    }
   | { type: "CREATE_SORTIE"; ordre_fabrication: number; matiere: number; quantite_sortie: number; type_sortie?: string; motif?: string }
   | { type: "CREATE_RETOUR_MAT"; ordre_fabrication: number; matiere: number; quantite_retournee: number }
   | { type: "VALIDER_FT"; id: number }
@@ -530,6 +568,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               quantite_a_produire: action.quantite_a_produire,
               plan_production: action.plan_production ?? null,
               agents_affectes: action.agents_affectes ?? [],
+              ligne: action.ligne ?? null,
+              date_prevue: action.date_prevue ?? null,
             });
             break;
           case "AVANCER_OF":
@@ -600,7 +640,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               etape: action.etape,
               quantite_produite: action.quantite_produite ?? null,
               observations: action.observations ?? "",
-              date_debut: new Date().toISOString(),
+              date_debut: action.date_debut ?? new Date().toISOString(),
+              date_fin: action.date_fin ?? null,
+              poste: action.poste ?? null,
+              equipement: action.equipement ?? null,
+              quantite_entree: action.quantite_entree ?? null,
+              quantite_rejetee: action.quantite_rejetee ?? null,
+              duree_arret_min: action.duree_arret_min ?? null,
+              heures_machine: action.heures_machine ?? null,
+              energie_kwh: action.energie_kwh ?? null,
+              energie_mesuree: action.energie_mesuree ?? false,
             });
             break;
           case "CREATE_PERTE":
@@ -611,6 +660,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               observations: action.observations ?? "",
               etape: action.etape ?? null,
               taux_perte: action.taux_perte ?? null,
+              nature: action.nature ?? "AUTRE",
+              etape_code: action.etape_code ?? "",
+              matiere: action.matiere ?? null,
             });
             break;
           case "CREATE_SORTIE":
