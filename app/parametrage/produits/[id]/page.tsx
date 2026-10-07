@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
 import { useParams } from "next/navigation";
+import { ConversionsPanel, DonneesIndustriellesPanel } from "@/components/articleIndustriel";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { MOMENT_CONTROLE_LABEL, TYPE_ARTICLE_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -135,6 +136,8 @@ export default function ProduitDetailPage() {
         </div>
       </Panel>
 
+      <DonneesIndustriellesPanel key={`ind-${article.id}`} article={article} writable={canEditFiche} />
+
       <Panel className="p-4 space-y-3">
         <h2 className="text-[13px] font-semibold">Fiscalité</h2>
         <p className="text-[12px] text-muted">
@@ -217,6 +220,8 @@ export default function ProduitDetailPage() {
           Enregistrer la fiche article
         </Button>
       )}
+
+      <ConversionsPanel article={article} />
 
       <Panel className="p-4 space-y-3">
         <h2 className="text-[13px] font-semibold">Contrôles qualité requis</h2>

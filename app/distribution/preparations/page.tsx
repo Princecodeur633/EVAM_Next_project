@@ -98,11 +98,14 @@ function LancerDrawer({ onClose }: { onClose: () => void }) {
   const dejaLancees = new Set(state.preparations.map((p) => p.commande));
   const commandes = state.commandes.filter((c) => c.statut === "VALIDEE" && !dejaLancees.has(c.id));
   const [commande, setCommande] = useState(0);
+  // On livre depuis un stock usine (produits finis) ou un dépôt extérieur.
+  const lieux = state.depots.filter((d) => d.actif && (d.type_lieu === "STOCK_USINE" || d.type_lieu === "DEPOT_EXTERIEUR"));
+  const [depot, setDepot] = useState(0);
   const [saving, setSaving] = useState(false);
 
   async function submit() {
     setSaving(true);
-    const ok = await dispatch({ type: "CREATE_PREP", commande });
+    const ok = await dispatch({ type: "CREATE_PREP", commande, depot: depot || null });
     setSaving(false);
     if (ok) onClose();
   }
@@ -136,6 +139,19 @@ function LancerDrawer({ onClose }: { onClose: () => void }) {
           </select>
         </Field>
         {commandes.length === 0 && <p className="text-[12px] text-muted">Aucune commande validée en attente de préparation.</p>}
+        {lieux.length > 0 && (
+          <Field label="Lieu de sortie">
+            <select className={inputClass} value={depot} onChange={(e) => setDepot(Number(e.target.value))}>
+              <option value={0}>Dépôt produits finis (par défaut)</option>
+              {lieux.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.code ? `${d.code} · ` : ""}
+                  {d.nom}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
       </DrawerSection>
     </Drawer>
   );

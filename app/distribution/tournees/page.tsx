@@ -9,6 +9,7 @@ import { Segmented } from "@/components/Filters";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import type { Tournee } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 
 type Onglet = "tournees" | "vehicules" | "chauffeurs";
@@ -148,11 +149,14 @@ function OngletTournees({ initiale }: { initiale: number | null }) {
       <Panel className="overflow-hidden min-w-0">
         {tournee ? (
           <>
-            <div className="px-4 py-3 border-b border-line">
-              <p className="num text-[15px] font-semibold">{tournee.numero}</p>
-              <p className="text-[12.5px] text-muted">
-                {formatDate(tournee.date_tournee)} · {chauffeur(tournee.chauffeur)} · {vehicule(tournee.vehicule)}
-              </p>
+            <div className="px-4 py-3 border-b border-line flex flex-col sm:flex-row sm:items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="num text-[15px] font-semibold">{tournee.numero}</p>
+                <p className="text-[12.5px] text-muted">
+                  {formatDate(tournee.date_tournee)} · {chauffeur(tournee.chauffeur)} · {vehicule(tournee.vehicule)}
+                </p>
+              </div>
+              <Kilometrage key={tournee.id} tournee={tournee} />
             </div>
             <DataTable
               emptyText="Aucun bon de livraison sur cette tournée."
@@ -226,6 +230,52 @@ function OngletChauffeurs() {
         }))}
       />
     </Panel>
+  );
+}
+
+/** Relevés du compteur au départ et au retour : distance = clé « km » du coût de distribution. */
+function Kilometrage({ tournee }: { tournee: Tournee }) {
+  const { dispatch, can } = useStore();
+  const [depart, setDepart] = useState(tournee.kilometrage_depart != null ? String(tournee.kilometrage_depart) : "");
+  const [retour, setRetour] = useState(tournee.kilometrage_retour != null ? String(tournee.kilometrage_retour) : "");
+  const [saving, setSaving] = useState(false);
+  const km = tournee.kilometrage_depart != null && tournee.kilometrage_retour != null ? tournee.kilometrage_retour - tournee.kilometrage_depart : null;
+  const incoherent = depart !== "" && retour !== "" && Number(retour) < Number(depart);
+  const dirty = depart !== (tournee.kilometrage_depart != null ? String(tournee.kilometrage_depart) : "") || retour !== (tournee.kilometrage_retour != null ? String(tournee.kilometrage_retour) : "");
+
+  if (!can("PATCH_TOURNEE_KM")) {
+    return km != null ? <span className="text-[12.5px] num text-muted shrink-0">{km} km parcourus</span> : null;
+  }
+
+  async function save() {
+    setSaving(true);
+    await dispatch({
+      type: "PATCH_TOURNEE_KM",
+      id: tournee.id,
+      kilometrage_depart: depart === "" ? null : Number(depart),
+      kilometrage_retour: retour === "" ? null : Number(retour),
+    });
+    setSaving(false);
+  }
+
+  return (
+    <div className="flex items-end gap-2 shrink-0">
+      <label className="block">
+        <span className="block text-[10.5px] uppercase tracking-wide text-muted mb-1 font-medium">Compteur départ</span>
+        <input type="number" min="0" className={cn(inputClass, "h-8 w-28 num text-right text-[12.5px]")} value={depart} onChange={(e) => setDepart(e.target.value)} />
+      </label>
+      <label className="block">
+        <span className="block text-[10.5px] uppercase tracking-wide text-muted mb-1 font-medium">Retour</span>
+        <input type="number" min="0" className={cn(inputClass, "h-8 w-28 num text-right text-[12.5px]", incoherent && "border-danger")} value={retour} onChange={(e) => setRetour(e.target.value)} />
+      </label>
+      {dirty ? (
+        <Button className="h-8 px-3 text-[12.5px]" disabled={incoherent || saving} onClick={() => void save()}>
+          {saving ? "…" : "Relever"}
+        </Button>
+      ) : (
+        km != null && <span className="text-[12.5px] num font-semibold pb-1.5">{km} km</span>
+      )}
+    </div>
   );
 }
 

@@ -7,7 +7,7 @@ import { Drawer, DrawerSection } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
-import { fetchImpayes, type FactureImpayee } from "@/lib/api";
+import { actions, fetchImpayes, type FactureImpayee } from "@/lib/api";
 import { telechargerFacturePdf } from "@/lib/facturePdf";
 import { STATUT_AVOIR_LABEL, STATUT_FACTURE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -114,6 +114,9 @@ function Factures() {
           const commande = state.commandes.find((c) => c.id === f.commande);
           const lignes = state.lignesFacture.filter((l) => l.facture === f.id);
           const ouverte = f.statut === "EMISE" || f.statut === "PARTIELLEMENT_PAYEE";
+          // PDF officiel du backend (identité de l’entreprise, IFU, montant en lettres) ;
+          // à défaut (backend indisponible), génération locale à partir des mêmes montants.
+          const pdfLocal = client && commande && lignes.length > 0 ? () => telechargerFacturePdf({ facture: f, client, commande, lignes, articleName }) : null;
           return {
             n: <span className="num font-medium">{f.numero}</span>,
             c: clientName(f.client),
@@ -121,21 +124,18 @@ function Factures() {
             ech: f.date_echeance ? <span className={cn(ouverte && echue(f) && "text-danger font-medium")}>{formatDate(f.date_echeance)}</span> : "Comptant",
             m: <span className="num">{formatDa(num(f.montant_total))}</span>,
             s: <StatusBadge tone={FACTURE_TONE[f.statut]}>{STATUT_FACTURE_LABEL[f.statut]}</StatusBadge>,
-            pdf:
-              client && commande && lignes.length > 0 ? (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-primary text-[12px] font-medium hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    telechargerFacturePdf({ facture: f, client, commande, lignes, articleName });
-                  }}
-                >
-                  <FileDown size={13} /> PDF
-                </button>
-              ) : (
-                ""
-              ),
+            pdf: (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-primary text-[12px] font-medium hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void actions.pdf("facture", f.id, f.numero).catch(() => pdfLocal?.());
+                }}
+              >
+                <FileDown size={13} /> PDF
+              </button>
+            ),
             href: `/commercial/commandes/${f.commande}`,
           };
         })}
@@ -232,14 +232,22 @@ function Avoirs() {
               {a.facture_utilisation && <span className="text-[11px] text-muted">sur {factureNum(a.facture_utilisation)}</span>}
             </span>
           ),
-          a:
-            a.statut === "EMIS" && can("UTILISER_AVOIR") ? (
-              <Button variant="secondary" className="h-8 px-3 text-[12.5px]" onClick={() => setAppliquer(a)}>
-                Appliquer
-              </Button>
-            ) : (
-              ""
-            ),
+          a: (
+            <span className="inline-flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-primary text-[12px] font-medium hover:underline"
+                onClick={() => void actions.pdf("avoir", a.id, a.numero).catch(() => {})}
+              >
+                <FileDown size={13} /> PDF
+              </button>
+              {a.statut === "EMIS" && can("UTILISER_AVOIR") && (
+                <Button variant="secondary" className="h-8 px-3 text-[12.5px]" onClick={() => setAppliquer(a)}>
+                  Appliquer
+                </Button>
+              )}
+            </span>
+          ),
         }))}
       />
       {appliquer && <AppliquerAvoirDrawer avoir={appliquer} onClose={() => setAppliquer(null)} />}

@@ -164,15 +164,24 @@ export type Action =
       obligatoire?: boolean;
     }
   | { type: "CREATE_CONDITIONNEMENT"; article: number; nombre_unites_par_carton: number; type_emballage: string; poids_carton_kg?: number; nombre_cartons_par_palette?: number }
-  | { type: "CREATE_DEPOT"; nom: string; adresse?: string }
+  | {
+      type: "CREATE_DEPOT";
+      nom: string;
+      adresse?: string;
+      /** Magasin matières / stock usine (rattachés à une usine), dépôt extérieur, quarantaine. */
+      type_lieu?: string;
+      usine?: number | null;
+      activite?: number | null;
+      gestion_lots?: boolean;
+    }
   | { type: "CREATE_LOT"; article: number; quantite: number; date_production: string; ordre_fabrication?: number; date_peremption?: string }
   | { type: "CREATE_CONTROLE"; lot: number; resultat: "CONFORME" | "NON_CONFORME"; observations?: string }
   | { type: "LIBERER_LOT"; id: number }
   | { type: "BLOQUER_LOT"; id: number; motif?: string }
-  | { type: "PATCH_CLIENT"; id: number; nom?: string; type_client?: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number; bloque?: boolean }
-  | { type: "PATCH_FOURNISSEUR"; id: number; nom?: string; contact?: string; telephone?: string; email?: string; adresse?: string; actif?: boolean }
+  | { type: "PATCH_CLIENT"; id: number; nom?: string; type_client?: string; adresse?: string; telephone?: string; ifu?: string; encours_autorise?: number; delai_paiement_jours?: number; bloque?: boolean }
+  | { type: "PATCH_FOURNISSEUR"; id: number; nom?: string; contact?: string; telephone?: string; email?: string; adresse?: string; ifu?: string; actif?: boolean }
   | { type: "PATCH_TARIF"; id: number; prix_unitaire?: number; date_debut_validite?: string; date_fin_validite?: string | null }
-  | { type: "CREATE_CLIENT"; nom: string; type_client: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number }
+  | { type: "CREATE_CLIENT"; nom: string; type_client: string; adresse?: string; telephone?: string; ifu?: string; encours_autorise?: number; delai_paiement_jours?: number }
   | { type: "CREATE_COMMANDE"; client: number; type_commande: string }
   | { type: "ADD_LIGNE_COMMANDE"; commande: number; article: number; quantite: number; prix_unitaire: number }
   | { type: "PATCH_COMMANDE"; id: number; statut: string }
@@ -214,18 +223,31 @@ export type Action =
   | { type: "CREATE_RECEPTION"; commande: number; conforme?: boolean; observations?: string }
   | { type: "ADD_LIGNE_RECEPTION"; reception: number; ligne_commande: number; quantite_recue: number }
   /** Réception complète en une fois : en-tête puis une ligne par article reçu. */
-  | { type: "RECEVOIR_COMMANDE"; commande: number; lignes: { ligne_commande: number; quantite_recue: number }[]; conforme: boolean; observations?: string }
-  | { type: "CREATE_FOURNISSEUR"; nom: string; contact?: string; telephone?: string; email?: string; adresse?: string }
+  | {
+      type: "RECEVOIR_COMMANDE";
+      commande: number;
+      /** Lot fournisseur et DLC : créent le lot matière (traçabilité amont) des articles suivis par lot. */
+      lignes: { ligne_commande: number; quantite_recue: number; lot_fournisseur?: string; date_peremption?: string | null }[];
+      /** Non conforme : les lots matières créés sont bloqués. */
+      conforme: boolean;
+      observations?: string;
+      /** Lieu de réception ; vide = « Magasin principal ». */
+      depot?: number | null;
+    }
+  | { type: "CREATE_FOURNISSEUR"; nom: string; contact?: string; telephone?: string; email?: string; adresse?: string; ifu?: string }
   | { type: "CREATE_MVT"; article: number; depot: number; type_mouvement: string; quantite: number; motif?: string; document_origine?: string }
   | { type: "CREATE_INVENTAIRE"; depot: number; date_inventaire: string }
   | { type: "ADD_LIGNE_INVENTAIRE"; inventaire: number; article: number; quantite_theorique: number; quantite_comptee: number }
   | { type: "CLOTURER_INVENTAIRE"; id: number }
-  | { type: "CREATE_PREP"; commande: number }
+  /** `depot` : lieu de sortie (stock usine ou dépôt extérieur) ; vide = « Dépôt produits finis ». */
+  | { type: "CREATE_PREP"; commande: number; depot?: number | null }
   | { type: "CREATE_VEHICULE"; immatriculation: string; type_vehicule?: string }
   | { type: "CREATE_CHAUFFEUR"; utilisateur: number; permis_numero?: string }
   | { type: "PREP_CONFIRMER"; id: number }
   | { type: "PREP_SORTIE"; id: number }
-  | { type: "CREATE_TOURNEE"; chauffeur: number; vehicule: number; date_tournee: string }
+  | { type: "CREATE_TOURNEE"; chauffeur: number; vehicule: number; date_tournee: string; kilometrage_depart?: number | null }
+  /** Relevés du compteur (clé « km » du coût de distribution). */
+  | { type: "PATCH_TOURNEE_KM"; id: number; kilometrage_depart: number | null; kilometrage_retour: number | null }
   | { type: "CREATE_BL"; commande: number; tournee?: number }
   | { type: "CONFIRMER_BL"; id: number }
   | { type: "LIVRER_BL"; id: number }
@@ -773,7 +795,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             });
             break;
           case "CREATE_DEPOT":
-            await api.post(endpoints.depots, { nom: action.nom, adresse: action.adresse ?? "", actif: true });
+            await api.post(endpoints.depots, {
+              nom: action.nom,
+              adresse: action.adresse ?? "",
+              actif: true,
+              type_lieu: action.type_lieu ?? "DEPOT_EXTERIEUR",
+              usine: action.usine ?? null,
+              activite: action.activite ?? null,
+              gestion_lots: action.gestion_lots ?? true,
+            });
             break;
           case "CREATE_LOT":
             await api.post(endpoints.lots, {
@@ -824,6 +854,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               type_client: action.type_client,
               adresse: action.adresse ?? "",
               telephone: action.telephone ?? "",
+              ifu: action.ifu ?? "",
               encours_autorise: action.encours_autorise ?? 0,
               delai_paiement_jours: action.delai_paiement_jours ?? 0,
               bloque: false,
@@ -1034,9 +1065,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               commande: action.commande,
               conforme: action.conforme,
               observations: action.observations ?? "",
+              depot: action.depot ?? null,
             });
             for (const l of action.lignes) {
-              await api.post(endpoints.lignesReception, { reception: reception.id, ligne_commande: l.ligne_commande, quantite_recue: l.quantite_recue });
+              await api.post(endpoints.lignesReception, {
+                reception: reception.id,
+                ligne_commande: l.ligne_commande,
+                quantite_recue: l.quantite_recue,
+                lot_fournisseur: l.lot_fournisseur ?? "",
+                date_peremption: l.date_peremption || null,
+              });
             }
             break;
           }
@@ -1054,6 +1092,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               telephone: action.telephone ?? "",
               email: action.email ?? "",
               adresse: action.adresse ?? "",
+              ifu: action.ifu ?? "",
               actif: true,
             });
             break;
@@ -1085,7 +1124,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             await api.patch(detail(endpoints.inventaires, action.id), { statut: "CLOTURE" });
             break;
           case "CREATE_PREP":
-            await api.post(endpoints.preparations, { commande: action.commande });
+            await api.post(endpoints.preparations, { commande: action.commande, depot: action.depot ?? null });
             break;
           case "PREP_CONFIRMER":
             await actions.confirmerPreparation(action.id);
@@ -1111,6 +1150,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               chauffeur: action.chauffeur,
               vehicule: action.vehicule,
               date_tournee: action.date_tournee,
+              kilometrage_depart: action.kilometrage_depart ?? null,
+            });
+            break;
+          case "PATCH_TOURNEE_KM":
+            await api.patch(detail(endpoints.tournees, action.id), {
+              kilometrage_depart: action.kilometrage_depart,
+              kilometrage_retour: action.kilometrage_retour,
             });
             break;
           case "CREATE_BL":

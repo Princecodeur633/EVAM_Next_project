@@ -8,7 +8,7 @@ import { OrderBadge } from "@/components/badges";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
 import { Button, Guard, ORDER_STEPS, PageHeader, Panel, StatusBadge, StatusStepper, inputClass } from "@/components/ui";
-import { endpoints } from "@/lib/api";
+import { actions, endpoints } from "@/lib/api";
 import { stockDisponible } from "@/lib/engine";
 import { telechargerFacturePdf } from "@/lib/facturePdf";
 import { STATUT_FACTURE_LABEL, TYPE_COMMANDE_LABEL } from "@/lib/labels";
@@ -248,7 +248,14 @@ export default function CommandeDetailPage() {
             </Button>
           )}
           {pdfPret && (
-            <Button variant="secondary" onClick={() => telechargerFacturePdf({ facture: facture!, client: client!, commande: cmd, lignes: lignesFacture, articleName })}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                void actions
+                  .pdf("facture", facture!.id, facture!.numero)
+                  .catch(() => telechargerFacturePdf({ facture: facture!, client: client!, commande: cmd, lignes: lignesFacture, articleName }))
+              }
+            >
               <FileDown size={15} /> PDF
             </Button>
           )}

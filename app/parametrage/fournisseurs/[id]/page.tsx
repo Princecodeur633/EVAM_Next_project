@@ -18,6 +18,7 @@ export default function FournisseurDetailPage() {
     telephone: fournisseur?.telephone ?? "",
     email: fournisseur?.email ?? "",
     adresse: fournisseur?.adresse ?? "",
+    ifu: fournisseur?.ifu ?? "",
     actif: fournisseur?.actif ?? true,
   }));
 
@@ -29,6 +30,7 @@ export default function FournisseurDetailPage() {
       telephone: fournisseur.telephone ?? "",
       email: fournisseur.email ?? "",
       adresse: fournisseur.adresse ?? "",
+      ifu: fournisseur.ifu ?? "",
       actif: fournisseur.actif,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,6 +66,9 @@ export default function FournisseurDetailPage() {
           <Field label="Adresse">
             <input className={inputClass} disabled={!writable} value={form.adresse} onChange={(e) => setForm((f) => ({ ...f, adresse: e.target.value }))} />
           </Field>
+          <Field label="IFU">
+            <input className={inputClass} disabled={!writable} value={form.ifu} onChange={(e) => setForm((f) => ({ ...f, ifu: e.target.value }))} />
+          </Field>
         </div>
       </Panel>
 
@@ -94,6 +99,7 @@ export default function FournisseurDetailPage() {
               telephone: form.telephone,
               email: form.email,
               adresse: form.adresse,
+              ifu: form.ifu.trim(),
               actif: form.actif,
             })
           }

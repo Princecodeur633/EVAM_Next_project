@@ -6,11 +6,12 @@ import { DrawerSection, SidePanel, SplitLayout } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { stockDisponible } from "@/lib/engine";
+import { TYPE_LIEU_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { Depot } from "@/lib/types";
+import type { Depot, TypeLieu } from "@/lib/types";
 import { cn, formatQty, num } from "@/lib/utils";
 
-type FiltreDepot = "TOUS" | "SYSTEME" | "STANDARD" | "INACTIFS";
+type FiltreDepot = "TOUS" | TypeLieu | "INACTIFS";
 
 /** Tableau des dépôts (60 %) + fiche du dépôt sélectionné (40 %). */
 export default function DepotsPage() {
@@ -25,19 +26,20 @@ export default function DepotsPage() {
   const tous = [...state.depots].sort((a, b) => Number(b.est_systeme) - Number(a.est_systeme) || a.nom.localeCompare(b.nom, "fr"));
   const depots = tous.filter(
     (d) =>
-      matchSearch(q, d.nom, d.adresse, d.role) &&
-      (filtre === "TOUS" || (filtre === "SYSTEME" ? d.est_systeme : filtre === "STANDARD" ? !d.est_systeme : !d.actif)),
+      matchSearch(q, d.nom, d.adresse, d.role, d.code) &&
+      (filtre === "TOUS" || (filtre === "INACTIFS" ? !d.actif : d.type_lieu === filtre)),
   );
   // Sur ordinateur, le premier dépôt s’affiche par défaut ; sur mobile, la fiche s’ouvre au clic.
   const selected = state.depots.find((d) => d.id === selectedId) ?? depots[0] ?? null;
   const lignesDe = (d: Depot) => state.stock.filter((s) => s.depot === d.id && num(s.quantite_physique) > 0);
+  const usineCode = (id: number | null | undefined) => state.usines.find((u) => u.id === id)?.code ?? null;
 
   return (
     <div className="space-y-4 max-w-[1440px]">
       <PageHeader
         eyebrow="Référentiel"
         title="Dépôts"
-        description="Magasins de stockage des matières et des produits finis. Les dépôts « Rôle système » sont utilisés automatiquement par la production, la qualité et les achats."
+        description="Lieux de stockage : magasin matières et stock produits finis de chaque usine, dépôts extérieurs (points de vente), quarantaine. Le stock usine reste distinct du stock des dépôts extérieurs ; les dépôts « Rôle système » servent par défaut quand l’usine n’a pas désigné les siens."
         status={
           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-[3px] rounded-[5px] bg-surface-2 text-muted border border-line">
             <Eye size={12} /> Consultation
@@ -65,13 +67,14 @@ export default function DepotsPage() {
           >
             <SearchInput value={q} onChange={setQ} placeholder="Nom, adresse, rôle…" />
             <Segmented
-              label="Type de dépôt"
+              label="Type de lieu"
               value={filtre}
               onChange={setFiltre}
               options={[
                 { value: "TOUS", label: "Tous" },
-                { value: "SYSTEME", label: "Rôle système", count: tous.filter((d) => d.est_systeme).length },
-                { value: "STANDARD", label: "Standard", count: tous.filter((d) => !d.est_systeme).length },
+                ...(Object.keys(TYPE_LIEU_LABEL) as TypeLieu[])
+                  .map((t) => ({ value: t as FiltreDepot, label: TYPE_LIEU_LABEL[t].split(" (")[0], count: tous.filter((d) => d.type_lieu === t).length }))
+                  .filter((o) => o.count > 0),
                 { value: "INACTIFS", label: "Inactifs", count: tous.filter((d) => !d.actif).length },
               ]}
             />
@@ -81,7 +84,7 @@ export default function DepotsPage() {
               <thead>
                 <tr className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-[0.08em] text-muted">
                   <th className="px-4 py-2.5 font-medium">Dépôt</th>
-                  <th className="px-4 py-2.5 font-medium">Rôle</th>
+                  <th className="px-4 py-2.5 font-medium">Type de lieu</th>
                   <th className="px-4 py-2.5 font-medium text-right">Articles</th>
                   <th className="px-4 py-2.5 font-medium">Statut</th>
                 </tr>
@@ -120,13 +123,22 @@ export default function DepotsPage() {
                             <Warehouse size={15} />
                           </span>
                           <div className="min-w-0">
-                            <p className="text-[13px] font-medium truncate">{d.nom}</p>
-                            <p className="text-[11.5px] text-muted truncate">{d.adresse || "Adresse non renseignée"}</p>
+                            <p className="text-[13px] font-medium truncate">
+                              {d.nom}
+                              {d.code && <span className="ml-1.5 text-[11px] text-muted font-normal num">{d.code}</span>}
+                            </p>
+                            <p className="text-[11.5px] text-muted truncate">
+                              {usineCode(d.usine) ? `${usineCode(d.usine)} · ` : ""}
+                              {d.adresse || "Adresse non renseignée"}
+                            </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {d.est_systeme ? <StatusBadge tone="info">Rôle système</StatusBadge> : <span className="text-[12px] text-muted">Standard</span>}
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-[12px]">{d.type_lieu ? TYPE_LIEU_LABEL[d.type_lieu] : "—"}</span>
+                          {d.est_systeme && <StatusBadge tone="info">Rôle système</StatusBadge>}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right text-[13px] num">{lignesDe(d).length}</td>
                       <td className="px-4 py-3">{d.actif ? <StatusBadge tone="success">Actif</StatusBadge> : <StatusBadge tone="neutral">Inactif</StatusBadge>}</td>
@@ -177,6 +189,7 @@ function DepotPanel({ depot, mobileOpen, onClose }: { depot: Depot; mobileOpen: 
       icon={<Warehouse size={16} />}
     >
       <div className="flex flex-wrap gap-1.5">
+        {depot.type_lieu && <StatusBadge tone="teal">{TYPE_LIEU_LABEL[depot.type_lieu]}</StatusBadge>}
         {depot.est_systeme && <StatusBadge tone="info">Rôle système</StatusBadge>}
         {depot.actif ? <StatusBadge tone="success">Actif</StatusBadge> : <StatusBadge tone="neutral">Inactif</StatusBadge>}
       </div>
@@ -187,6 +200,21 @@ function DepotPanel({ depot, mobileOpen, onClose }: { depot: Depot; mobileOpen: 
           <p className="text-[12px] text-muted leading-relaxed">{depot.role}</p>
         </div>
       )}
+
+      <dl className="rounded-[9px] border border-line divide-y divide-line text-[12.5px]">
+        {[
+          ["Code", depot.code ?? "—"],
+          ["Usine", state.usines.find((u) => u.id === depot.usine)?.nom ?? "—"],
+          ["Activité", state.activites.find((a) => a.id === depot.activite)?.designation ?? "Toutes activités"],
+          ["Articles autorisés", depot.articles_autorises?.length ? `${depot.articles_autorises.length} article(s)` : "Tous"],
+          ["Gestion des lots", depot.gestion_lots === false ? "Non" : "Oui"],
+        ].map(([k, v]) => (
+          <div key={k} className="px-3 py-2 flex justify-between gap-3">
+            <dt className="text-muted">{k}</dt>
+            <dd className="font-medium text-right">{v}</dd>
+          </div>
+        ))}
+      </dl>
 
       <div className="grid grid-cols-2 gap-2">
         {[
@@ -244,14 +272,28 @@ function DepotPanel({ depot, mobileOpen, onClose }: { depot: Depot; mobileOpen: 
 
 /** Création d’un dépôt standard (profils autorisés hors Admin SI). */
 function CreateDepotPanel({ onClose }: { onClose: () => void }) {
-  const { dispatch } = useStore();
+  const { state, dispatch } = useStore();
   const [nom, setNom] = useState("");
   const [adresse, setAdresse] = useState("");
+  const [typeLieu, setTypeLieu] = useState<TypeLieu>("DEPOT_EXTERIEUR");
+  const [usine, setUsine] = useState(0);
+  const [activite, setActivite] = useState(0);
+  const [gestionLots, setGestionLots] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Un magasin matières ou un stock usine est forcément rattaché à une usine.
+  const usineRequise = typeLieu === "MAGASIN_MATIERES" || typeLieu === "STOCK_USINE";
 
   async function submit() {
     setSaving(true);
-    const ok = await dispatch({ type: "CREATE_DEPOT", nom: nom.trim(), adresse });
+    const ok = await dispatch({
+      type: "CREATE_DEPOT",
+      nom: nom.trim(),
+      adresse,
+      type_lieu: typeLieu,
+      usine: usine || null,
+      activite: activite || null,
+      gestion_lots: gestionLots,
+    });
     setSaving(false);
     if (ok) onClose();
   }
@@ -267,7 +309,7 @@ function CreateDepotPanel({ onClose }: { onClose: () => void }) {
           <Button variant="ghost" onClick={onClose}>
             Annuler
           </Button>
-          <Button disabled={!nom.trim() || saving} onClick={() => void submit()}>
+          <Button disabled={!nom.trim() || (usineRequise && !usine) || saving} onClick={() => void submit()}>
             {saving ? "Création…" : "Créer le dépôt"}
           </Button>
         </>
@@ -280,6 +322,39 @@ function CreateDepotPanel({ onClose }: { onClose: () => void }) {
         <Field label="Adresse">
           <input className={inputClass} value={adresse} onChange={(e) => setAdresse(e.target.value)} />
         </Field>
+        <Field label="Type de lieu">
+          <select className={inputClass} value={typeLieu} onChange={(e) => setTypeLieu(e.target.value as TypeLieu)}>
+            {(Object.keys(TYPE_LIEU_LABEL) as TypeLieu[]).map((t) => (
+              <option key={t} value={t}>
+                {TYPE_LIEU_LABEL[t]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={usineRequise ? "Usine *" : "Usine"}>
+          <select className={inputClass} value={usine} onChange={(e) => setUsine(Number(e.target.value))}>
+            <option value={0}>—</option>
+            {state.usines.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.code} · {u.nom}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Activité">
+          <select className={inputClass} value={activite} onChange={(e) => setActivite(Number(e.target.value))}>
+            <option value={0}>Toutes activités</option>
+            {state.activites.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.designation}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={gestionLots} onChange={(e) => setGestionLots(e.target.checked)} />
+          Gestion des lots
+        </label>
       </DrawerSection>
     </SidePanel>
   );

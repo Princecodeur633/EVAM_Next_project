@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { FilePlus2, PackageCheck, Plus, Send, ShoppingCart, Trash2 } from "lucide-react";
+import { FilePlus2, FileText, PackageCheck, Plus, Send, ShoppingCart, Trash2 } from "lucide-react";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, StatusBadge, inputClass } from "@/components/ui";
-import { endpoints } from "@/lib/api";
+import { actions, endpoints } from "@/lib/api";
 import { STATUT_CF_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import type { CommandeFournisseur, DemandeAchat } from "@/lib/types";
@@ -108,9 +108,16 @@ export function CommandeFournisseurDrawer({ cf, da, onClose }: { cf?: CommandeFo
             )}
           </>
         ) : (
-          <span className="mr-auto text-[12.5px]">
-            Total <span className="num font-semibold">{formatDa(total)}</span>
-          </span>
+          <>
+            <span className="mr-auto text-[12.5px]">
+              Total <span className="num font-semibold">{formatDa(total)}</span>
+            </span>
+            {cf && (
+              <Button variant="secondary" onClick={() => void actions.pdf("commandeFournisseur", cf.id, cf.numero).catch(() => {})}>
+                <FileText size={14} /> Bon de commande (PDF)
+              </Button>
+            )}
+          </>
         )
       }
     >
@@ -308,12 +315,21 @@ export function ReceptionDrawer({ cf, onClose }: { cf: CommandeFournisseur; onCl
   const lignes = state.lignesCommandeFournisseur.filter((l) => l.commande === cf.id);
   const reste = (l: (typeof lignes)[number]) => Math.max(0, num(l.quantite_commandee) - num(l.quantite_recue));
   const [recu, setRecu] = useState<Record<number, string>>(() => Object.fromEntries(lignes.map((l) => [l.id, String(reste(l))])));
+  const [lotFournisseur, setLotFournisseur] = useState<Record<number, string>>({});
+  const [dlc, setDlc] = useState<Record<number, string>>({});
   const [observations, setObservations] = useState("");
+  // Lieu de réception : magasins matières (et quarantaine) ; vide = « Magasin principal ».
+  const lieux = state.depots.filter((d) => d.actif && (d.type_lieu === "MAGASIN_MATIERES" || d.type_lieu === "QUARANTAINE" || d.type_lieu === "STOCK_USINE"));
+  const [depot, setDepot] = useState(0);
   const [saving, setSaving] = useState(false);
 
   const ecart = (l: (typeof lignes)[number]) => (Number(recu[l.id]) || 0) - reste(l);
   const aRecevoir = lignes.filter((l) => (Number(recu[l.id]) || 0) > 0);
-  const conforme = lignes.every((l) => ecart(l) === 0);
+  const quantitesConformes = lignes.every((l) => ecart(l) === 0);
+  // Conformité de la livraison (qualité, documents, quantités) : décidée par le magasinier, proposée selon les quantités.
+  const [conformeChoisi, setConformeChoisi] = useState<boolean | null>(null);
+  const conforme = conformeChoisi ?? quantitesConformes;
+  const suiviParLot = (article: number) => state.articles.find((a) => a.id === article)?.suivi_par_lot !== false;
 
   async function valider() {
     setSaving(true);
@@ -322,7 +338,13 @@ export function ReceptionDrawer({ cf, onClose }: { cf: CommandeFournisseur; onCl
       commande: cf.id,
       conforme,
       observations: observations.trim(),
-      lignes: aRecevoir.map((l) => ({ ligne_commande: l.id, quantite_recue: Number(recu[l.id]) })),
+      depot: depot || null,
+      lignes: aRecevoir.map((l) => ({
+        ligne_commande: l.id,
+        quantite_recue: Number(recu[l.id]),
+        lot_fournisseur: (lotFournisseur[l.id] ?? "").trim(),
+        date_peremption: dlc[l.id] || null,
+      })),
     });
     setSaving(false);
     if (ok) onClose();
@@ -338,7 +360,9 @@ export function ReceptionDrawer({ cf, onClose }: { cf: CommandeFournisseur; onCl
       icon={<PackageCheck size={17} />}
       footer={
         <>
-          <span className="mr-auto text-[12px]">{conforme ? <span className="text-success font-medium">Conforme à la commande</span> : <span className="text-warning font-medium">Réception avec écart</span>}</span>
+          <span className="mr-auto text-[12px]">
+            {conforme ? <span className="text-success font-medium">Réception conforme</span> : <span className="text-danger font-medium">Non conforme : lots bloqués</span>}
+          </span>
           <Button variant="ghost" onClick={onClose}>
             Annuler
           </Button>
@@ -348,20 +372,35 @@ export function ReceptionDrawer({ cf, onClose }: { cf: CommandeFournisseur; onCl
         </>
       }
     >
+      {lieux.length > 0 && (
+        <Field label="Lieu de réception">
+          <select className={inputClass} value={depot} onChange={(e) => setDepot(Number(e.target.value))}>
+            <option value={0}>Magasin principal (par défaut)</option>
+            {lieux.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.code ? `${d.code} · ` : ""}
+                {d.nom}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <div className="rounded-[9px] border border-line overflow-x-auto">
-        <table className="w-full text-left min-w-[480px]">
+        <table className="w-full text-left min-w-[760px]">
           <thead>
             <tr className="bg-surface-2 border-b border-line text-[11px] uppercase tracking-[0.08em] text-muted">
               <th className="px-3 py-2 font-medium">Article</th>
               <th className="px-3 py-2 font-medium text-right">Reste dû</th>
               <th className="px-3 py-2 font-medium text-right">Qté reçue</th>
               <th className="px-3 py-2 font-medium text-right">Écart</th>
+              <th className="px-3 py-2 font-medium">Lot fournisseur</th>
+              <th className="px-3 py-2 font-medium">DLC / DLUO</th>
             </tr>
           </thead>
           <tbody>
             {lignes.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-[12.5px] text-muted">
+                <td colSpan={6} className="px-3 py-8 text-center text-[12.5px] text-muted">
                   Aucune ligne sur cette commande.
                 </td>
               </tr>
@@ -391,14 +430,64 @@ export function ReceptionDrawer({ cf, onClose }: { cf: CommandeFournisseur; onCl
                   <td className={cn("px-3 py-2.5 text-right text-[13px] num font-semibold", e === 0 ? "text-success" : e < 0 ? "text-warning" : "text-danger")}>
                     {e === 0 ? "✓" : `${e > 0 ? "+" : ""}${formatQty(e, 2)}`}
                   </td>
+                  {suiviParLot(l.article) ? (
+                    <>
+                      <td className="px-3 py-2.5">
+                        <input
+                          aria-label={`Lot fournisseur ${articleName(l.article)}`}
+                          className="h-9 w-32 border border-line-strong rounded-[6px] px-2 text-[12.5px] bg-surface focus:border-primary outline-none"
+                          value={lotFournisseur[l.id] ?? ""}
+                          onChange={(ev) => setLotFournisseur((m) => ({ ...m, [l.id]: ev.target.value }))}
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="date"
+                          aria-label={`DLC ${articleName(l.article)}`}
+                          className="h-9 w-36 border border-line-strong rounded-[6px] px-2 text-[12.5px] bg-surface focus:border-primary outline-none"
+                          value={dlc[l.id] ?? ""}
+                          onChange={(ev) => setDlc((m) => ({ ...m, [l.id]: ev.target.value }))}
+                        />
+                      </td>
+                    </>
+                  ) : (
+                    <td colSpan={2} className="px-3 py-2.5 text-[12px] text-muted">
+                      Pas de suivi par lot
+                    </td>
+                  )}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      <div className="rounded-[9px] border border-line p-3 space-y-2">
+        <p className="text-[11px] uppercase tracking-wide text-muted font-medium">Conformité de la livraison</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[true, false].map((v) => (
+            <button
+              key={String(v)}
+              type="button"
+              onClick={() => setConformeChoisi(v)}
+              aria-pressed={conforme === v}
+              className={cn(
+                "h-10 rounded-[8px] border text-[13px] font-medium transition-colors",
+                conforme === v ? (v ? "bg-success text-white border-success" : "bg-danger text-white border-danger") : "bg-surface border-line-strong hover:bg-surface-2",
+              )}
+            >
+              {v ? "Conforme" : "Non conforme"}
+            </button>
+          ))}
+        </div>
+        <p className="text-[12px] text-muted">
+          {conforme
+            ? "Les lots matières créés sont libérés (ou « à contrôler » si un contrôle de réception est prévu au plan qualité)."
+            : "Les lots matières créés seront bloqués jusqu’à décision de la Qualité."}
+          {!quantitesConformes && conformeChoisi == null && " Proposé « non conforme » car les quantités diffèrent de la commande."}
+        </p>
+      </div>
       <Field label="Observations">
-        <textarea className={cn(inputClass, "h-20 py-2 resize-none")} value={observations} onChange={(e) => setObservations(e.target.value)} placeholder={conforme ? "Facultatif" : "Expliquez l’écart (casse, manquant…)"} />
+        <textarea className={cn(inputClass, "h-20 py-2 resize-none")} value={observations} onChange={(e) => setObservations(e.target.value)} placeholder={conforme ? "Facultatif" : "Expliquez l’écart (casse, manquant, document absent…)"} />
       </Field>
     </Drawer>
   );

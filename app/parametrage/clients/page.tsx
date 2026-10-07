@@ -116,6 +116,7 @@ function ClientDrawer({ client, onClose }: { client?: Client; onClose: () => voi
     type_client: (client?.type_client ?? "SOCIETE") as TypeClient,
     telephone: client?.telephone ?? "",
     adresse: client?.adresse ?? "",
+    ifu: client?.ifu ?? "",
     encours: client ? String(num(client.encours_autorise)) : "0",
     delai: client ? String(client.delai_paiement_jours ?? 0) : "0",
     bloque: client?.bloque ?? false,
@@ -128,13 +129,14 @@ function ClientDrawer({ client, onClose }: { client?: Client; onClose: () => voi
     f.type_client !== client.type_client ||
     f.telephone !== (client.telephone ?? "") ||
     f.adresse !== (client.adresse ?? "") ||
+    f.ifu !== (client.ifu ?? "") ||
     Number(f.encours) !== num(client.encours_autorise) ||
     Number(f.delai) !== (client.delai_paiement_jours ?? 0) ||
     f.bloque !== client.bloque;
 
   async function submit() {
     setSaving(true);
-    const commun = { nom: f.nom.trim(), type_client: f.type_client, telephone: f.telephone, adresse: f.adresse, encours_autorise: Number(f.encours) || 0, delai_paiement_jours: Number(f.delai) || 0 };
+    const commun = { nom: f.nom.trim(), type_client: f.type_client, telephone: f.telephone, adresse: f.adresse, ifu: f.ifu.trim(), encours_autorise: Number(f.encours) || 0, delai_paiement_jours: Number(f.delai) || 0 };
     const ok = client ? await dispatch({ type: "PATCH_CLIENT", id: client.id, ...commun, bloque: f.bloque }) : await dispatch({ type: "CREATE_CLIENT", ...commun });
     setSaving(false);
     if (ok) onClose();
@@ -180,6 +182,9 @@ function ClientDrawer({ client, onClose }: { client?: Client; onClose: () => voi
           </Field>
           <Field label="Adresse">
             <input className={inputClass} disabled={!writable} value={f.adresse} onChange={(e) => setF((x) => ({ ...x, adresse: e.target.value }))} />
+          </Field>
+          <Field label="IFU (imprimé sur les factures)">
+            <input className={inputClass} disabled={!writable} value={f.ifu} onChange={(e) => setF((x) => ({ ...x, ifu: e.target.value }))} />
           </Field>
         </div>
       </DrawerSection>

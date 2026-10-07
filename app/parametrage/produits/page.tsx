@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
-import { TYPE_ARTICLE_LABEL, UNITE_LABEL } from "@/lib/labels";
+import { TYPE_ARTICLE_LABEL, TYPES_FABRIQUES, UNITE_LABEL } from "@/lib/labels";
 import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { useStore, type ListeValeurs } from "@/lib/store";
 import type { TypeArticle, UniteMesure } from "@/lib/types";
@@ -26,6 +26,7 @@ function sigle3(texte: string) {
 
 export default function ArticlesPage() {
   const { state, dispatch, canEditParam, familleName } = useStore();
+  const activiteCode = (id: number | null | undefined) => state.activites.find((a) => a.id === id)?.code ?? "—";
   const router = useRouter();
   const writable = canEditParam("/parametrage/articles") || canEditParam("/parametrage/produits");
   const [designation, setDesignation] = useState("");
@@ -38,7 +39,8 @@ export default function ArticlesPage() {
   const [codeFiscal, setCodeFiscal] = useState(0);
   const [nouvelleListe, setNouvelleListe] = useState<ListeValeurs>("famille_article");
   const [nouvelleValeur, setNouvelleValeur] = useState("");
-  const rows = state.articles.filter((a) => a.type_article === "PRODUIT_FINI" || a.type_article === "PRODUIT_INTERMEDIAIRE");
+  // Tout ce qu’un OF fabrique : produits finis, intermédiaires et fluides de process (eau traitée…).
+  const rows = state.articles.filter((a) => TYPES_FABRIQUES.includes(a.type_article));
   const [q, setQ] = useState("");
   const [fType, setFType] = useState("");
   const [fFamille, setFFamille] = useState("");
@@ -77,7 +79,7 @@ export default function ArticlesPage() {
       <PageHeader
         eyebrow="Référentiel"
         title="Articles"
-        description="Produits finis et intermédiaires : eau, jus et yaourts. Pour un produit fini, famille, format et unité de vente sont obligatoires (ils forment le code, ex. EAU70P8, JUSGRE70P8) ; le parfum aussi, sauf pour l'eau. La désignation est générée si elle est laissée vide."
+        description="Produits finis, intermédiaires et fluides de process : eau, jus et yaourts. Pour un produit fini, famille, format et unité de vente sont obligatoires (ils forment le code, ex. EAU70P8, JUSGRE70P8) ; le parfum aussi, sauf pour l'eau. La désignation est générée si elle est laissée vide ; l’activité est déduite de la famille."
       />
       {writable && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
@@ -86,7 +88,7 @@ export default function ArticlesPage() {
           </Field>
           <Field label="Type">
             <select className={inputClass} value={type} onChange={(e) => setType(e.target.value as TypeArticle)}>
-              {(Object.keys(TYPE_ARTICLE_LABEL) as TypeArticle[]).map((k) => <option key={k} value={k}>{TYPE_ARTICLE_LABEL[k]}</option>)}
+              {TYPES_FABRIQUES.map((k) => <option key={k} value={k}>{TYPE_ARTICLE_LABEL[k]}</option>)}
             </select>
           </Field>
           <Field label="Unité de base">
@@ -160,10 +162,7 @@ export default function ArticlesPage() {
             { value: "BROUILLON", label: "Brouillon", count: rows.filter((a) => ficheDe(a) === "BROUILLON").length },
             { value: "SANS", label: "Sans fiche", count: rows.filter((a) => ficheDe(a) === "SANS").length },
           ]} />
-          <FilterSelect label="Type" allLabel="Tous les types" value={fType} onChange={setFType} options={[
-            { value: "PRODUIT_FINI", label: TYPE_ARTICLE_LABEL.PRODUIT_FINI },
-            { value: "PRODUIT_INTERMEDIAIRE", label: TYPE_ARTICLE_LABEL.PRODUIT_INTERMEDIAIRE },
-          ]} />
+          <FilterSelect label="Type" allLabel="Tous les types" value={fType} onChange={setFType} options={TYPES_FABRIQUES.map((t) => ({ value: t, label: TYPE_ARTICLE_LABEL[t] }))} />
           <FilterSelect label="Famille" allLabel="Toutes les familles" value={fFamille} onChange={setFFamille} options={famillesPresentes} />
           <FilterSelect label="Statut" allLabel="Actifs et inactifs" value={fStatut} onChange={setFStatut} options={[{ value: "ACTIFS", label: "Actifs" }, { value: "INACTIFS", label: "Inactifs" }]} />
         </FilterBar>
@@ -175,6 +174,7 @@ export default function ArticlesPage() {
             { key: "t", label: "Type" },
             { key: "u", label: "Unité" },
             { key: "f", label: "Famille" },
+            { key: "act", label: "Activité" },
             { key: "fisc", label: "Code fiscal" },
             { key: "ft", label: "Fiche technique" },
           ]}
@@ -182,8 +182,9 @@ export default function ArticlesPage() {
             c: a.code,
             d: a.designation,
             t: TYPE_ARTICLE_LABEL[a.type_article],
-            u: a.unite_mesure,
+            u: UNITE_LABEL[a.unite_mesure] ?? a.unite_mesure,
             f: familleName(a.famille),
+            act: activiteCode(a.activite),
             fisc: a.code_fiscal ? (state.codesFiscaux.find((c) => c.id === a.code_fiscal)?.code ?? `#${a.code_fiscal}`) : "—",
             ft: a.fiche_technique_validee ? (
               <Link href={`/parametrage/fiches-techniques/${a.fiche_technique_validee}`} className="text-primary" onClick={(e) => e.stopPropagation()}>

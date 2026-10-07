@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { ConversionsPanel, DonneesIndustriellesPanel } from "@/components/articleIndustriel";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
-import { UNITE_LABEL } from "@/lib/labels";
+import { TYPE_ARTICLE_LABEL, TYPES_ACHETES, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 
 export default function MatiereDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, dispatch, canEditParam } = useStore();
-  const matiere = state.articles.find((a) => a.id === Number(id) && a.type_article === "MATIERE_PREMIERE");
+  const matiere = state.articles.find((a) => a.id === Number(id) && TYPES_ACHETES.includes(a.type_article));
   const writable = canEditParam("/parametrage/articles") || canEditParam("/parametrage/matieres");
 
   const [form, setForm] = useState(() => ({
@@ -36,14 +37,14 @@ export default function MatiereDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matiere?.id]);
 
-  if (!matiere) return <p className="text-[13px] text-muted">Matière première introuvable.</p>;
+  if (!matiere) return <p className="text-[13px] text-muted">Matière introuvable.</p>;
 
   return (
     <div className="space-y-4">
       <PageHeader
         eyebrow="Référentiel"
         title={`${matiere.code} · ${matiere.designation}`}
-        description="Matière première ou emballage utilisé en production."
+        description={`${TYPE_ARTICLE_LABEL[matiere.type_article]} utilisé en production.`}
         status={matiere.actif ? <StatusBadge tone="success">Actif</StatusBadge> : <StatusBadge tone="danger">Inactif</StatusBadge>}
       />
 
@@ -103,6 +104,9 @@ export default function MatiereDetailPage() {
           Enregistrer la fiche matière
         </Button>
       )}
+
+      <DonneesIndustriellesPanel key={`ind-${matiere.id}`} article={matiere} writable={writable} />
+      <ConversionsPanel article={matiere} />
     </div>
   );
 }

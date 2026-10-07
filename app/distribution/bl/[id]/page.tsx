@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, HandHelping, PackageCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, FileText, HandHelping, PackageCheck } from "lucide-react";
 import { BlBadge, PaiementBadge } from "@/components/badges";
 import { Historique } from "@/components/Historique";
 import { RemiseDrawer, SignalerDrawer } from "@/components/livraison";
 import { Button, DataTable, Guard, PageHeader, Panel } from "@/components/ui";
-import { endpoints } from "@/lib/api";
+import { actions, endpoints } from "@/lib/api";
 import { TYPE_COMMANDE_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/nav";
 import { useStore } from "@/lib/store";
@@ -61,7 +61,17 @@ export default function BlDetailPage() {
       <Link href={role && canAccess(role, "/distribution") ? "/distribution?etape=bl" : "/distribution/bl"} className="inline-flex items-center gap-1 text-[12px] text-muted hover:text-ink">
         <ArrowLeft size={13} /> Bons de livraison
       </Link>
-      <PageHeader eyebrow="Bon de livraison" title={bl.numero} status={<BlBadge status={bl.statut} />} description={cmd ? `${cmd.numero} · ${clientName(cmd.client)}` : bl.client_nom} />
+      <PageHeader
+        eyebrow="Bon de livraison"
+        title={bl.numero}
+        status={<BlBadge status={bl.statut} />}
+        description={cmd ? `${cmd.numero} · ${clientName(cmd.client)}` : bl.client_nom}
+        actions={
+          <Button variant="secondary" onClick={() => void actions.pdf("bonLivraison", bl.id, bl.numero).catch(() => {})}>
+            <FileText size={15} /> Imprimer le BL (PDF)
+          </Button>
+        }
+      />
 
       {bl.incident_livraison && (
         <Guard variant="warn" title="Incident signalé par le chauffeur">
