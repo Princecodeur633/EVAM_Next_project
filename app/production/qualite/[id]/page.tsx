@@ -9,7 +9,7 @@ import { Historique } from "@/components/Historique";
 import { ControleLigne, NcBadge, SaisieControleDrawer, controlesEnAttente } from "@/components/qualite";
 import { Button, DataTable, Guard, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { actions, endpoints } from "@/lib/api";
-import type { ControleRealise, Lot, NonConformite, TracabiliteLot } from "@/lib/types";
+import type { ControleRealise, Lot, NonConformite, PointControle, TracabiliteLot } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { cn, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
 
@@ -24,7 +24,7 @@ export default function LotDetailPage() {
   const ctrl = state.controles.filter((c) => c.lot === lot.id).sort((a, b) => new Date(b.date_controle).getTime() - new Date(a.date_controle).getTime())[0];
   // Les contrôles du plan font référence : tant qu’un contrôle bloquant reste à faire ou qu’une NC
   // bloquante est ouverte, le lot ne peut pas être déclaré conforme (le backend le refuse aussi).
-  const blocages = blocagesDuLot(lot, state.controlesRealises, state.nonConformites);
+  const blocages = blocagesDuLot(lot, state.controlesRealises, state.nonConformites, state.planControle);
   const aControler = !ctrl && lot.statut === "EN_ATTENTE" && can("CREATE_CONTROLE");
   const peutLiberer = lot.statut === "CONFORME" && can("LIBERER_LOT");
   const peutBloquer = lot.statut !== "LIBERE" && lot.statut !== "BLOQUE" && !!ctrl && can("BLOQUER_LOT");
@@ -318,13 +318,15 @@ function Tracabilite({ lot }: { lot: Lot }) {
 }
 
 /** Ce qui empêche de déclarer le lot conforme : contrôles bloquants à faire, NC bloquantes ouvertes. */
-function blocagesDuLot(lot: Lot, controles: ControleRealise[], ncs: NonConformite[]) {
+function blocagesDuLot(lot: Lot, controles: ControleRealise[], ncs: NonConformite[], plan: PointControle[]) {
   const duLot = (o: { lot: number | null; ordre_fabrication: number | null }) =>
     o.lot === lot.id || (lot.ordre_fabrication != null && o.ordre_fabrication === lot.ordre_fabrication && o.lot == null);
-  const aFaire = controlesEnAttente(controles.filter(duLot)).filter((c) => c.bloquant);
+  // Comme le backend : un contrôle bloquant OU obligatoire non réalisé empêche la libération.
+  const obligatoire = (c: ControleRealise) => plan.find((p) => p.id === c.point)?.obligatoire === true;
+  const aFaire = controlesEnAttente(controles.filter(duLot)).filter((c) => c.bloquant || obligatoire(c));
   const ouvertes = ncs.filter((n) => duLot(n) && n.bloquante && n.statut !== "CLOTUREE");
   return [
-    ...aFaire.map((c) => `Contrôle bloquant à réaliser : ${c.controle ?? c.numero}`),
+    ...aFaire.map((c) => `Contrôle ${c.bloquant ? "bloquant" : "obligatoire"} à réaliser : ${c.controle ?? c.numero}`),
     ...ouvertes.map((n) => `Non-conformité bloquante ouverte : ${n.numero}`),
   ];
 }

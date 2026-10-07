@@ -555,7 +555,26 @@ function ConversionsGenerales() {
   );
 }
 
-/** Règles de production (une seule fiche) : blocage du lancement et de la clôture. */
+/** Capacité journalière d'une ligne, base du planning (heures ouvrées par jour). */
+function CapacitePlanning({ valeur, writable, onSave }: { valeur: string; writable: boolean; onSave: (heures: string) => void }) {
+  const [heures, setHeures] = useState(valeur);
+  const valide = Number(heures) > 0 && Number(heures) <= 24;
+  return (
+    <div className="flex flex-wrap items-end gap-3 px-4 py-3.5">
+      <Field label="Heures de production par jour et par ligne">
+        <input type="number" min="1" max="24" step="0.5" className={cn(inputClass, "w-[120px] num text-right")} disabled={!writable} value={heures} onChange={(e) => setHeures(e.target.value)} />
+      </Field>
+      {writable && heures !== valeur && (
+        <Button disabled={!valide} onClick={() => onSave(heures)}>
+          Enregistrer
+        </Button>
+      )}
+      <p className="text-[12px] text-muted basis-full">Capacité du planning par ligne : 8 h (une équipe), 16 h (deux équipes) ou 24 h.</p>
+    </div>
+  );
+}
+
+/** Règles de production (une seule fiche) : blocage du lancement et de la clôture, capacité du planning. */
 function ReglesProduction() {
   const { dispatch, can } = useStore();
   const writable = can("PARAM_PRODUCTION");
@@ -573,14 +592,12 @@ function ReglesProduction() {
     };
   }, []);
 
-  async function basculer(cle: keyof ParametreProduction) {
-    if (!regles) return;
-    const suivant = { ...regles, [cle]: !regles[cle] };
+  async function enregistrer(champs: Partial<ParametreProduction>) {
     let resultat: ParametreProduction | null = null;
     const ok = await dispatch({
       type: "EXEC",
       run: async () => {
-        resultat = await actions.modifierParametresProduction({ [cle]: suivant[cle] });
+        resultat = await actions.modifierParametresProduction(champs);
       },
       refresh: [],
     });
@@ -590,9 +607,12 @@ function ReglesProduction() {
   if (erreur) return <Panel className="p-4 text-[13px] text-muted">{erreur}</Panel>;
   if (!regles) return <Panel className="p-4 text-[13px] text-muted">Chargement…</Panel>;
 
-  const ligne = (cle: keyof ParametreProduction, titre: string, aide: string) => (
+  type RegleBooleenne = "bloquer_lancement_stock_insuffisant" | "controle_qualite_bloque_cloture";
+  const basculer = (cle: RegleBooleenne) => void enregistrer({ [cle]: !regles[cle] });
+
+  const ligne = (cle: RegleBooleenne, titre: string, aide: string) => (
     <label className="flex items-start gap-3 px-4 py-3.5">
-      <input type="checkbox" className="mt-1" disabled={!writable} checked={regles[cle]} onChange={() => void basculer(cle)} />
+      <input type="checkbox" className="mt-1" disabled={!writable} checked={regles[cle]} onChange={() => basculer(cle)} />
       <span>
         <span className="block text-[13px] font-medium">{titre}</span>
         <span className="block text-[12px] text-muted">{aide}</span>
@@ -604,8 +624,14 @@ function ReglesProduction() {
     <Panel className="divide-y divide-line">
       <div className="px-4 py-3">
         <h2 className="text-[13.5px] font-semibold">Règles de production</h2>
-        <p className="text-[12px] text-muted">Modifiables par l’Administrateur SI et la Direction.</p>
+        <p className="text-[12px] text-muted">Modifiables par l’Administrateur SI ; la Direction les consulte.</p>
       </div>
+      <CapacitePlanning
+        key={regles.heures_ouvrees_par_jour ?? ""}
+        valeur={regles.heures_ouvrees_par_jour ?? ""}
+        writable={writable}
+        onSave={(heures) => void enregistrer({ heures_ouvrees_par_jour: heures })}
+      />
       {ligne(
         "bloquer_lancement_stock_insuffisant",
         "Bloquer le lancement d’un OF si le stock est insuffisant",

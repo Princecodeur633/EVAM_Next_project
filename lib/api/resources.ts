@@ -1,5 +1,19 @@
-import { api, apiUpload, listAll, ouvrirPdf } from "./client";
+import { api, apiBlob, apiUpload, listAll, ouvrirPdf } from "./client";
 import type {
+  Devis,
+  DonneeObligatoireEtape,
+  Emplacement,
+  EvenementProduction,
+  FormatOF,
+  LigneDevis,
+  ModeleControle,
+  MouvementLot,
+  Palette,
+  PlanningProduction,
+  RappelLot,
+  ReclamationAReceptionner,
+  RegleCompte,
+  ReservationMatiere,
   Activite,
   BonSortieOF,
   ChangementSerie,
@@ -234,6 +248,18 @@ export const endpoints = {
   naturesCout: "/couts/natures/",
   charges: "/couts/charges/",
   repartitionsCout: "/couts/repartitions/",
+  // Mise à jour backend PR #6 à #8
+  devis: "/commercial/devis/",
+  lignesDevis: "/commercial/lignes-devis/",
+  reglesComptes: "/comptabilite/regles-comptes/",
+  evenementsProduction: "/production/evenements/",
+  formatsOf: "/production/formats-of/",
+  reservations: "/production/reservations/",
+  donneesEtapes: "/production/donnees-etapes/",
+  modelesControle: "/qualite/bibliotheque-controles/",
+  emplacements: "/stocks/emplacements/",
+  palettes: "/stocks/palettes/",
+  mouvementsLots: "/stocks/mouvements-lots/",
 } as const;
 
 export type EndpointKey = keyof typeof endpoints;
@@ -338,6 +364,14 @@ export const catalog = {
   nonConformites: () => listAll<NonConformite>(endpoints.nonConformites),
   naturesCout: () => listAll<NatureCout>(endpoints.naturesCout),
   charges: () => listAll<Charge>(endpoints.charges),
+  devis: () => listAll<Devis>(endpoints.devis),
+  reglesComptes: () => listAll<RegleCompte>(endpoints.reglesComptes),
+  evenementsProduction: () => listAll<EvenementProduction>(endpoints.evenementsProduction),
+  reservations: () => listAll<ReservationMatiere>(endpoints.reservations),
+  donneesEtapes: () => listAll<DonneeObligatoireEtape>(endpoints.donneesEtapes),
+  modelesControle: () => listAll<ModeleControle>(endpoints.modelesControle),
+  emplacements: () => listAll<Emplacement>(endpoints.emplacements),
+  palettes: () => listAll<Palette>(endpoints.palettes),
 };
 
 export type CatalogKey = keyof typeof catalog;
@@ -377,6 +411,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "fournisseurs",
     ...INDUSTRIEL,
     "conversions",
+    // Données à saisir par étape (paramétrage avec les techniciens).
+    "donneesEtapes",
   ],
   DIRECTION: [
     "articles",
@@ -434,6 +470,12 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "nonConformites",
     "naturesCout",
     "charges",
+    "devis",
+    "reglesComptes",
+    "evenementsProduction",
+    "reservations",
+    "donneesEtapes",
+    "palettes",
   ],
   RESPONSABLE_PRODUCTION: [
     "codesFiscaux",
@@ -468,6 +510,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "parametresQualite", "instruments", "planControle",
     "controlesRealises",
     "nonConformites",
+    "evenementsProduction",
+    "reservations",
+    "donneesEtapes",
   ],
   // Agent : ses OF (filtrés par le backend), leurs besoins et saisies, de quoi choisir étape, poste et
   // machine, et les contrôles de ses OF. Il ne lit ni articles, ni stock, ni lots.
@@ -489,6 +534,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "instruments",
     "planControle",
     "controlesRealises",
+    "evenementsProduction",
+    "donneesEtapes",
   ],
   RESPONSABLE_QUALITE: [
     "famillesArticle",
@@ -511,6 +558,13 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "parametresQualite", "instruments", "planControle",
     "controlesRealises",
     "nonConformites",
+    // La Qualité lit les recettes (sans les prix) pour son plan de contrôle.
+    "fichesTechniques",
+    "compositions",
+    "evenementsProduction",
+    "donneesEtapes",
+    "modelesControle",
+    "palettes",
   ],
   MAGASINIER: [
     "articles",
@@ -540,6 +594,14 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "parametresQualite", "instruments", "planControle",
     "controlesRealises",
     "nonConformites",
+    // Lots de produits finis (transferts, palettes), retours clients à réceptionner.
+    "lots",
+    "reservations",
+    "emplacements",
+    "palettes",
+    "retoursPhysiques",
+    "controlesRetour",
+    "reconditionnements",
   ],
   RESPONSABLE_ACHATS: [
     "famillesArticle",
@@ -562,6 +624,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "lotsMatieres",
     "conversions",
     "nonConformites",
+    "reservations",
   ],
   COMMERCIAL: [
     "famillesArticle",
@@ -584,6 +647,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "depots",
     "transfertsStock",
     "conversions",
+    "devis",
   ],
   // Caissier : ni clients ni articles côté backend ; les noms viennent de la facture (client_nom).
   CAISSIER: ["commandes", "factures", "caisses", "sessionsCaisse", "encaissements", "decaissements", "ecartsCaisse"],
@@ -604,6 +668,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "depots",
     "activites",
     "transfertsStock",
+    "palettes",
   ],
   // Chauffeur : le backend ne renvoie que ses tournées et ses BL (articles, client et adresse inclus).
   CHAUFFEUR: ["tournees", "bonsLivraison"],
@@ -645,6 +710,11 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "controlesRealises",
     "naturesCout",
     "charges",
+    // OF et tournées : rattacher une charge directe dans la cascade.
+    "ofList",
+    "tournees",
+    "devis",
+    "reglesComptes",
   ],
 };
 
@@ -732,14 +802,7 @@ export const actions = {
    * l'enverrait pas) : on le récupère en texte, puis on déclenche le
    * téléchargement nous-mêmes.
    */
-  telechargerExport: async (id: number, nomFichier: string) => {
-    const csv = await api.get<string>(`${endpoints.exportsComptables}${id}/telecharger/`);
-    const lien = document.createElement("a");
-    lien.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    lien.download = nomFichier;
-    lien.click();
-    URL.revokeObjectURL(lien.href);
-  },
+  telechargerExport: (id: number, nomFichier: string) => telechargerFichier(`${endpoints.exportsComptables}${id}/telecharger/`, nomFichier),
   cloturerSession: (id: number, solde_compte: string, justification?: string) =>
     api.post<{ session: SessionCaisse }>(`${endpoints.sessionsCaisse}${id}/cloturer/`, {
       solde_compte,
@@ -865,6 +928,63 @@ export const actions = {
     return apiUpload<ParametreEntreprise>("/documents/entreprise/logo/", form);
   },
   supprimerLogo: () => api.del("/documents/entreprise/logo/"),
+  // ---------- Mise à jour backend PR #6 à #8 ----------
+  /** Ce qui empêche la clôture de l'OF (liste vide = clôture possible). */
+  blocagesQualiteOf: (id: number) => api.get<{ of: string; cloture_possible: boolean; blocages: string[] }>(`${endpoints.ofList}${id}/blocages_qualite/`),
+  ajouterFormatOf: (corps: { ordre_fabrication: number; article: number; quantite_a_produire: number }) => api.post<FormatOF>(endpoints.formatsOf, corps),
+  retirerFormatOf: (id: number) => api.del(`${endpoints.formatsOf}${id}/`),
+  planning: (params: { du?: string; au?: string; ligne?: number }) => {
+    const q = new URLSearchParams();
+    if (params.du) q.set("du", params.du);
+    if (params.au) q.set("au", params.au);
+    if (params.ligne) q.set("ligne", String(params.ligne));
+    return api.get<PlanningProduction>(`/production/planning/${q.toString() ? `?${q}` : ""}`);
+  },
+  /** Recette validée : nouvelle version avec les nouveaux prix {id matière: prix} (l'ancienne est archivée). */
+  mettreAJourPrixFiche: (id: number, prix: Record<string, number>) => api.post<FicheTechnique>(`${endpoints.fichesTechniques}${id}/mettre_a_jour_prix/`, { prix }),
+  /** Réclamations non clôturées sans retour : liste de choix du Magasinier et de la Qualité. */
+  reclamationsAReceptionner: () => api.get<ReclamationAReceptionner[]>(`${endpoints.retoursPhysiques}reclamations_a_receptionner/`),
+  // Devis : brouillon -> envoyé -> accepté (en tout ou partie, crée la commande) / refusé / expiré.
+  envoyerDevis: (id: number) => api.post<Devis>(`${endpoints.devis}${id}/envoyer/`),
+  reviserDevis: (id: number) => api.post<Devis>(`${endpoints.devis}${id}/reviser/`),
+  refuserDevis: (id: number, motif: string) => api.post<Devis>(`${endpoints.devis}${id}/refuser/`, { motif }),
+  accepterDevis: (id: number, quantites?: Record<string, number>) =>
+    api.post<{ devis: Devis; commande: { id: number; numero: string } }>(`${endpoints.devis}${id}/accepter/`, quantites ? { quantites } : {}),
+  ajouterLigneDevis: (corps: { devis: number; article: number; quantite: number }) => api.post<LigneDevis>(endpoints.lignesDevis, corps),
+  supprimerLigneDevis: (id: number) => api.del(`${endpoints.lignesDevis}${id}/`),
+  /** Dérogation au tarif (client sous contrat) : Direction et DAF uniquement, tracée. */
+  autoriserPrixLigneCommande: (id: number, prix_unitaire: number, motif: string) =>
+    api.post<LigneCommande>(`${endpoints.lignesCommande}${id}/autoriser_prix/`, { prix_unitaire, motif }),
+  autoriserPrixLigneDevis: (id: number, prix_unitaire: number, motif: string) =>
+    api.post<LigneDevis>(`${endpoints.lignesDevis}${id}/autoriser_prix/`, { prix_unitaire, motif }),
+  /** Facture normalisée SFEC : état et données préparées ; POST = demande de certification. */
+  sfecFacture: (id: number) => api.get<{ statut: string; code: string; message: string; donnees: Record<string, unknown> }>(`${endpoints.factures}${id}/sfec/`),
+  certifierFacture: (id: number) => api.post<{ statut: string; code: string; message: string }>(`${endpoints.factures}${id}/sfec/`),
+  simulerRegleCompte: (article: number) =>
+    api.get<{ article: string; compte_vente: string; compte_achat: string }>(`${endpoints.reglesComptes}simuler/?article=${article}`),
+  // Lots de produits finis : rappel, palettes, étiquettes, mouvements par lieu.
+  rappelLot: (id: number) => api.get<RappelLot>(`${endpoints.lots}${id}/rappel/`),
+  palettiserLot: (id: number, quantite_par_palette?: number) =>
+    api.post<Palette[]>(`${endpoints.lots}${id}/palettiser/`, quantite_par_palette ? { quantite_par_palette } : {}),
+  etiquettesPalettesLot: (id: number, numero: string) => ouvrirPdf(`${endpoints.lots}${id}/etiquettes_palettes/`, `palettes-${numero}`),
+  mouvementsLot: (lot: number) => listAll<MouvementLot>(endpoints.mouvementsLots, { lot }),
+  deplacerPalette: (id: number, emplacement: number | null) => api.post<Palette>(`${endpoints.palettes}${id}/deplacer/`, { emplacement }),
+  expedierPalette: (id: number) => api.post<Palette>(`${endpoints.palettes}${id}/expedier/`),
+  etiquettePalette: (id: number, numero: string) => ouvrirPdf(`${endpoints.palettes}${id}/etiquette/`, `palette-${numero}`),
+  ajouterPaletteTransfert: (transfert: number, palette: number) => api.post<LigneTransfert>(endpoints.lignesTransfert, { transfert, palette }),
+  /** Export Excel ou PDF des contrôles, avec les filtres de la liste (période, OF, lot, statut…). */
+  exporterControles: (type: "xlsx" | "pdf", filtres: Record<string, string> = {}) => {
+    const q = new URLSearchParams({ ...filtres, type });
+    return telechargerFichier(`${endpoints.controlesRealises}export/?${q}`, `controles-qualite.${type}`, type === "pdf");
+  },
+  exporterIndicateursQualite: (type: "xlsx" | "pdf", params: { du?: string; au?: string; activite?: number } = {}) => {
+    const q = new URLSearchParams({ type });
+    if (params.du) q.set("du", params.du);
+    if (params.au) q.set("au", params.au);
+    if (params.activite) q.set("activite", String(params.activite));
+    return telechargerFichier(`/qualite/indicateurs/?${q}`, `indicateurs-qualite.${type}`, type === "pdf");
+  },
+
   /** Ouvre (ou télécharge) un PDF généré par le backend. */
   pdf: (quoi: DocumentPdf, id: number | null, numero: string, telecharger = false) =>
     ouvrirPdf(cheminPdf(quoi, id), `${PREFIXE_PDF[quoi]}-${numero}`, telecharger),
@@ -879,6 +999,7 @@ export type DocumentPdf =
   | "bonLivraison"
   | "bonTransfert"
   | "bonSortie"
+  | "devis"
   | "apercu";
 
 const PREFIXE_PDF: Record<DocumentPdf, string> = {
@@ -889,6 +1010,7 @@ const PREFIXE_PDF: Record<DocumentPdf, string> = {
   bonLivraison: "bon-livraison",
   bonTransfert: "bon-transfert",
   bonSortie: "bon-sortie",
+  devis: "devis",
   apercu: "apercu-document",
 };
 
@@ -908,6 +1030,8 @@ function cheminPdf(quoi: DocumentPdf, id: number | null) {
       return `${endpoints.transfertsStock}${id}/pdf/`;
     case "bonSortie":
       return `${endpoints.ofList}${id}/bon-de-sortie-pdf/`;
+    case "devis":
+      return `${endpoints.devis}${id}/pdf/`;
     case "apercu":
       return "/documents/apercu/";
   }
@@ -920,3 +1044,17 @@ export type SimulationBesoins = {
   besoins: { matiere: string; designation: string; unite: string; base_calcul: string; quantite: string; montant: string }[];
 };
 
+
+/**
+ * Télécharge un fichier protégé (CSV, Excel, JSON, PDF) : le jeton est obligatoire, un simple lien
+ * <a> ne l'enverrait pas. `ouvrir` : affiche dans un nouvel onglet plutôt que de télécharger.
+ */
+async function telechargerFichier(path: string, nomFichier: string, ouvrir = false) {
+  if (ouvrir) return ouvrirPdf(path, nomFichier);
+  const blob = await apiBlob(path);
+  const lien = document.createElement("a");
+  lien.href = URL.createObjectURL(blob);
+  lien.download = nomFichier;
+  lien.click();
+  window.setTimeout(() => URL.revokeObjectURL(lien.href), 60_000);
+}

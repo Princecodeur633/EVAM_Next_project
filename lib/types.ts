@@ -134,6 +134,11 @@ export type TypeAnomalie =
   | "AUTRE";
 export type StatutAnomalie = "DETECTEE" | "EN_TRAITEMENT" | "TRAITEE" | "IGNOREE";
 export type TypeExport = "VENTES" | "ENCAISSEMENTS" | "ACHATS" | "JOURNAL";
+export type FormatExport = "CSV_GENERIQUE" | "XLSX" | "JSON" | "SAGE_CSV";
+export type StatutDevis = "BROUILLON" | "ENVOYE" | "ACCEPTE" | "PARTIELLEMENT_ACCEPTE" | "REFUSE" | "EXPIRE";
+export type SensCompte = "VENTE" | "ACHAT";
+export type TypeEvenement = "CUVE" | "NETTOYAGE" | "ARRET_REDEMARRAGE";
+export type StatutPalette = "EN_STOCK" | "EN_TRANSIT" | "EXPEDIEE";
 export type TypeCloture = "MENSUELLE" | "ANNUELLE";
 export type TypeEnergie = "ELECTRICITE" | "EAU_CAPTAGE";
 
@@ -199,6 +204,10 @@ export type FamilleParametre =
 export type TypeResultat = "NUMERIQUE" | "QUALITATIF";
 export type Laboratoire = "LIGNE" | "INTERNE" | "EXTERNE";
 export type Declencheur =
+  | "PAR_QUANTITE"
+  | "CHAQUE_CUVE"
+  | "APRES_NETTOYAGE"
+  | "APRES_ARRET"
   | "RECEPTION"
   | "DEMARRAGE"
   | "CHAQUE_OF"
@@ -235,6 +244,9 @@ export type Inducteur =
   | "PALETTES_JOURS"
   | "KM"
   | "QUANTITE_LIVREE"
+  | "TEMPS_CHANGEMENT_SERIE"
+  | "PALETTES_LIVREES"
+  | "LITRES_LIVRES"
   | "AUCUN";
 export type CategorieCout = "PRODUCTION" | "STOCKAGE" | "DISTRIBUTION" | "HORS_COUT";
 export type Traitement = "DIRECT" | "INDIRECT";
@@ -456,6 +468,8 @@ export interface CompositionFicheTechnique {
   /** Étape où l'élément est consommé (FK EtapeStandard) : sert au coût par étape. */
   etape?: number | null;
   perte_theorique_pct?: string | null;
+  /** Unité de la quantité (ex. G pour 20 g) ; les besoins de l'OF sont convertis en unité de stock. */
+  unite?: UniteMesure | "";
 }
 
 export interface FicheConditionnement {
@@ -544,6 +558,8 @@ export interface LigneCommandeFournisseur {
   quantite_commandee: string;
   prix_unitaire: string;
   quantite_recue: string;
+  /** Unité de commande (ex. SAC) ; vide = unité d'achat de l'article, sinon son unité de stock. */
+  unite?: UniteMesure | "";
 }
 
 export interface ReceptionAchat {
@@ -651,6 +667,8 @@ export interface PlanProduction {
   statut: StatutPlan;
   cree_par: number;
   date_creation: string;
+  /** Ligne prévue (facultative). */
+  ligne?: number | null;
 }
 
 export interface OrdreFabrication {
@@ -683,6 +701,17 @@ export interface OrdreFabrication {
   circuit_code?: string | null;
   /** Étapes du circuit avec l'avancement saisi (vide sans circuit). */
   etapes_prevues?: EtapePrevueOF[];
+  /** Produit porté par l'OF (l'Agent Production ne lit pas les articles). */
+  article_code?: string;
+  article_designation?: string;
+  /** Planning par ligne : deux OF ne se chevauchent pas sur une même ligne. */
+  date_debut_prevue?: string | null;
+  /** Calculée depuis la cadence de la ligne si elle n'est pas saisie. */
+  date_fin_prevue?: string | null;
+  /** OF multi-format : formats produits en plus du format principal. */
+  formats_supplementaires?: FormatOF[];
+  /** Fiche d'un OF brouillon sans ligne : seule ligne compatible, retenue au lancement. */
+  ligne_proposee?: string | null;
 }
 
 /** Une étape du circuit d'un OF (OrdreFabricationSerializer.etapes_prevues). */
@@ -710,6 +739,9 @@ export interface BesoinMatierePrevu {
   stock_disponible?: string | number;
   manquant?: string | number;
   situation?: string;
+  of_numero?: string;
+  matiere_code?: string;
+  matiere_designation?: string;
 }
 
 export interface DemandeMatiere {
@@ -833,6 +865,8 @@ export interface PerteProduction {
   valeur?: string | null;
   observations: string;
   date_constat: string;
+  /** Perte réellement comptée ou estimée. */
+  type_quantite?: "REELLE" | "ESTIMEE";
 }
 
 export interface Lot {
@@ -847,6 +881,8 @@ export interface Lot {
   /** Stock produits finis où le lot entre à sa libération (celui de l'usine de l'OF). */
   depot?: number | null;
   date_creation: string;
+  article_code?: string;
+  article_designation?: string;
 }
 
 export interface ControleQualite {
@@ -896,6 +932,8 @@ export interface Tarif {
   prix_unitaire: string;
   date_debut_validite: string;
   date_fin_validite: string | null;
+  /** Tarif négocié dans un contrat (prioritaire sur le tarif client et le tarif public). */
+  contrat?: number | null;
 }
 
 export interface Commande {
@@ -908,6 +946,8 @@ export interface Commande {
   date_commande: string;
   /** Nom du client, envoyé par le backend (utile aux profils qui ne lisent pas les clients). */
   client_nom?: string;
+  /** Devis d'origine (lecture seule). */
+  devis?: number | null;
 }
 
 export interface LigneCommande {
@@ -919,6 +959,13 @@ export interface LigneCommande {
   /** Envoyés par le backend : utiles aux profils qui ne lisent pas les articles. */
   article_code?: string;
   article_designation?: string;
+  /** Tarif en vigueur appliqué (contrat > client > public) et son prix : le prix est imposé. */
+  tarif?: number | null;
+  prix_tarif?: string | null;
+  /** Dérogation (client sous contrat) : motif et autorisation par la Direction ou la DAF. */
+  motif_derogation?: string;
+  derogation_autorisee_par?: number | null;
+  stock_disponible?: string | number;
 }
 
 export interface Facture {
@@ -934,6 +981,14 @@ export interface Facture {
   date_echeance: string | null;
   client_nom?: string;
   commande_numero?: string;
+  /** Facture normalisée SFEC : statut de certification et données reçues. */
+  sfec_statut?: "EN_ATTENTE" | "CERTIFIEE" | "ERREUR";
+  sfec_code?: string;
+  sfec_qr?: string;
+  sfec_compteurs?: string;
+  sfec_nim?: string;
+  sfec_date?: string | null;
+  sfec_message?: string;
 }
 
 export interface LigneFacture {
@@ -1093,6 +1148,11 @@ export interface PreparationLivraison {
   depot?: number | null;
   date_lancement: string;
   date_confirmation_sortie: string | null;
+  /** Envoyés par le backend : le Magasinier ne lit pas les commandes. */
+  commande_numero?: string;
+  client_nom?: string;
+  depot_nom?: string | null;
+  lignes?: { article: number; code: string; designation: string; quantite: string }[];
 }
 
 export interface BonLivraison {
@@ -1151,6 +1211,11 @@ export interface RetourPhysique {
   statut: StatutRetourPhysique;
   receptionne_par: number;
   date_reception: string;
+  reclamation_numero?: string;
+  client_nom?: string;
+  article_code?: string;
+  article_designation?: string;
+  lot_numero?: string | null;
 }
 
 export interface ControleRetour {
@@ -1160,6 +1225,9 @@ export interface ControleRetour {
   observations: string;
   controle_par: number;
   date_controle: string;
+  reclamation_numero?: string;
+  client_nom?: string;
+  article_code?: string;
 }
 
 export interface Reconditionnement {
@@ -1267,6 +1335,7 @@ export interface ExportComptable {
   fichier: string | null;
   genere_par: number;
   date_generation: string;
+  format_fichier?: FormatExport;
 }
 
 export interface Cloture {
@@ -1442,6 +1511,10 @@ export interface Equipement {
   actif: boolean;
   est_commun?: boolean;
   amortissement_mensuel?: string | null;
+  /** Machine combinée (ex. remplissage + bouchage) : autres postes réalisés. */
+  postes_supplementaires?: number[];
+  /** Clé d'imputation de l'amortissement ; vide = volume d'eau en amont, heures machine ailleurs. */
+  inducteur_amortissement?: Inducteur | "";
 }
 
 export interface EtapeCircuit {
@@ -1501,6 +1574,8 @@ export interface ChangementSerie {
 export interface ParametreProduction {
   bloquer_lancement_stock_insuffisant: boolean;
   controle_qualite_bloque_cloture: boolean;
+  /** Capacité journalière d'une ligne pour le planning (8, 16 en 2 équipes, 24). */
+  heures_ouvrees_par_jour?: string;
 }
 
 export interface ConsommationLotMatiere {
@@ -1572,6 +1647,9 @@ export interface LotMatiere {
   observations: string;
   date_creation: string;
   est_perime?: boolean;
+  article_designation?: string;
+  /** La Qualité ne lit pas les fournisseurs : le nom est porté par le lot. */
+  fournisseur_nom?: string | null;
 }
 
 export interface LigneTransfert {
@@ -1583,6 +1661,8 @@ export interface LigneTransfert {
   lot: number | null;
   quantite: string;
   cout_unitaire: string | null;
+  /** Palette entière : article, lot et quantité sont repris de la palette. */
+  palette?: number | null;
 }
 
 export interface TransfertStock {
@@ -1632,6 +1712,9 @@ export interface TracabiliteLot {
   controles: ControleRealise[];
   non_conformites: NonConformite[];
   transferts: { bon: string; vers: string; quantite: string; statut: string }[];
+  stock_restant?: { lieu: string; quantite: string }[];
+  clients?: ClientLivreLot[];
+  palettes?: { numero: string; quantite: string; statut: string; lieu: string; emplacement: string | null }[];
 }
 
 /** Traçabilité aval d'un lot matière (rappel) — GET /stocks/lots-matieres/{id}/tracabilite/. */
@@ -1683,6 +1766,11 @@ export interface Instrument {
   actif: boolean;
   prochaine_echeance?: string | null;
   etalonnage_valide?: boolean;
+  type_instrument?: string;
+  grandeur_mesuree?: string;
+  unite?: string;
+  /** Vide = commun à toutes les activités. */
+  activite?: number | null;
 }
 
 /** Une ligne du plan de contrôle. */
@@ -1722,14 +1810,23 @@ export interface PointControle {
   statut: StatutPointControle;
   date_debut: string | null;
   date_fin: string | null;
+  /** Modèle de la bibliothèque dont les valeurs ont été reprises à la création. */
+  modele?: number | null;
+  /** Tant qu'il n'est pas réalisé, le lot ne peut pas être libéré (ni l'OF clôturé). */
+  obligatoire?: boolean;
+  /** Contrôle « par quantité » : toutes les X unités / litres / m³ produits à l'étape. */
+  frequence_quantite?: string | null;
 }
 
 export interface PieceJointeQualite {
   id: number;
   resultat: number | null;
   non_conformite: number | null;
-  /** URL du fichier (servi par le backend). */
-  fichier: string;
+  /** Adresse protégée du fichier (/api/qualite/pieces-jointes/{id}/fichier/) : à lire avec le jeton. */
+  url: string;
+  nom_fichier: string;
+  type_contenu: string;
+  taille: number;
   description: string;
   ajoute_par: number | null;
   date_ajout: string;
@@ -2003,6 +2100,237 @@ export interface ParametreEntreprise {
   /** #RRGGBB */
   couleur: string;
   a_un_logo: boolean;
+  /** Facture normalisée SFEC : à activer quand l'accès est en place (jeton côté serveur). */
+  sfec_actif?: boolean;
+  sfec_url?: string;
+  sfec_nim?: string;
+}
+
+// =====================================================================
+// Mise à jour backend PR #6 à #8 : devis, comptes, OF multi-format,
+// planning, palettes, rappel de lot, bibliothèque de contrôles
+// =====================================================================
+
+export interface LigneDevis {
+  id: number;
+  devis: number;
+  article: number;
+  article_code?: string;
+  article_designation?: string;
+  quantite: string;
+  /** Repris du tarif en vigueur ; dérogation possible pour un client sous contrat (Direction / DAF). */
+  prix_unitaire: string;
+  tarif?: number | null;
+  prix_tarif?: string | null;
+  motif_derogation: string;
+  derogation_autorisee_par: number | null;
+  quantite_acceptee: string | null;
+  montant_ht?: string;
+}
+
+export interface Devis {
+  id: number;
+  numero: string;
+  client: number;
+  client_nom?: string;
+  type_commande: TypeCommande;
+  date_validite: string;
+  statut: StatutDevis;
+  conditions: string;
+  motif_refus: string;
+  cree_par: number;
+  date_creation: string;
+  date_envoi: string | null;
+  date_reponse: string | null;
+  lignes: LigneDevis[];
+  totaux?: Record<string, string | number>;
+  /** Numéros des commandes créées à l'acceptation. */
+  commandes?: string[];
+}
+
+/** Correspondance article / activité / catégorie / format -> compte (702x, 60x). */
+export interface RegleCompte {
+  id: number;
+  sens: SensCompte;
+  compte: string;
+  libelle: string;
+  article: number | null;
+  activite: number | null;
+  type_article: string;
+  format: number | null;
+  unite_vente: number | null;
+  actif: boolean;
+}
+
+/** Cuve préparée, nettoyage, arrêt puis redémarrage : déclenchent les contrôles prévus au plan. */
+export interface EvenementProduction {
+  id: number;
+  ordre_fabrication: number;
+  of_numero?: string;
+  type_evenement: TypeEvenement;
+  equipement: number | null;
+  numero_cuve: string;
+  volume: string | null;
+  duree_min: string | null;
+  date: string;
+  observations: string;
+  saisi_par: number | null;
+}
+
+export interface FormatOF {
+  id: number;
+  ordre_fabrication: number;
+  article: number;
+  article_code?: string;
+  quantite_a_produire: string;
+}
+
+/** Matière réservée par un OF lancé (libérée à la sortie, à la clôture ou à l'annulation). */
+export interface ReservationMatiere {
+  id: number;
+  ordre_fabrication: number;
+  matiere: number;
+  matiere_code?: string;
+  depot: number;
+  depot_nom?: string;
+  quantite_reservee: string;
+  quantite_restante: string;
+  date: string;
+}
+
+export type ChampEtape =
+  | "quantite_entree"
+  | "quantite_produite"
+  | "quantite_rejetee"
+  | "date_debut"
+  | "date_fin"
+  | "duree_arret_min"
+  | "heures_machine"
+  | "energie_kwh"
+  | "poste"
+  | "equipement";
+
+/** Donnée à saisir à une étape, obligatoire ou facultative. */
+export interface DonneeObligatoireEtape {
+  id: number;
+  etape: number;
+  etape_code?: string;
+  champ: ChampEtape;
+  obligatoire: boolean;
+}
+
+/** GET /production/planning/ : charge par ligne et par jour face à la capacité. */
+export interface PlanningProduction {
+  du: string;
+  au: string;
+  lignes: {
+    ligne: string;
+    designation: string;
+    usine: string;
+    activite: string;
+    cadence: string | null;
+    unite_cadence: string;
+    ordres_fabrication: { id: number; numero: string; article: string; quantite: string; statut: string; debut: string; fin: string }[];
+    jours: { date: string; heures_planifiees: string | number; capacite_heures: string | number; taux_charge: number | null; surcharge: boolean }[];
+  }[];
+  of_non_planifies: { id: number; numero: string; article: string; quantite: string; ligne: string | null; statut: string }[];
+}
+
+/** Modèle réutilisable de la bibliothèque de contrôles. */
+export interface ModeleControle {
+  id: number;
+  code: string;
+  designation: string;
+  parametre: number;
+  parametre_libelle?: string;
+  instrument: number | null;
+  methode: string;
+  laboratoire: Laboratoire;
+  type_echantillon: string;
+  quantite_echantillon: string;
+  nombre_echantillons: number;
+  obligatoire: boolean;
+  bloquant: boolean;
+  actions_si_non_conforme: string;
+  actif: boolean;
+}
+
+export interface Emplacement {
+  id: number;
+  code: string;
+  depot: number;
+  depot_nom?: string;
+  designation: string;
+  capacite_palettes: number | null;
+  actif: boolean;
+  palettes_en_stock?: number;
+}
+
+export interface Palette {
+  id: number;
+  numero: string;
+  lot: number;
+  lot_numero?: string;
+  article_code?: string;
+  depot: number;
+  depot_nom?: string;
+  emplacement: number | null;
+  emplacement_code?: string | null;
+  quantite: string;
+  statut: StatutPalette;
+  cree_par: number | null;
+  date_creation: string;
+}
+
+/** Entrée (+) ou sortie (-) d'un lot de produit fini dans un lieu. */
+export interface MouvementLot {
+  id: number;
+  lot: number;
+  lot_numero?: string;
+  depot: number;
+  depot_nom?: string;
+  quantite: string;
+  motif: string;
+  document_origine: string;
+  ligne_commande: number | null;
+  ligne_transfert: number | null;
+  date: string;
+}
+
+/** Client livré d'un lot (traçabilité aval, rappel). */
+export interface ClientLivreLot {
+  client: string;
+  code: string;
+  telephone: string;
+  adresse: string;
+  quantite: string | number;
+  livraisons: { commande: string; bon_livraison: string | null; date: string; quantite: string | number }[];
+}
+
+/** GET /qualite/lots/{id}/rappel/ */
+export interface RappelLot {
+  lot: string;
+  article: string;
+  statut: string;
+  quantite_produite: string;
+  clients: ClientLivreLot[];
+  stock_restant: { lieu: string; quantite: string }[];
+  palettes_en_stock: string[];
+}
+
+/** Réclamation à réceptionner (vue réduite pour le Magasinier et la Qualité). */
+export interface ReclamationAReceptionner {
+  id: number;
+  numero: string;
+  client: number;
+  client_nom: string;
+  article: number;
+  article_code: string;
+  article_designation: string;
+  quantite: string;
+  bon_livraison_numero: string | null;
+  statut: StatutReclamation;
+  date_creation: string;
 }
 
 export interface SessionUser {
@@ -2156,6 +2484,15 @@ export interface AppState {
   // Coûts en cascade
   naturesCout: NatureCout[];
   charges: Charge[];
+  // Mise à jour backend PR #6 à #8
+  devis: Devis[];
+  reglesComptes: RegleCompte[];
+  evenementsProduction: EvenementProduction[];
+  reservations: ReservationMatiere[];
+  donneesEtapes: DonneeObligatoireEtape[];
+  modelesControle: ModeleControle[];
+  emplacements: Emplacement[];
+  palettes: Palette[];
   lastError: string | null;
   loading: boolean;
 }

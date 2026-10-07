@@ -659,8 +659,8 @@ function BlocagesCloture({ of }: { of: OrdreFabrication }) {
   useEffect(() => {
     let annule = false;
     void actions
-      .consommationReelleOf(of.id)
-      .then((r) => !annule && setBlocages(r.blocages_qualite ?? []))
+      .blocagesQualiteOf(of.id)
+      .then((r) => !annule && setBlocages(r.blocages))
       .catch(() => {});
     return () => {
       annule = true;
@@ -670,7 +670,7 @@ function BlocagesCloture({ of }: { of: OrdreFabrication }) {
   if (blocages.length === 0) {
     return (
       <Guard variant="ok" title="Aucun blocage qualité">
-        Les contrôles bloquants sont réalisés et aucune non-conformité bloquante n’est ouverte.
+        Les contrôles bloquants et obligatoires sont réalisés, et aucune non-conformité bloquante n’est ouverte.
       </Guard>
     );
   }

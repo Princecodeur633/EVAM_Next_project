@@ -14,7 +14,7 @@ import { ApiError, actions, api, catalog, catalogKeysForRole, detail, endpoints,
 import { canAct, stockArticleTotal, type ActionName } from "./engine";
 import { displayName, ORDRE_STATUTS_OF, TYPES_ACHETES } from "./labels";
 import { canEditParam as roleCanEditParam } from "./roles";
-import { tarifEnVigueur } from "./tarifs";
+import { contratActif, tarifEnVigueur } from "./tarifs";
 import type {
   AppState,
   Article,
@@ -184,7 +184,8 @@ export type Action =
   | { type: "PATCH_TARIF"; id: number; prix_unitaire?: number; date_debut_validite?: string; date_fin_validite?: string | null }
   | { type: "CREATE_CLIENT"; nom: string; type_client: string; adresse?: string; telephone?: string; ifu?: string; encours_autorise?: number; delai_paiement_jours?: number }
   | { type: "CREATE_COMMANDE"; client: number; type_commande: string }
-  | { type: "ADD_LIGNE_COMMANDE"; commande: number; article: number; quantite: number; prix_unitaire: number }
+  /** Le prix n'est pas envoyé : le backend applique le tarif en vigueur (contrat > client > public). */
+  | { type: "ADD_LIGNE_COMMANDE"; commande: number; article: number; quantite: number }
   | { type: "PATCH_COMMANDE"; id: number; statut: string }
   | { type: "CREATE_FACTURE"; commande: number; client: number; montant_total?: number }
   | { type: "GENERER_LIGNES_FACTURE"; id: number }
@@ -257,7 +258,8 @@ export type Action =
   | { type: "TOGGLE_USER"; id: number; actif: boolean }
   | { type: "PATCH_USER"; id: number; first_name?: string; last_name?: string; email?: string; telephone?: string; profil?: Profil; password?: string }
   | { type: "RECALCULER_COUT"; id: number }
-  | { type: "CREATE_EXPORT"; type_export: string; periode_debut: string; periode_fin: string }
+  /** `format_fichier` : CSV Sage, CSV générique, Excel ou JSON (indépendant du logiciel comptable). */
+  | { type: "CREATE_EXPORT"; type_export: string; periode_debut: string; periode_fin: string; format_fichier?: string }
   | { type: "CREATE_ANOMALIE"; type_anomalie: string; module_source: string; description: string }
   | { type: "PRENDRE_EN_CHARGE_ANOMALIE"; id: number }
   | { type: "RESOUDRE_ANOMALIE"; id: number; commentaire: string }
@@ -381,6 +383,14 @@ function emptyState(): AppState {
     nonConformites: [],
     naturesCout: [],
     charges: [],
+    devis: [],
+    reglesComptes: [],
+    evenementsProduction: [],
+    reservations: [],
+    donneesEtapes: [],
+    modelesControle: [],
+    emplacements: [],
+    palettes: [],
     lastError: null,
     loading: false,
   };
@@ -873,7 +883,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               commande: action.commande,
               article: action.article,
               quantite: action.quantite,
-              prix_unitaire: action.prix_unitaire,
             });
             break;
           case "PATCH_COMMANDE":
@@ -1205,6 +1214,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               type_export: action.type_export,
               periode_debut: action.periode_debut,
               periode_fin: action.periode_fin,
+              format_fichier: action.format_fichier ?? "SAGE_CSV",
             });
             break;
           case "CREATE_ANOMALIE":
@@ -1296,9 +1306,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (id == null) return "—";
       const a = s.articles.find((x) => x.id === id);
       if (a) return `${a.code} · ${a.designation}`;
-      // Profils sans accès à la liste des articles (Distribution…) : désignation reprise des lignes.
-      const l = s.lignesCommande.find((x) => x.article === id && x.article_designation) ?? s.lignesFacture.find((x) => x.article === id && x.article_designation);
-      return l ? `${l.article_code ?? ""} · ${l.article_designation}`.replace(/^ · /, "") : `#${id}`;
+      // Profils sans accès à la liste des articles (Agent, Distribution, Magasinier…) : désignation
+      // reprise des documents qui la portent (OF, lots, lignes de commande, préparations, besoins).
+      const nom = (code: string | undefined, designation: string | undefined) => (designation ? (code ? `${code} · ${designation}` : designation) : null);
+      const of = s.ofList.find((x) => x.article === id && x.article_designation);
+      const lot = s.lots.find((x) => x.article === id && x.article_designation);
+      const lc = s.lignesCommande.find((x) => x.article === id && x.article_designation) ?? s.lignesFacture.find((x) => x.article === id && x.article_designation);
+      const lm = s.lotsMatieres.find((x) => x.article === id && x.article_designation);
+      const besoin = s.besoinsMatieres.find((x) => x.matiere === id && x.matiere_designation);
+      const prep = s.preparations.flatMap((p) => p.lignes ?? []).find((x) => x.article === id);
+      return (
+        nom(of?.article_code, of?.article_designation) ??
+        nom(lot?.article_code, lot?.article_designation) ??
+        nom(lc?.article_code, lc?.article_designation) ??
+        nom(lm?.article_code, lm?.article_designation) ??
+        nom(besoin?.matiere_code, besoin?.matiere_designation) ??
+        nom(prep?.code, prep?.designation) ??
+        `#${id}`
+      );
     };
     const familleName = (id: number | null | undefined) => {
       if (id == null) return "—";
@@ -1349,7 +1374,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ofNumero,
       userName,
       stockOf: (articleId) => stockArticleTotal(s, articleId),
-      tarifFor: (articleId, clientId) => num(tarifEnVigueur(s.tarifs, articleId, clientId ?? null)?.prix_unitaire),
+      tarifFor: (articleId, clientId) =>
+        num(tarifEnVigueur(s.tarifs, articleId, clientId ?? null, contratActif(s.contratsClients, clientId ?? null)?.id)?.prix_unitaire),
       produitsFinis: s.articles.filter((a) => a.type_article === "PRODUIT_FINI" && a.actif),
       // Articles achetés et consommés (jamais fabriqués) : matières premières, emballages, consommables.
       matieres: s.articles.filter((a) => TYPES_ACHETES.includes(a.type_article) && a.actif),

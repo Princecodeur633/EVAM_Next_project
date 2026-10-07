@@ -44,11 +44,15 @@ export default function PreparationDetailPage() {
 
   if (!p) return <p className="text-[13px] text-muted">Préparation introuvable.</p>;
   const cmd = state.commandes.find((c) => c.id === p.commande);
-  const lignes = state.lignesCommande.filter((l) => l.commande === p.commande);
-  const depotPf = state.depots.find((d) => d.est_systeme && /produits finis/i.test(d.role || d.nom));
+  // Le Magasinier ne lit pas les commandes : la préparation porte ses lignes, son client et son numéro.
+  const lignes = p.lignes ?? state.lignesCommande.filter((l) => l.commande === p.commande).map((l) => ({ article: l.article, code: "", designation: "", quantite: l.quantite }));
+  const numeroCommande = p.commande_numero ?? cmd?.numero;
+  const nomClient = p.client_nom ?? (cmd ? clientName(cmd.client) : undefined);
+  // Lieu de sortie de la préparation (stock usine ou dépôt extérieur), sinon le dépôt produits finis.
+  const depotSortie = state.depots.find((d) => d.id === p.depot) ?? state.depots.find((d) => d.est_systeme && /produits finis/i.test(d.role || d.nom));
   const dispo = (article: number) =>
     state.stock
-      .filter((s) => s.article === article && (!depotPf || s.depot === depotPf.id))
+      .filter((s) => s.article === article && (!depotSortie || s.depot === depotSortie.id))
       .reduce((a, s) => a + num(s.quantite_physique) - num(s.quantite_bloquee) - num(s.quantite_reservee), 0);
 
   const peutConfirmer = p.statut === "A_PREPARER" && can("PREP_CONFIRMER");
@@ -70,8 +74,9 @@ export default function PreparationDetailPage() {
   }
 
   const infos: [string, string][] = [
-    ["Commande", cmd?.numero ?? "—"],
-    ["Client", cmd ? clientName(cmd.client) : "—"],
+    ["Commande", numeroCommande ?? "—"],
+    ["Client", nomClient ?? "—"],
+    ["Lieu de sortie", p.depot_nom ?? depotSortie?.nom ?? "Dépôt produits finis"],
     ["Lancée par", userName(p.lancee_par)],
     ["Lancée le", formatDateTime(p.date_lancement)],
     ["Préparée par", p.preparee_par ? userName(p.preparee_par) : "—"],
@@ -84,9 +89,9 @@ export default function PreparationDetailPage() {
       </Link>
       <PageHeader
         eyebrow="Préparation"
-        title={cmd?.numero ?? `Préparation n°${p.id}`}
+        title={numeroCommande ?? `Préparation n°${p.id}`}
         status={<StatusBadge tone={TONE[p.statut]}>{STATUT_PREP_LABEL[p.statut]}</StatusBadge>}
-        description={cmd ? clientName(cmd.client) : undefined}
+        description={nomClient}
       />
       <StatusStepper steps={STEPS} current={p.statut === "PRETE" ? "EN_PREPARATION" : p.statut} />
 
@@ -122,7 +127,7 @@ export default function PreparationDetailPage() {
         <Panel className="overflow-hidden">
           <h2 className="px-4 py-3 border-b border-line text-[13px] font-semibold">Articles à sortir</h2>
           <DataTable
-            emptyText="Le détail des lignes n’est pas transmis à ce poste : la sortie vérifie le stock ligne par ligne."
+            emptyText="Aucune ligne sur cette commande."
             columns={[
               { key: "a", label: "Article" },
               { key: "q", label: "Quantité", className: "text-right" },
@@ -131,7 +136,7 @@ export default function PreparationDetailPage() {
             rows={lignes.map((l) => {
               const d = dispo(l.article);
               return {
-                a: articleName(l.article),
+                a: l.designation ? `${l.code} · ${l.designation}` : articleName(l.article),
                 q: <span className="num">{formatQty(num(l.quantite), 0)}</span>,
                 d: <span className={d < num(l.quantite) ? "num text-danger font-semibold" : "num"}>{formatQty(d, 0)}</span>,
               };

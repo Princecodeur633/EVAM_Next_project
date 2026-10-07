@@ -4,10 +4,10 @@ import { useState } from "react";
 import { AlertTriangle, Ban, Beaker, ClipboardCheck, FlaskConical, Paperclip, RotateCcw } from "lucide-react";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Button, Field, StatusBadge, inputClass } from "@/components/ui";
-import { actions } from "@/lib/api";
+import { actions, ouvrirPdf } from "@/lib/api";
 import { DECISION_NC_LABEL, STATUT_CONTROLE_REALISE_LABEL, STATUT_LOT_MATIERE_LABEL, STATUT_NC_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { ControleRealise, DecisionNC, NonConformite, StatutControleRealise, StatutLotMatiere, StatutNC } from "@/lib/types";
+import type { ControleRealise, DecisionNC, NonConformite, PieceJointeQualite, StatutControleRealise, StatutLotMatiere, StatutNC } from "@/lib/types";
 import { cn, formatDateTime, formatQty, num } from "@/lib/utils";
 
 const TONE_CONTROLE: Record<StatutControleRealise, "neutral" | "info" | "success" | "warning" | "danger"> = {
@@ -38,6 +38,28 @@ const TONE_LOT_MATIERE: Record<StatutLotMatiere, "warning" | "success" | "danger
 
 export function LotMatiereBadge({ statut }: { statut: StatutLotMatiere }) {
   return <StatusBadge tone={TONE_LOT_MATIERE[statut]}>{STATUT_LOT_MATIERE_LABEL[statut]}</StatusBadge>;
+}
+
+/**
+ * Pièce jointe qualité (photo, bulletin d’analyse) : stockée en base et servie par une adresse
+ * protégée, donc ouverte avec le jeton (un simple lien ne l’enverrait pas).
+ */
+export function PieceJointeLien({ piece }: { piece: PieceJointeQualite }) {
+  const chemin = piece.url.replace(/^\/api/, "");
+  const taille = piece.taille ? ` · ${Math.max(1, Math.round(piece.taille / 1024))} Ko` : "";
+  return (
+    <button
+      type="button"
+      className="text-[12.5px] flex items-center gap-1.5 text-primary hover:underline text-left min-w-0"
+      onClick={() => void ouvrirPdf(chemin, piece.nom_fichier).catch(() => {})}
+    >
+      <Paperclip size={12} className="text-muted shrink-0" />
+      <span className="truncate">
+        {piece.description || piece.nom_fichier}
+        <span className="text-muted">{taille}</span>
+      </span>
+    </button>
+  );
 }
 
 /** Contrôles encore à faire (à réaliser ou au laboratoire), les plus urgents d’abord. */
@@ -256,11 +278,8 @@ export function SaisieControleDrawer({ controle, onClose }: { controle: Controle
         <DrawerSection title="Pièces jointes">
           <ul className="space-y-1">
             {controle.pieces_jointes?.map((p) => (
-              <li key={p.id} className="text-[12.5px] flex items-center gap-1.5">
-                <Paperclip size={12} className="text-muted" />
-                <a href={p.fichier} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
-                  {p.description || p.fichier.split("/").pop()}
-                </a>
+              <li key={p.id}>
+                <PieceJointeLien piece={p} />
               </li>
             ))}
           </ul>

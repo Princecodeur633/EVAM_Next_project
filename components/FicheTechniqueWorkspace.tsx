@@ -186,14 +186,18 @@ export function FicheTechniqueWorkspace({ selectedId }: { selectedId: number | n
 }
 
 function FicheEditor({ ft, writable, canValidate, canTest }: { ft: FicheTechnique; writable: boolean; canValidate: boolean; canTest: boolean }) {
-  const { state, dispatch, articleName, userName } = useStore();
+  const { state, dispatch, articleName, userName, role } = useStore();
+  const router = useRouter();
+  // La Qualité lit les recettes sans leur chiffrage (prix et coûts retirés par le backend).
+  const voitPrix = role !== "RESPONSABLE_QUALITE";
+  const [majPrix, setMajPrix] = useState(false);
   const compo = state.compositions
     .filter((c) => c.fiche_technique === ft.id)
     .sort((a, b) => (a.ordre_incorporation ?? 0) - (b.ordre_incorporation ?? 0) || a.id - b.id);
   const editable = writable && ft.statut === "BROUILLON";
-  // Le prix d'un élément reste modifiable après validation (seules les quantités et matières sont
-  // figées) ; une fiche archivée est intégralement verrouillée, prix compris.
-  const prixEditable = writable && ft.statut !== "ARCHIVEE";
+  // Une recette en vigueur ne se modifie pas directement : ses prix changent par une nouvelle
+  // version (« Mettre à jour les prix ») ; en brouillon, ils se saisissent dans le tableau.
+  const prixEditable = editable;
   const [disponibles, setDisponibles] = useState<ElementComposition[]>([]);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -246,14 +250,16 @@ function FicheEditor({ ft, writable, canValidate, canTest }: { ft: FicheTechniqu
             {ft.date_validation && ` · validée le ${formatDate(ft.date_validation)}${ft.valide_par ? ` par ${userName(ft.valide_par)}` : ""}`}
           </p>
         </div>
-        <div className="shrink-0 text-right">
-          <p className="text-[10.5px] uppercase tracking-wide text-muted">Coût matières / unité de stock</p>
-          {ft.cout_matieres_par_unite != null ? (
-            <p className="text-[18px] font-semibold num">{formatDa(num(ft.cout_matieres_par_unite))}</p>
-          ) : (
-            <p className="text-[12px] text-warning max-w-[220px]">Recette en litres/kg : renseignez la contenance de l’article.</p>
-          )}
-        </div>
+        {voitPrix && (
+          <div className="shrink-0 text-right">
+            <p className="text-[10.5px] uppercase tracking-wide text-muted">Coût matières / unité de stock</p>
+            {ft.cout_matieres_par_unite != null ? (
+              <p className="text-[18px] font-semibold num">{formatDa(num(ft.cout_matieres_par_unite))}</p>
+            ) : (
+              <p className="text-[12px] text-warning max-w-[220px]">Recette en litres/kg : renseignez la contenance de l’article.</p>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="px-4 sm:px-5 py-4 flex-1 space-y-5">
@@ -288,7 +294,7 @@ function FicheEditor({ ft, writable, canValidate, canTest }: { ft: FicheTechniqu
                     <th className="px-3 py-2 font-medium text-right">Quantité</th>
                     <th className="px-3 py-2 font-medium text-right">Perte</th>
                     <th className="px-3 py-2 font-medium">Étape</th>
-                    <th className="px-3 py-2 font-medium text-right">Prix unitaire</th>
+                    {voitPrix && <th className="px-3 py-2 font-medium text-right">Prix unitaire</th>}
                     {editable && <th className="px-3 py-2 w-[52px]" />}
                   </tr>
                 </thead>
@@ -322,17 +328,25 @@ function FicheEditor({ ft, writable, canValidate, canTest }: { ft: FicheTechniqu
                       </td>
                       <td className="px-3 py-2 text-right">
                         {editable ? (
-                          <NumInput
-                            value={num(c.quantite_necessaire)}
-                            unite={c.unite_mesure ? UNITE_LABEL[c.unite_mesure] : undefined}
-                            min={0}
-                            strict
-                            onSave={(q) => savePatch(c.id, { quantite_necessaire: q })}
-                          />
+                          <div className="inline-flex items-center gap-1.5">
+                            <NumInput value={num(c.quantite_necessaire)} min={0} strict onSave={(q) => savePatch(c.id, { quantite_necessaire: q })} />
+                            <select
+                              aria-label="Unité de la quantité"
+                              className={cn(inputClass, "h-8 w-[110px] text-[12px]")}
+                              value={c.unite || c.unite_mesure || ""}
+                              onChange={(e) => void savePatch(c.id, { unite: e.target.value })}
+                            >
+                              {(Object.keys(UNITE_LABEL) as (keyof typeof UNITE_LABEL)[]).map((u) => (
+                                <option key={u} value={u}>
+                                  {UNITE_LABEL[u]}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         ) : (
                           <span className="text-[13px] num">
                             {formatQty(num(c.quantite_necessaire), 4)}
-                            {c.unite_mesure && <span className="text-muted ml-1">{UNITE_LABEL[c.unite_mesure]}</span>}
+                            {(c.unite || c.unite_mesure) && <span className="text-muted ml-1">{UNITE_LABEL[(c.unite || c.unite_mesure) as keyof typeof UNITE_LABEL]}</span>}
                           </span>
                         )}
                       </td>
@@ -368,13 +382,15 @@ function FicheEditor({ ft, writable, canValidate, canTest }: { ft: FicheTechniqu
                           <span className="text-[12.5px]">{etapeNom(c.etape)}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right">
-                        {prixEditable ? (
-                          <NumInput value={num(c.prix_unitaire)} min={0} onSave={(p) => savePatch(c.id, { prix_unitaire: p })} />
-                        ) : (
-                          <span className="text-[13px] num">{formatDa(num(c.prix_unitaire))}</span>
-                        )}
-                      </td>
+                      {voitPrix && (
+                        <td className="px-3 py-2 text-right">
+                          {prixEditable ? (
+                            <NumInput value={num(c.prix_unitaire)} min={0} onSave={(p) => savePatch(c.id, { prix_unitaire: p })} />
+                          ) : (
+                            <span className="text-[13px] num">{formatDa(num(c.prix_unitaire))}</span>
+                          )}
+                        </td>
+                      )}
                       {editable && (
                         <td className="px-3 py-2 text-right">
                           <IconBtn label="Retirer" danger onClick={() => void dispatch({ type: "DELETE_COMPOSITION", id: c.id })}>
@@ -390,11 +406,24 @@ function FicheEditor({ ft, writable, canValidate, canTest }: { ft: FicheTechniqu
           )}
           <p className="text-[11.5px] text-muted mt-2">
             Ingrédients : quantité pour la quantité de référence de la recette. Emballages : par bouteille / pot (préforme, bouchon, étiquette) ou par pack
-            (film, carton). La perte théorique s’ajoute au besoin.
+            (film, carton). La perte théorique s’ajoute au besoin. Une quantité saisie dans une autre unité (20 g pour un article géré en kg) est convertie
+            par la table des conversions.
           </p>
         </section>
 
-        {compo.length > 0 && <SimulationSection ft={ft} formats={formats} />}
+        {majPrix && (
+          <MiseAJourPrix
+            ft={ft}
+            onClose={() => setMajPrix(false)}
+            onCree={(id) => {
+              setMajPrix(false);
+              router.push(`${BASE}/${id}`);
+            }}
+          />
+        )}
+
+        {/* Simulation chiffrée : refusée à la Qualité par le backend. */}
+        {compo.length > 0 && voitPrix && <SimulationSection ft={ft} formats={formats} />}
       </div>
 
       {/* Barre d’actions collée en bas de l’écran */}
@@ -426,10 +455,17 @@ function FicheEditor({ ft, writable, canValidate, canTest }: { ft: FicheTechniqu
           </div>
         </footer>
       ) : ft.statut !== "BROUILLON" ? (
-        <footer className="px-4 sm:px-5 py-3 border-t border-line bg-surface-2/60 rounded-b-[10px] text-[12px] text-muted flex items-center gap-2">
-          <Lock size={13} />
-          Fiche {STATUT_FT_LABEL[ft.statut].toLowerCase()} : composants et recette ne changent plus
-          {prixEditable ? " ; seul le prix unitaire reste ajustable (sans effet sur les OF déjà créés)." : ", prix compris."}
+        <footer className="px-4 sm:px-5 py-3 border-t border-line bg-surface-2/60 rounded-b-[10px] text-[12px] text-muted flex flex-col sm:flex-row sm:items-center gap-2">
+          <span className="flex items-center gap-2 flex-1">
+            <Lock size={13} className="shrink-0" />
+            Fiche {STATUT_FT_LABEL[ft.statut].toLowerCase()} : composants, recette et prix ne changent plus.
+            {ft.statut === "VALIDEE" && writable && " Pour changer un prix, créez une nouvelle version (les OF existants gardent leur prix)."}
+          </span>
+          {ft.statut === "VALIDEE" && writable && voitPrix && !majPrix && (
+            <Button variant="secondary" className="h-8" onClick={() => setMajPrix(true)}>
+              <Pencil size={14} /> Mettre à jour les prix
+            </Button>
+          )}
         </footer>
       ) : null}
     </div>
@@ -599,7 +635,9 @@ function AjoutComposant({ ft, disponibles, onClose }: { ft: FicheTechnique; disp
   const [format, setFormat] = useState(0);
   const [role, setRole] = useState("");
   const choisie = disponibles.find((d) => d.id === matiere);
-  const unite = choisie?.unite_consommation || choisie?.unite_mesure;
+  const [uniteChoisie, setUniteChoisie] = useState("");
+  // Par défaut : unité de consommation de l’article, sinon son unité de stock.
+  const unite = (uniteChoisie || choisie?.unite_consommation || choisie?.unite_mesure) as keyof typeof UNITE_LABEL | undefined;
   const formats = [ft.article, ...(ft.formats_associes ?? [])];
   const ordre = Math.max(0, ...state.compositions.filter((c) => c.fiche_technique === ft.id).map((c) => c.ordre_incorporation ?? 0)) + 1;
 
@@ -618,6 +656,7 @@ function AjoutComposant({ ft, disponibles, onClose }: { ft: FicheTechnique; disp
           article_format: format || null,
           role,
           ordre_incorporation: ordre,
+          ...(unite ? { unite } : {}),
         }),
       refresh: ["compositions", "fichesTechniques"],
     });
@@ -648,8 +687,17 @@ function AjoutComposant({ ft, disponibles, onClose }: { ft: FicheTechnique; disp
         </Field>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Field label={`Quantité${unite ? ` (${UNITE_LABEL[unite]})` : ""}`}>
-          <input className={cn(inputClass, "text-right num")} type="number" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
+        <Field label="Quantité">
+          <div className="flex gap-1.5">
+            <input className={cn(inputClass, "text-right num")} type="number" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
+            <select aria-label="Unité" className={cn(inputClass, "w-[96px]")} value={unite ?? ""} onChange={(e) => setUniteChoisie(e.target.value)} disabled={!matiere}>
+              {(Object.keys(UNITE_LABEL) as (keyof typeof UNITE_LABEL)[]).map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </div>
         </Field>
         <Field label="Prix unitaire (FCFA)">
           <input className={cn(inputClass, "text-right num")} type="number" min="0" step="any" value={prix} onChange={(e) => setPrix(e.target.value)} />
@@ -870,5 +918,69 @@ function IconBtn({ children, label, onClick, danger, disabled }: { children: Rea
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Recette validée : les prix changent par une nouvelle version, validée d’office ; l’ancienne est
+ * archivée et les OF déjà créés gardent le prix de leur création (historique conservé).
+ */
+function MiseAJourPrix({ ft, onClose, onCree }: { ft: FicheTechnique; onClose: () => void; onCree: (id: number) => void }) {
+  const { state, dispatch } = useStore();
+  const compo = state.compositions.filter((c) => c.fiche_technique === ft.id);
+  const [prix, setPrix] = useState<Record<number, string>>(() => Object.fromEntries(compo.map((c) => [c.matiere, String(num(c.prix_unitaire))])));
+  const [busy, setBusy] = useState(false);
+  const modifies = compo.filter((c) => prix[c.matiere] !== undefined && Number(prix[c.matiere]) !== num(c.prix_unitaire));
+  const valide = modifies.length > 0 && modifies.every((c) => Number(prix[c.matiere]) >= 0 && prix[c.matiere] !== "");
+
+  async function enregistrer() {
+    setBusy(true);
+    let nouvelle: number | null = null;
+    const ok = await dispatch({
+      type: "EXEC",
+      run: async () => {
+        const copie = await actions.mettreAJourPrixFiche(ft.id, Object.fromEntries(modifies.map((c) => [String(c.matiere), Number(prix[c.matiere])])));
+        nouvelle = copie.id;
+      },
+      refresh: ["fichesTechniques", "compositions"],
+    });
+    setBusy(false);
+    if (ok && nouvelle != null) onCree(nouvelle);
+  }
+
+  return (
+    <section className="rounded-[9px] border border-primary/30 bg-primary-soft/30 p-3.5 space-y-3">
+      <div>
+        <h3 className="text-[13px] font-semibold">Nouvelle version avec de nouveaux prix</h3>
+        <p className="text-[12px] text-muted">
+          La version {ft.version} sera archivée ; la nouvelle (même composition) est validée et sert aux prochains OF.
+        </p>
+      </div>
+      <ul className="rounded-[8px] border border-line divide-y divide-line bg-surface">
+        {compo.map((c) => (
+          <li key={c.id} className="px-3 py-2 flex items-center gap-3">
+            <span className="min-w-0 flex-1 text-[12.5px] truncate">{c.matiere_designation ?? c.matiere_code}</span>
+            <span className="text-[11.5px] text-muted num">actuel {formatDa(num(c.prix_unitaire))}</span>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              aria-label={`Nouveau prix ${c.matiere_designation ?? ""}`}
+              className={cn(inputClass, "h-8 w-[120px] num text-right")}
+              value={prix[c.matiere] ?? ""}
+              onChange={(e) => setPrix((p) => ({ ...p, [c.matiere]: e.target.value }))}
+            />
+          </li>
+        ))}
+      </ul>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onClose}>
+          Annuler
+        </Button>
+        <Button disabled={!valide || busy} onClick={() => void enregistrer()}>
+          <Check size={14} /> {busy ? "Création…" : `Créer la version ${ft.version + 1}`}
+        </Button>
+      </div>
+    </section>
   );
 }

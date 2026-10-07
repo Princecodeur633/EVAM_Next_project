@@ -1,4 +1,10 @@
 import type {
+  ChampEtape,
+  FormatExport,
+  SensCompte,
+  StatutDevis,
+  StatutPalette,
+  TypeEvenement,
   ActionImmediate,
   BaseCalcul,
   CategorieCout,
@@ -294,6 +300,10 @@ export const LABORATOIRE_LABEL: Record<Laboratoire, string> = {
 };
 
 export const DECLENCHEUR_LABEL: Record<Declencheur, string> = {
+  PAR_QUANTITE: "Toutes les X unités / litres / m³",
+  CHAQUE_CUVE: "À chaque cuve préparée",
+  APRES_NETTOYAGE: "Après nettoyage / désinfection",
+  APRES_ARRET: "Après arrêt / redémarrage",
   RECEPTION: "À la réception (lot matière)",
   DEMARRAGE: "Au démarrage de l'OF",
   CHAQUE_OF: "Une fois par OF",
@@ -355,7 +365,56 @@ export const INDUCTEUR_LABEL: Record<Inducteur, string> = {
   PALETTES_JOURS: "Palettes-jours (stockage)",
   KM: "Kilomètres (tournées)",
   QUANTITE_LIVREE: "Quantité livrée",
+  TEMPS_CHANGEMENT_SERIE: "Temps de changement de série (min)",
+  PALETTES_LIVREES: "Palettes livrées",
+  LITRES_LIVRES: "Volume livré (litres)",
   AUCUN: "Aucun (charge directe)",
+};
+
+export const STATUT_DEVIS_LABEL: Record<StatutDevis, string> = {
+  BROUILLON: "Brouillon",
+  ENVOYE: "Envoyé au client",
+  ACCEPTE: "Accepté",
+  PARTIELLEMENT_ACCEPTE: "Accepté partiellement",
+  REFUSE: "Refusé",
+  EXPIRE: "Expiré",
+};
+
+export const FORMAT_EXPORT_LABEL: Record<FormatExport, string> = {
+  SAGE_CSV: "CSV Sage 100",
+  CSV_GENERIQUE: "CSV générique (UTF-8, dates ISO)",
+  XLSX: "Excel (.xlsx)",
+  JSON: "JSON",
+};
+
+export const SENS_COMPTE_LABEL: Record<SensCompte, string> = {
+  VENTE: "Ventes (produits finis)",
+  ACHAT: "Achats (articles approvisionnés)",
+};
+
+export const TYPE_EVENEMENT_LABEL: Record<TypeEvenement, string> = {
+  CUVE: "Cuve préparée",
+  NETTOYAGE: "Nettoyage / désinfection",
+  ARRET_REDEMARRAGE: "Arrêt puis redémarrage",
+};
+
+export const STATUT_PALETTE_LABEL: Record<StatutPalette, string> = {
+  EN_STOCK: "En stock",
+  EN_TRANSIT: "En transit",
+  EXPEDIEE: "Expédiée / vendue",
+};
+
+export const CHAMP_ETAPE_LABEL: Record<ChampEtape, string> = {
+  quantite_entree: "Quantité entrée",
+  quantite_produite: "Quantité produite",
+  quantite_rejetee: "Quantité rejetée",
+  date_debut: "Heure de début",
+  date_fin: "Heure de fin",
+  duree_arret_min: "Arrêts (minutes)",
+  heures_machine: "Heures machine",
+  energie_kwh: "Énergie (kWh)",
+  poste: "Poste",
+  equipement: "Machine",
 };
 
 export const CATEGORIE_COUT_LABEL: Record<CategorieCout, string> = {

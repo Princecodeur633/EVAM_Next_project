@@ -81,6 +81,8 @@ export const ACTIONS = {
   GENERER_RAPPORT: ["DIRECTION", "COMPTABILITE_DAF"],
   VALORISER_COUT_RETOUR: ["COMPTABILITE_DAF"],
   ADMIN_USERS: ["ADMIN_SI"],
+  // Dérogation au tarif imposé (client sous contrat) : Direction et DAF, tracée.
+  DEROGATION_PRIX: ["DIRECTION", "COMPTABILITE_DAF"],
   // Fiche fournisseur (référentiel) : distincte de la passation de commande, réservée au Responsable Achat.
   EDIT_FOURNISSEUR: ["RESPONSABLE_ACHATS", "ADMIN_SI"],
   // --- Fiches techniques : essai (Admin SI, comme la validation) ---

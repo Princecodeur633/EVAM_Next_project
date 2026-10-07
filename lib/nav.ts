@@ -444,6 +444,7 @@ const EXTRA_ACCESS: Partial<Record<Profil, string[]>> = {
   RESPONSABLE_DISTRIBUTION: ["/commercial/commandes"],
   CAISSIER: ["/commercial/commandes"],
   RESPONSABLE_PRODUCTION: ["/production/qualite"],
+  COMPTABILITE_DAF: ["/commercial/commandes"],
 };
 
 export function canAccess(role: Profil, url: string) {

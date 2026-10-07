@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Beaker, CheckCheck, Paperclip, Plus } from "lucide-react";
+import { Beaker, CheckCheck, Plus } from "lucide-react";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { KpiCard } from "@/components/charts";
-import { ClotureNcDrawer, NcBadge } from "@/components/qualite";
+import { ClotureNcDrawer, NcBadge, PieceJointeLien } from "@/components/qualite";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { actions, api, detail, endpoints } from "@/lib/api";
 import { ACTION_IMMEDIATE_LABEL, DECISION_NC_LABEL } from "@/lib/labels";
@@ -233,11 +233,8 @@ function NcDrawer({ nc, onClose }: { nc: NonConformite; onClose: () => void }) {
           <DrawerSection title="Pièces jointes">
             <ul className="space-y-1">
               {nc.pieces_jointes?.map((p) => (
-                <li key={p.id} className="text-[12.5px] flex items-center gap-1.5">
-                  <Paperclip size={12} className="text-muted" />
-                  <a href={p.fichier} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
-                    {p.description || p.fichier.split("/").pop()}
-                  </a>
+                <li key={p.id}>
+                  <PieceJointeLien piece={p} />
                 </li>
               ))}
             </ul>
