@@ -27,6 +27,8 @@ import {
   ShoppingCart,
   TrendingDown,
   Truck,
+  Beaker,
+  Boxes,
   UserPlus,
   Users,
   UserCog,
@@ -43,6 +45,8 @@ import {
   STATUT_BL_LABEL,
   STATUT_CF_LABEL,
   STATUT_CMD_LABEL,
+  STATUT_CONTROLE_REALISE_LABEL,
+  STATUT_TRANSFERT_LABEL,
   STATUT_DEMANDE_MATIERE_LABEL,
   STATUT_LOT_LABEL,
   STATUT_OF_LABEL,
@@ -54,7 +58,7 @@ import {
   TYPE_MVT_LABEL,
   TYPE_PROBLEME_LABEL,
 } from "./labels";
-import type { AppState, Caisse, OrdreFabrication, Profil, SessionCaisse, StatutOF } from "./types";
+import type { AppState, Caisse, ControleRealise, OrdreFabrication, Profil, SessionCaisse, StatutOF } from "./types";
 import { formatDa, formatDate, formatDateTime, formatQty, num } from "./utils";
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger" | "teal";
@@ -200,6 +204,48 @@ function lowStockSection(state: AppState): HomeSection {
       title: article.designation,
       detail: `Disponible ${formatQty(dispo, 0)} · minimum ${formatQty(min, 0)}`,
       badge: dispo <= 0 ? { label: "Rupture", tone: "danger" } : { label: "Sous seuil", tone: "warning" },
+    })),
+  });
+}
+
+/** Contrôles qualité à réaliser (en retard et bloquants d’abord) ; `lien` mène à l’écran de saisie. */
+function controlesSection(list: ControleRealise[], lien: (c: ControleRealise) => string, href: string): HomeSection {
+  const aFaire = list
+    .filter((c) => c.statut === "A_REALISER" || c.statut === "EN_ATTENTE_VALIDATION")
+    .sort((a, b) => Number(!!b.en_retard) - Number(!!a.en_retard) || Number(!!b.bloquant) - Number(!!a.bloquant));
+  return section({
+    id: "controles",
+    title: "Contrôles qualité à réaliser",
+    icon: ClipboardCheck,
+    href,
+    tone: aFaire.some((c) => c.en_retard) ? "danger" : "warning",
+    empty: "Aucun contrôle en attente.",
+    all: aFaire.map((c) => ({
+      href: lien(c),
+      title: c.controle ?? c.numero,
+      detail: [c.of_numero && `OF ${c.of_numero}`, c.lot_numero && `lot ${c.lot_numero}`, c.lot_matiere_numero && `lot ${c.lot_matiere_numero}`, c.critere].filter(Boolean).join(" · "),
+      badge: c.en_retard
+        ? { label: "En retard", tone: "danger" }
+        : { label: c.bloquant ? "Bloquant" : STATUT_CONTROLE_REALISE_LABEL[c.statut], tone: c.bloquant ? "warning" : "info" },
+      meta: c.date_prevue ? formatDateTime(c.date_prevue) : undefined,
+    })),
+  });
+}
+
+function ncSection(state: AppState): HomeSection {
+  const ouvertes = state.nonConformites.filter((n) => n.statut !== "CLOTUREE").sort((a, b) => Number(b.bloquante) - Number(a.bloquante));
+  return section({
+    id: "nc",
+    title: "Non-conformités ouvertes",
+    icon: Beaker,
+    href: "/qualite/non-conformites",
+    tone: ouvertes.some((n) => n.bloquante) ? "danger" : "warning",
+    empty: "Aucune non-conformité ouverte.",
+    all: ouvertes.map((n) => ({
+      href: "/qualite/non-conformites",
+      title: n.numero,
+      detail: n.description,
+      badge: n.bloquante ? { label: "Bloquante", tone: "danger" } : { label: n.statut === "EN_COURS" ? "Action en cours" : "Ouverte", tone: "warning" },
     })),
   });
 }
@@ -558,6 +604,7 @@ function agentProduction(state: AppState, h: HomeHelpers): HomeData {
     sections: [
       section({ id: "prod", title: "En production", icon: ClipboardList, href: "/production/suivi", empty: "Aucun OF en production.", all: enProd.map((o) => ofTask(o, h)) }),
       section({ id: "prets", title: "Prêts à démarrer", icon: PackageCheck, href: "/production/of", empty: "Aucun OF prêt.", all: prets.map((o) => ofTask(o, h)) }),
+      controlesSection(state.controlesRealises, (c) => `/production/suivi?of=${c.ordre_fabrication ?? ""}&tab=controles`, "/production/suivi?tab=controles"),
     ],
     chart: {
       title: "Pertes par motif",
@@ -576,7 +623,10 @@ function qualite(state: AppState, h: HomeHelpers): HomeData {
     (o) => (o.statut === "PRODUCTION_TERMINEE" || o.statut === "EN_CONTROLE") && !state.lots.some((l) => l.ordre_fabrication === o.id),
   );
   const bloques = state.lots.filter((l) => l.statut === "BLOQUE" || l.statut === "NON_CONFORME");
-  const controlesJour = state.controles.filter((c) => sameDay(c.date_controle));
+  const aRealiser = state.controlesRealises.filter((c) => c.statut === "A_REALISER" || c.statut === "EN_ATTENTE_VALIDATION");
+  const enRetard = aRealiser.filter((c) => c.en_retard);
+  const ncOuvertes = state.nonConformites.filter((n) => n.statut !== "CLOTUREE");
+  const lotsMatieresAControler = state.lotsMatieres.filter((l) => l.statut === "A_CONTROLER");
   const quarantaine = state.retoursPhysiques.filter((r) => r.statut === "EN_QUARANTAINE");
   const lots = "/production/qualite";
   return {
@@ -587,10 +637,44 @@ function qualite(state: AppState, h: HomeHelpers): HomeData {
     kpis: [
       { label: "Lots en attente", value: lotsWait.length, tone: lotsWait.length ? "warning" : "success", icon: FlaskConical, href: `${lots}?tab=controler` },
       { label: "OF à contrôler", value: ofRecus.length, hint: "Lot à créer", tone: ofRecus.length ? "warning" : "default", icon: Inbox, href: `${lots}?tab=creer` },
-      { label: "Contrôles du jour", value: controlesJour.length, hint: `${controlesJour.filter((c) => c.resultat === "CONFORME").length} conforme(s)`, tone: "teal", icon: ClipboardCheck },
-      { label: "Lots bloqués", value: bloques.length, hint: "Bloqués ou non conformes", tone: bloques.length ? "danger" : "success", icon: Ban, href: `${lots}?tab=bloques` },
+      {
+        label: "Contrôles à réaliser",
+        value: aRealiser.length,
+        hint: enRetard.length ? `${enRetard.length} en retard` : "Aucun retard",
+        tone: enRetard.length ? "danger" : aRealiser.length ? "warning" : "success",
+        icon: ClipboardCheck,
+        href: "/qualite/controles",
+      },
+      {
+        label: "NC ouvertes",
+        value: ncOuvertes.length,
+        hint: `${ncOuvertes.filter((n) => n.bloquante).length} bloquante(s) · ${bloques.length} lot(s) bloqué(s)`,
+        tone: ncOuvertes.some((n) => n.bloquante) ? "danger" : ncOuvertes.length ? "warning" : "success",
+        icon: Beaker,
+        href: "/qualite/non-conformites",
+      },
     ],
     sections: [
+      controlesSection(state.controlesRealises, () => "/qualite/controles", "/qualite/controles"),
+      ncSection(state),
+      ...(lotsMatieresAControler.length
+        ? [
+            section({
+              id: "lots-matieres",
+              title: "Lots matières à contrôler",
+              icon: Boxes,
+              href: "/stocks/lots-matieres",
+              tone: "warning",
+              empty: "",
+              all: lotsMatieresAControler.map((l) => ({
+                href: "/stocks/lots-matieres",
+                title: l.numero,
+                detail: `${h.articleName(l.article)}${l.lot_fournisseur ? ` · fourn. ${l.lot_fournisseur}` : ""}`,
+                badge: { label: "À contrôler", tone: "warning" },
+              })),
+            }),
+          ]
+        : []),
       section({
         id: "of",
         title: "OF reçus",
@@ -720,6 +804,28 @@ function magasinier(state: AppState, h: HomeHelpers): HomeData {
         })),
       }),
       lowStockSection(state),
+      ...(state.transfertsStock.some((t) => t.statut === "BROUILLON" || t.statut === "EXPEDIE")
+        ? [
+            section({
+              id: "transferts",
+              title: "Transferts en cours",
+              icon: Truck,
+              href: "/stocks/transferts",
+              empty: "",
+              all: state.transfertsStock
+                .filter((t) => t.statut === "BROUILLON" || t.statut === "EXPEDIE")
+                .map((t) => ({
+                  href: "/stocks/transferts",
+                  title: t.numero,
+                  detail: `${t.depot_source_nom ?? ""} → ${t.depot_destination_nom ?? ""}`,
+                  badge: { label: STATUT_TRANSFERT_LABEL[t.statut], tone: t.statut === "EXPEDIE" ? "info" : "neutral" },
+                })),
+            }),
+          ]
+        : []),
+      ...(state.controlesRealises.some((c) => c.lot_matiere != null && c.statut === "A_REALISER")
+        ? [controlesSection(state.controlesRealises.filter((c) => c.lot_matiere != null), () => "/qualite/controles", "/qualite/controles")]
+        : []),
       ...(inventaires.length
         ? [
             section({

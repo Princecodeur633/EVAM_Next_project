@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
-import { ArrowLeft, Ban, Check, ShieldCheck, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Ban, Check, GitBranch, ShieldCheck, X } from "lucide-react";
 import { LotBadge } from "@/components/badges";
 import { Historique } from "@/components/Historique";
-import { Button, Guard, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
-import { endpoints } from "@/lib/api";
+import { ControleLigne, NcBadge, SaisieControleDrawer, controlesEnAttente } from "@/components/qualite";
+import { Button, DataTable, Guard, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { actions, endpoints } from "@/lib/api";
+import type { ControleRealise, Lot, TracabiliteLot } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { cn, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
 
@@ -35,6 +37,7 @@ export default function LotDetailPage() {
     ["Article", articleName(lot.article)],
     ["OF", ofNumero(lot.ordre_fabrication)],
     ["Quantité", formatQty(num(lot.quantite), 0)],
+    ["Stock produits finis", state.depots.find((d) => d.id === lot.depot)?.nom ?? "Dépôt produits finis"],
     ["Production", formatDate(lot.date_production)],
     ["Péremption", lot.date_peremption ? formatDate(lot.date_peremption) : "—"],
     ["Créé le", formatDateTime(lot.date_creation)],
@@ -111,6 +114,9 @@ export default function LotDetailPage() {
         </Panel>
       </div>
 
+      <ControlesDuLot lot={lot} />
+      <Tracabilite lot={lot} />
+
       <Historique endpoint={endpoints.lots} id={lot.id} />
 
       {/* Barre d’action fixée en bas */}
@@ -144,5 +150,147 @@ export default function LotDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Contrôles du plan rattachés au lot (et ceux de son OF sans lot précis) : un contrôle bloquant non
+ * réalisé ou une NC bloquante ouverte empêche de déclarer le lot conforme et de le libérer.
+ */
+function ControlesDuLot({ lot }: { lot: Lot }) {
+  const { state } = useStore();
+  const [ouvert, setOuvert] = useState<ControleRealise | null>(null);
+  const controles = state.controlesRealises.filter((c) => c.lot === lot.id || (lot.ordre_fabrication != null && c.ordre_fabrication === lot.ordre_fabrication && c.lot == null));
+  const ncs = state.nonConformites.filter((n) => n.lot === lot.id || (lot.ordre_fabrication != null && n.ordre_fabrication === lot.ordre_fabrication));
+  const bloquants = controlesEnAttente(controles).filter((c) => c.bloquant).length + ncs.filter((n) => n.bloquante && n.statut !== "CLOTUREE").length;
+  if (controles.length === 0 && ncs.length === 0) return null;
+  return (
+    <div className="grid lg:grid-cols-2 gap-4 items-start">
+      <Panel className="overflow-hidden">
+        <div className="px-4 py-3 border-b border-line flex items-center gap-2">
+          <h2 className="text-[13px] font-semibold flex-1">Contrôles du plan ({controles.length})</h2>
+          {bloquants > 0 && <StatusBadge tone="danger">{bloquants} blocage(s)</StatusBadge>}
+        </div>
+        <div className="divide-y divide-line max-h-[360px] overflow-y-auto">
+          {controles.length === 0 && <p className="px-4 py-6 text-center text-[12.5px] text-muted">Aucun contrôle.</p>}
+          {controles.map((c) => (
+            <ControleLigne key={c.id} controle={c} onClick={() => setOuvert(c)} />
+          ))}
+        </div>
+      </Panel>
+      <Panel className="overflow-hidden">
+        <h2 className="px-4 py-3 border-b border-line text-[13px] font-semibold">Non-conformités ({ncs.length})</h2>
+        {ncs.length === 0 ? (
+          <p className="px-4 py-6 text-center text-[12.5px] text-muted">Aucune non-conformité.</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {ncs.map((n) => (
+              <li key={n.id} className="px-4 py-2.5 flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12.5px] font-medium">
+                    {n.numero}
+                    {n.bloquante && <span className="text-danger"> · bloquante</span>}
+                  </p>
+                  <p className="text-[12px] text-muted break-words">{n.description}</p>
+                </div>
+                <NcBadge nc={n} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      {ouvert && <SaisieControleDrawer controle={ouvert} onClose={() => setOuvert(null)} />}
+    </div>
+  );
+}
+
+/** Traçabilité amont du lot : OF, ligne, recette, lots matières consommés, contrôles, NC et transferts. */
+function Tracabilite({ lot }: { lot: Lot }) {
+  const [t, setT] = useState<TracabiliteLot | null>(null);
+  const [erreur, setErreur] = useState(false);
+  useEffect(() => {
+    let annule = false;
+    void actions
+      .tracabiliteLot(lot.id)
+      .then((r) => !annule && setT(r))
+      .catch(() => !annule && setErreur(true));
+    return () => {
+      annule = true;
+    };
+  }, [lot.id, lot.statut]);
+  if (erreur) return null;
+  return (
+    <Panel className="overflow-hidden">
+      <div className="px-4 py-3 border-b border-line flex items-center gap-2">
+        <GitBranch size={15} className="text-muted" />
+        <h2 className="text-[13px] font-semibold">Traçabilité</h2>
+      </div>
+      {!t ? (
+        <p className="px-4 py-6 text-[12.5px] text-muted">Chargement…</p>
+      ) : (
+        <div className="p-4 space-y-4">
+          {t.of ? (
+            <dl className="grid sm:grid-cols-3 gap-x-6 gap-y-1.5 text-[12.5px]">
+              {[
+                ["OF", t.of.numero],
+                ["Ligne", t.of.ligne ?? "—"],
+                ["Usine", t.of.usine ?? "—"],
+                ["Circuit", t.of.circuit ?? "—"],
+                ["Recette", t.of.recette ?? "—"],
+                ["Production", t.of.date_debut ? formatDateTime(t.of.date_debut) : "—"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3">
+                  <dt className="text-muted">{k}</dt>
+                  <dd className="font-medium text-right">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-[12.5px] text-muted">Lot sans OF rattaché.</p>
+          )}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted font-medium mb-1.5">Matières et emballages consommés</p>
+            <div className="rounded-[9px] border border-line overflow-hidden">
+              <DataTable
+                emptyText="Aucun lot matière tracé (stock antérieur au suivi par lot)."
+                columns={[
+                  { key: "a", label: "Article" },
+                  { key: "l", label: "Lot interne" },
+                  { key: "f", label: "Lot fournisseur" },
+                  { key: "x", label: "Fournisseur" },
+                  { key: "d", label: "DLC" },
+                  { key: "q", label: "Quantité", className: "text-right" },
+                ]}
+                rows={t.matieres.map((m) => ({
+                  a: m.article,
+                  l: <span className="num">{m.lot}</span>,
+                  f: m.lot_fournisseur || "—",
+                  x: m.fournisseur ?? "—",
+                  d: m.date_peremption ? formatDate(m.date_peremption) : "—",
+                  q: <span className="num">{formatQty(num(m.quantite), 3)}</span>,
+                }))}
+              />
+            </div>
+          </div>
+          {t.transferts.length > 0 && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted font-medium mb-1.5">Transferts vers les dépôts</p>
+              <ul className="rounded-[9px] border border-line divide-y divide-line">
+                {t.transferts.map((x) => (
+                  <li key={x.bon} className="px-3 py-2 flex justify-between gap-3 text-[12.5px]">
+                    <span>
+                      <span className="num font-medium">{x.bon}</span> → {x.vers}
+                    </span>
+                    <span className="text-muted">
+                      {formatQty(num(x.quantite), 0)} · {x.statut}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </Panel>
   );
 }

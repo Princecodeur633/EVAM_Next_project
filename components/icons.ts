@@ -131,6 +131,16 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/admin/caisses": Vault,
   "/admin/parametres": Settings2,
   "/admin/audit": History,
+  "/admin/documents": FileText,
+  "/industriel": Factory,
+  "/qualite/controles": ClipboardCheck,
+  "/qualite/non-conformites": AlertTriangle,
+  "/qualite/plan": ListChecks,
+  "/qualite/parametres": FlaskConical,
+  "/qualite/indicateurs": BarChart3,
+  "/stocks/lots-matieres": Boxes,
+  "/stocks/transferts": Truck,
+  "/couts/cascade": Calculator,
 };
 
 /** Icône propre à un libellé quand deux écrans partagent la même route. */
