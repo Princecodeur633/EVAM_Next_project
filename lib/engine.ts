@@ -32,6 +32,8 @@ export const ACTIONS = {
   CREATE_COMMANDE: ["COMMERCIAL"],
   /** Devis : création, lignes, envoi, révision, refus, acceptation (Direction et DAF en lecture). */
   GERER_DEVIS: ["COMMERCIAL"],
+  /** Contrats clients et leurs tarifs négociés (exigés pour une vente « Contrat »). */
+  GERER_CONTRATS_CLIENTS: ["COMMERCIAL"],
   CREATE_FACTURE: ["COMMERCIAL"],
   GENERER_LIGNES_FACTURE: ["COMMERCIAL"],
   CREATE_AVOIR: ["COMMERCIAL", "COMPTABILITE_DAF"],

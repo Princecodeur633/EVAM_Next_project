@@ -81,7 +81,7 @@ export default function TarifsPage() {
             const s = statutTarif(t);
             return {
               a: articleName(t.article),
-              c: t.client ? clientName(t.client) : "Public",
+              c: t.client ? `${clientName(t.client)}${t.contrat ? " (contrat)" : ""}` : "Public",
               p: formatDa(num(t.prix_unitaire)),
               d: formatDate(t.date_debut_validite),
               f: t.date_fin_validite ? formatDate(t.date_fin_validite) : "—",
