@@ -9,9 +9,10 @@ import { ChangementSerieDrawer, estOfEau, etapesPourOf } from "@/components/prod
 import { ControleLigne, SaisieControleDrawer, controlesEnAttente } from "@/components/qualite";
 import { Tabs } from "@/components/Tabs";
 import { Button, Panel, inputClass } from "@/components/ui";
-import { MOTIF_PERTE_LABEL, NATURE_PERTE_LABEL, etapeLibelle } from "@/lib/labels";
+import { api, endpoints } from "@/lib/api";
+import { CHAMP_ETAPE_LABEL, MOTIF_PERTE_LABEL, NATURE_PERTE_LABEL, TYPE_EVENEMENT_LABEL, etapeLibelle } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { ControleRealise, MotifPerte, NaturePerte } from "@/lib/types";
+import type { ChampEtape, ControleRealise, MotifPerte, NaturePerte, TypeEvenement } from "@/lib/types";
 import { cn, formatDateTime, formatQty, num } from "@/lib/utils";
 
 type Onglet = "etape" | "perte" | "eau" | "session" | "controles" | "serie";
@@ -104,7 +105,7 @@ function Saisir() {
               ...(eau ? [{ value: "eau" as const, label: "Eau", icon: Droplets }] : []),
               { value: "session", label: "Session", icon: Timer },
               { value: "controles", label: "Contrôles", icon: ClipboardCheck, count: aControler || undefined },
-              { value: "serie", label: "Série", icon: Shuffle },
+              { value: "serie", label: "Série & cuves", icon: Shuffle },
             ]}
           />
 
@@ -188,8 +189,13 @@ function EtapeForm({ ofId }: { ofId: number }) {
   const [heures, setHeures] = useState("");
   const [kwh, setKwh] = useState("");
   const [mesure, setMesure] = useState(false);
+  const [fin, setFin] = useState("");
   const [saving, setSaving] = useState(false);
   const jour = state.etapes.filter((e) => today(e.date_fin) || today(e.date_debut)).slice(-8).reverse();
+  // Données obligatoires de l’étape (paramétrées avec les techniciens) : 0 est accepté, pas le vide.
+  const requis = new Set(state.donneesEtapes.filter((d) => d.obligatoire && d.etape_code === etape).map((d) => d.champ));
+  const etoile = (champ: ChampEtape) => (requis.has(champ) ? " *" : "");
+  const detailsRequis = (["poste", "equipement", "duree_arret_min", "heures_machine", "energie_kwh", "date_fin"] as ChampEtape[]).some((c) => requis.has(c));
 
   // Poste et machine proposés : ceux de l’étape choisie, sur la ligne de l’OF si elle est connue.
   const etapeStd = state.etapesStandard.find((e) => e.code === etape);
@@ -214,6 +220,7 @@ function EtapeForm({ ofId }: { ofId: number }) {
       heures_machine: nb(heures),
       energie_kwh: nb(kwh),
       energie_mesuree: mesure && kwh.trim() !== "",
+      date_fin: fin ? new Date(`${new Date().toISOString().slice(0, 10)}T${fin}`).toISOString() : undefined,
     });
     setSaving(false);
     if (ok) {
@@ -224,13 +231,31 @@ function EtapeForm({ ofId }: { ofId: number }) {
       setArret("");
       setHeures("");
       setKwh("");
+      setFin("");
     }
     return ok;
   }
 
+  const valeurs: Partial<Record<ChampEtape, string | number>> = {
+    quantite_entree: entree,
+    quantite_produite: qty,
+    quantite_rejetee: rejet,
+    duree_arret_min: arret,
+    heures_machine: heures,
+    energie_kwh: kwh,
+    poste,
+    equipement: machine,
+    date_fin: fin,
+    date_debut: "auto",
+  };
+  const manquants = [...requis].filter((c) => {
+    const v = valeurs[c];
+    return v === "" || v === 0 || v === undefined;
+  });
+
   return (
     <FormShell
-      valide={!!etape && Number(qty) > 0 && !incoherent}
+      valide={!!etape && Number(qty) > 0 && !incoherent && manquants.length === 0}
       saving={saving}
       onSave={save}
       recap={
@@ -274,7 +299,7 @@ function EtapeForm({ ofId }: { ofId: number }) {
       </div>
       <div className="grid grid-cols-3 gap-2">
         <label className="block">
-          <Label>Entrée</Label>
+          <Label>Entrée{etoile("quantite_entree")}</Label>
           <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={entree} onChange={(e) => setEntree(e.target.value)} placeholder="—" />
         </label>
         <label className="block">
@@ -290,11 +315,17 @@ function EtapeForm({ ofId }: { ofId: number }) {
           />
         </label>
         <label className="block">
-          <Label>Rejetée</Label>
+          <Label>Rejetée{etoile("quantite_rejetee")}</Label>
           <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={rejet} onChange={(e) => setRejet(e.target.value)} placeholder="—" />
         </label>
       </div>
       {incoherent && <p className="text-[12px] text-danger -mt-2">La quantité produite ne peut pas dépasser la quantité entrée.</p>}
+      {requis.size > 0 && (
+        <p className={cn("text-[12px] -mt-1", manquants.length ? "text-warning" : "text-muted")}>
+          * Données obligatoires à cette étape (0 accepté)
+          {manquants.length > 0 && ` — manquant : ${manquants.map((c) => CHAMP_ETAPE_LABEL[c]).join(", ")}`}
+        </p>
+      )}
       <label className="block">
         <Label>Observations</Label>
         <input className={big} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Facultatif" />
@@ -302,11 +333,11 @@ function EtapeForm({ ofId }: { ofId: number }) {
       <button type="button" onClick={() => setDetails((d) => !d)} className="flex items-center gap-1.5 text-[12.5px] font-medium text-primary">
         <ChevronDown size={14} className={cn("transition-transform", details && "rotate-180")} /> Poste, machine, arrêts et énergie
       </button>
-      {details && (
+      {(details || detailsRequis) && (
         <div className="space-y-3 rounded-[8px] border border-line bg-surface-2/50 p-3">
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <Label>Poste</Label>
+              <Label>Poste{etoile("poste")}</Label>
               <select className={big} value={poste} onChange={(e) => setPoste(Number(e.target.value))}>
                 <option value={0}>—</option>
                 {postes.map((p) => (
@@ -317,7 +348,7 @@ function EtapeForm({ ofId }: { ofId: number }) {
               </select>
             </label>
             <label className="block">
-              <Label>Machine</Label>
+              <Label>Machine{etoile("equipement")}</Label>
               <select className={big} value={machine} onChange={(e) => setMachine(Number(e.target.value))}>
                 <option value={0}>—</option>
                 {machines.map((m) => (
@@ -330,21 +361,25 @@ function EtapeForm({ ofId }: { ofId: number }) {
           </div>
           <div className="grid grid-cols-3 gap-2">
             <label className="block">
-              <Label>Arrêts (min)</Label>
+              <Label>Arrêts (min){etoile("duree_arret_min")}</Label>
               <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={arret} onChange={(e) => setArret(e.target.value)} />
             </label>
             <label className="block">
-              <Label>Heures machine</Label>
+              <Label>Heures machine{etoile("heures_machine")}</Label>
               <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={heures} onChange={(e) => setHeures(e.target.value)} placeholder="auto" />
             </label>
             <label className="block">
-              <Label>Énergie (kWh)</Label>
+              <Label>Énergie (kWh){etoile("energie_kwh")}</Label>
               <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={kwh} onChange={(e) => setKwh(e.target.value)} />
             </label>
           </div>
           <label className="flex items-center gap-2 text-[12.5px]">
             <input type="checkbox" checked={mesure} onChange={(e) => setMesure(e.target.checked)} disabled={kwh.trim() === ""} />
             kWh relevés sur un compteur (sinon : valeur estimée)
+          </label>
+          <label className="block">
+            <Label>Heure de fin{etoile("date_fin")}</Label>
+            <input type="time" className={big} value={fin} onChange={(e) => setFin(e.target.value)} />
           </label>
           <p className="text-[11.5px] text-muted">Heures machine vides : durée de l’étape moins les arrêts.</p>
         </div>
@@ -364,6 +399,7 @@ function PerteForm({ ofId }: { ofId: number }) {
   const [matiere, setMatiere] = useState(0);
   const [qty, setQty] = useState("");
   const [obs, setObs] = useState("");
+  const [typeQuantite, setTypeQuantite] = useState<"REELLE" | "ESTIMEE">("REELLE");
   const [saving, setSaving] = useState(false);
   const jour = state.pertes.filter((p) => today(p.date_constat)).slice(-8).reverse();
   // Matières et emballages prévus pour cet OF : la perte est alors valorisée au coût moyen.
@@ -380,6 +416,7 @@ function PerteForm({ ofId }: { ofId: number }) {
       etape_code: etape,
       matiere: matiere || null,
       observations: obs.trim() || undefined,
+      type_quantite: typeQuantite,
     });
     setSaving(false);
     if (ok) {
@@ -460,6 +497,19 @@ function PerteForm({ ofId }: { ofId: number }) {
         <Label>Quantité perdue</Label>
         <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right text-[18px] font-semibold")} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="0" />
       </label>
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Quantité comptée ou estimée">
+        {(["REELLE", "ESTIMEE"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTypeQuantite(t)}
+            aria-pressed={typeQuantite === t}
+            className={cn("h-10 rounded-[8px] border text-[13px] font-medium", typeQuantite === t ? "bg-primary text-white border-primary" : "bg-surface border-line-strong hover:bg-surface-2")}
+          >
+            {t === "REELLE" ? "Comptée" : "Estimée"}
+          </button>
+        ))}
+      </div>
       <label className="block">
         <Label>Observations</Label>
         <input className={big} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Facultatif" />
@@ -696,6 +746,129 @@ function SerieOf({ ofId }: { ofId: number }) {
         </Panel>
       </section>
       {ouvert && of && <ChangementSerieDrawer of={of} onClose={() => setOuvert(false)} />}
+      <EvenementsOf ofId={ofId} />
+    </>
+  );
+}
+
+/** Cuve préparée, nettoyage / désinfection, arrêt puis redémarrage : chaque événement génère les contrôles prévus au plan. */
+function EvenementsOf({ ofId }: { ofId: number }) {
+  const { state, dispatch, can } = useStore();
+  const of = state.ofList.find((o) => o.id === ofId);
+  const enProduction = of?.statut === "EN_PRODUCTION";
+  const [type, setType] = useState<TypeEvenement>("CUVE");
+  const [equipement, setEquipement] = useState(0);
+  const [cuve, setCuve] = useState("");
+  const [volume, setVolume] = useState("");
+  const [duree, setDuree] = useState("");
+  const [obs, setObs] = useState("");
+  const [saving, setSaving] = useState(false);
+  const evenements = state.evenementsProduction.filter((e) => e.ordre_fabrication === ofId);
+  const equipements = state.equipements.filter(
+    (m) => m.actif && (type !== "CUVE" || m.type_equipement === "CUVE" || m.type_equipement === "MELANGEUR"),
+  );
+
+  async function save() {
+    setSaving(true);
+    const nb = (v: string) => (v.trim() === "" ? null : Number(v));
+    const ok = await dispatch({
+      type: "EXEC",
+      run: () =>
+        api.post(endpoints.evenementsProduction, {
+          ordre_fabrication: ofId,
+          type_evenement: type,
+          equipement: equipement || null,
+          numero_cuve: cuve.trim(),
+          volume: type === "CUVE" ? nb(volume) : null,
+          duree_min: nb(duree),
+          observations: obs.trim(),
+        }),
+      refresh: ["evenementsProduction", "controlesRealises"],
+    });
+    setSaving(false);
+    if (ok) {
+      setCuve("");
+      setVolume("");
+      setDuree("");
+      setObs("");
+    }
+  }
+
+  return (
+    <>
+      {can("SAISIR_EVENEMENT_PRODUCTION") && (
+        <Panel className="p-4 space-y-3">
+          <p className="text-[13px] text-muted">Cuve préparée, nettoyage ou arrêt/redémarrage : les contrôles prévus pour cet événement sont générés.</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(TYPE_EVENEMENT_LABEL) as TypeEvenement[]).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => {
+                  setType(k);
+                  setEquipement(0);
+                }}
+                aria-pressed={type === k}
+                className={cn("min-h-11 px-2 py-1.5 rounded-[8px] border text-[12.5px] font-medium leading-tight", type === k ? "bg-primary text-white border-primary" : "bg-surface border-line-strong hover:bg-surface-2")}
+              >
+                {TYPE_EVENEMENT_LABEL[k]}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <Label>{type === "CUVE" ? "Cuve / mélangeur" : "Machine"}</Label>
+              <select className={big} value={equipement} onChange={(e) => setEquipement(Number(e.target.value))}>
+                <option value={0}>—</option>
+                {equipements.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.code} · {m.designation}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {type === "CUVE" ? (
+              <label className="block">
+                <Label>N° de cuvée</Label>
+                <input className={big} value={cuve} onChange={(e) => setCuve(e.target.value)} placeholder="Facultatif" />
+              </label>
+            ) : (
+              <label className="block">
+                <Label>Durée (min)</Label>
+                <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={duree} onChange={(e) => setDuree(e.target.value)} />
+              </label>
+            )}
+          </div>
+          {type === "CUVE" && (
+            <label className="block">
+              <Label>Volume (L)</Label>
+              <input type="number" inputMode="decimal" min="0" className={cn(big, "num text-right")} value={volume} onChange={(e) => setVolume(e.target.value)} />
+            </label>
+          )}
+          <label className="block">
+            <Label>Observations</Label>
+            <input className={big} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Facultatif" />
+          </label>
+          <Button className="w-full h-11" disabled={!enProduction || saving} onClick={() => void save()}>
+            {saving ? "Enregistrement…" : "Enregistrer l’événement"}
+          </Button>
+          {!enProduction && <p className="text-[12px] text-warning">L’OF doit être en production pour enregistrer un événement.</p>}
+        </Panel>
+      )}
+      <section>
+        <h2 className="text-[12px] uppercase tracking-[0.1em] text-muted font-semibold mb-2">Événements de l’OF</h2>
+        <Panel className="overflow-hidden">
+          <Recap
+            vide="Aucun événement."
+            lignes={evenements.map((e) => ({
+              k: String(e.id),
+              a: heure(e.date),
+              b: `${TYPE_EVENEMENT_LABEL[e.type_evenement]}${e.numero_cuve ? ` · ${e.numero_cuve}` : ""}`,
+              c: e.volume != null ? `${formatQty(num(e.volume), 0)} L` : e.duree_min != null ? `${formatQty(num(e.duree_min), 0)} min` : "—",
+            }))}
+          />
+        </Panel>
+      </section>
     </>
   );
 }

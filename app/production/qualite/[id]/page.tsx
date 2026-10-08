@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Ban, Check, GitBranch, ShieldCheck, X } from "lucide-react";
 import { LotBadge } from "@/components/badges";
 import { Historique } from "@/components/Historique";
+import { PalettesDuLot, RappelDuLot } from "@/components/palettes";
 import { ControleLigne, NcBadge, SaisieControleDrawer, controlesEnAttente } from "@/components/qualite";
 import { Button, DataTable, Guard, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { actions, endpoints } from "@/lib/api";
@@ -129,6 +130,10 @@ export default function LotDetailPage() {
       </div>
 
       <Tracabilite lot={lot} />
+      <div className="grid lg:grid-cols-2 gap-4 items-start">
+        <PalettesDuLot lot={lot} />
+        {lot.statut === "LIBERE" || lot.statut === "BLOQUE" ? <RappelDuLot lot={lot} /> : null}
+      </div>
 
       <Historique endpoint={endpoints.lots} id={lot.id} />
 

@@ -62,6 +62,9 @@ export type Action =
       /** Ligne compatible avec le format : fixe l'usine (magasin matières, stock produits finis). */
       ligne?: number | null;
       date_prevue?: string | null;
+      /** Créneau sur la ligne (ISO) ; la fin se calcule depuis la cadence si elle est vide. */
+      date_debut_prevue?: string | null;
+      date_fin_prevue?: string | null;
     }
   | { type: "AVANCER_OF"; id: number }
   | { type: "ANNULER_OF"; id: number; motif: string }
@@ -104,6 +107,8 @@ export type Action =
       etape_code?: string;
       /** Matière / emballage perdu : la perte est alors valorisée au CMUP par le serveur. */
       matiere?: number | null;
+      /** Perte réellement comptée ou estimée. */
+      type_quantite?: "REELLE" | "ESTIMEE";
     }
   /** `lot_matiere` : lot imposé ; sinon les lots les plus proches de leur DLC sont consommés. */
   | { type: "CREATE_SORTIE"; ordre_fabrication: number; matiere: number; quantite_sortie: number; type_sortie?: string; motif?: string; lot_matiere?: number | null }
@@ -219,7 +224,8 @@ export type Action =
       commande?: number;
       fournisseur: number;
       demande_achat?: number;
-      lignes: { article: number; quantite_commandee: number; prix_unitaire: number }[];
+      /** `unite` : unité de commande (carton, kg…) convertie en unité de stock à la réception. */
+      lignes: { article: number; quantite_commandee: number; prix_unitaire: number; unite?: string }[];
       envoyer: boolean;
     }
   | { type: "CREATE_RECEPTION"; commande: number; conforme?: boolean; observations?: string }
@@ -603,6 +609,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               agents_affectes: action.agents_affectes ?? [],
               ligne: action.ligne ?? null,
               date_prevue: action.date_prevue ?? null,
+              date_debut_prevue: action.date_debut_prevue ?? null,
+              date_fin_prevue: action.date_fin_prevue ?? null,
             });
             break;
           case "AVANCER_OF":
@@ -696,6 +704,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               nature: action.nature ?? "AUTRE",
               etape_code: action.etape_code ?? "",
               matiere: action.matiere ?? null,
+              type_quantite: action.type_quantite ?? "REELLE",
             });
             break;
           case "CREATE_SORTIE":

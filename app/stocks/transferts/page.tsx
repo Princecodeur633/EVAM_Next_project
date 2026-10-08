@@ -178,9 +178,12 @@ function TransfertDrawer({ transfert, onClose }: { transfert: TransfertStock; on
   const enStock = state.stock.filter((s) => s.depot === transfert.depot_source && stockDisponible(s) > 0);
   const dispo = (id: number) => stockDisponible(enStock.find((s) => s.article === id) ?? { id: 0, article: id, depot: 0, quantite_physique: "0", quantite_bloquee: "0", quantite_reservee: "0" });
   const lots = state.lots.filter((l) => l.article === article && l.statut === "LIBERE");
+  // Palettes en stock au lieu source : une palette entière s'ajoute en une ligne (article, lot, quantité).
+  const palettesDispo = state.palettes.filter((p) => p.statut === "EN_STOCK" && p.depot === transfert.depot_source);
+  const [palette, setPalette] = useState(0);
   const run = async (fn: () => Promise<unknown>, fermer = false) => {
     setBusy(true);
-    const ok = await dispatch({ type: "EXEC", run: fn, refresh: ["transfertsStock", "stock", "mouvements"] });
+    const ok = await dispatch({ type: "EXEC", run: fn, refresh: ["transfertsStock", "stock", "mouvements", "palettes"] });
     setBusy(false);
     if (ok && fermer) onClose();
     return ok;
@@ -315,6 +318,30 @@ function TransfertDrawer({ transfert, onClose }: { transfert: TransfertStock; on
                 <Plus size={14} /> Ajouter la ligne
               </Button>
             </div>
+          </div>
+        )}
+        {writable && brouillon && palettesDispo.length > 0 && (
+          <div className="rounded-[9px] border border-line p-3 flex flex-col sm:flex-row sm:items-end gap-2">
+            <Field label="Ou une palette entière">
+              <select className={inputClass} value={palette} onChange={(e) => setPalette(Number(e.target.value))}>
+                <option value={0}>Choisir une palette…</option>
+                {palettesDispo.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.numero} · {p.lot_numero} · {formatQty(num(p.quantite), 0)}
+                    {p.emplacement_code ? ` (${p.emplacement_code})` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Button
+              className="h-8 shrink-0"
+              disabled={!palette || busy}
+              onClick={async () => {
+                if (await run(() => actions.ajouterPaletteTransfert(transfert.id, palette))) setPalette(0);
+              }}
+            >
+              <Plus size={14} /> Ajouter la palette
+            </Button>
           </div>
         )}
       </DrawerSection>

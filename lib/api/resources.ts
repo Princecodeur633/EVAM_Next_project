@@ -715,6 +715,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "tournees",
     "devis",
     "reglesComptes",
+    // Critères des règles de comptes (format, unité de vente).
+    "formatsArticle",
+    "unitesVente",
   ],
 };
 

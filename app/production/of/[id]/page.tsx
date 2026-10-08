@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Ban, ClipboardCheck, Droplets, FileText, Package
 import { OfBadge } from "@/components/badges";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
+import { FormatsOf, PlanificationOf, ReservationsOf } from "@/components/ofPlanification";
 import { AgentPicker, ChangementSerieDrawer, ComplementDrawer, estOfEau, useAgentsDisponibles } from "@/components/production";
 import { ControleLigne, NcBadge, SaisieControleDrawer, controlesEnAttente } from "@/components/qualite";
 import { Tabs } from "@/components/Tabs";
@@ -118,7 +119,12 @@ export default function OfDetailPage() {
 
       <div className="min-h-[240px]">
         {onglet === "synthese" && <Synthese of={of} modifiable={modifiable} />}
-        {onglet === "besoins" && <BesoinsMatieres of={of} modifiable={modifiable && !lecture} />}
+        {onglet === "besoins" && (
+          <div className="space-y-4">
+            <BesoinsMatieres of={of} modifiable={modifiable && !lecture} />
+            <ReservationsOf of={of} />
+          </div>
+        )}
         {onglet === "sorties" && (
           <div className="space-y-4">
             <Bloc
@@ -305,9 +311,10 @@ function Synthese({ of, modifiable }: { of: OrdreFabrication; modifiable: boolea
     ["Article", articleName(of.article)],
     ["Quantité", formatQty(num(of.quantite_a_produire), 0)],
     ["Activité", of.activite_code ?? "—"],
-    ["Ligne / usine", of.ligne_code ? `${of.ligne_code}${of.usine_code ? ` · ${of.usine_code}` : ""}` : "Sans ligne (magasins par défaut)"],
+    ["Ligne / usine", of.ligne_code ? `${of.ligne_code}${of.usine_code ? ` · ${of.usine_code}` : ""}` : of.statut === "BROUILLON" ? "Choisie au lancement" : "Sans ligne (magasins par défaut)"],
     ["Circuit", of.circuit_code ?? "Aucun circuit validé"],
     ["Date prévue", of.date_prevue ? formatDate(of.date_prevue) : "—"],
+    ["Créneau planifié", of.date_debut_prevue ? `${formatDateTime(of.date_debut_prevue)}${of.date_fin_prevue ? ` → ${formatDateTime(of.date_fin_prevue)}` : ""}` : "Non planifié"],
     ["Responsable", userName(of.responsable)],
     ["Équipe", of.equipe || "—"],
     ["Créé le", formatDateTime(of.date_creation)],
@@ -327,6 +334,8 @@ function Synthese({ of, modifiable }: { of: OrdreFabrication; modifiable: boolea
           ))}
         </dl>
       </Panel>
+      {modifiable && can("CREATE_OF") && <PlanificationOf of={of} />}
+      <FormatsOf of={of} />
       {(of.etapes_prevues?.length ?? 0) > 0 && (
         <Bloc titre={`Circuit ${of.circuit_code ?? ""}`} meta={`${of.etapes_prevues?.filter((e) => e.saisies > 0).length}/${of.etapes_prevues?.length} étapes saisies`}>
           <ol className="divide-y divide-line">

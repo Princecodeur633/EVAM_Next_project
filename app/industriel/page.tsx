@@ -2,19 +2,19 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { ArrowRightLeft, Boxes, Building2, Check, CopyPlus, Factory, GitBranch, Layers, ListOrdered, Plus, Settings2, Trash2, Wrench } from "lucide-react";
+import { ArrowRightLeft, Boxes, Building2, Check, ClipboardList, CopyPlus, Factory, GitBranch, Layers, ListOrdered, Plus, Settings2, Trash2, Wrench } from "lucide-react";
 import { DrawerSection } from "@/components/Drawer";
 import { RefCrud } from "@/components/RefCrud";
 import { Tabs } from "@/components/Tabs";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { actions, endpoints } from "@/lib/api";
-import { PHASE_ETAPE_LABEL, STATUT_CIRCUIT_LABEL, TYPE_EQUIPEMENT_LABEL, UNITE_LABEL } from "@/lib/labels";
+import { CHAMP_ETAPE_LABEL, INDUCTEUR_LABEL, PHASE_ETAPE_LABEL, STATUT_CIRCUIT_LABEL, TYPE_EQUIPEMENT_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { Circuit, ParametreProduction, PhaseEtape, StatutCircuit, TypeEquipement, UniteMesure } from "@/lib/types";
+import type { ChampEtape, Circuit, Inducteur, ParametreProduction, PhaseEtape, StatutCircuit, TypeEquipement, UniteMesure } from "@/lib/types";
 import { cn, formatDa, formatQty, num } from "@/lib/utils";
 
-type Onglet = "activites" | "usines" | "etapes" | "lignes" | "postes" | "equipements" | "circuits" | "conversions" | "regles";
-const ONGLETS: Onglet[] = ["activites", "usines", "etapes", "lignes", "postes", "equipements", "circuits", "conversions", "regles"];
+type Onglet = "activites" | "usines" | "etapes" | "donnees" | "lignes" | "postes" | "equipements" | "circuits" | "conversions" | "regles";
+const ONGLETS: Onglet[] = ["activites", "usines", "etapes", "donnees", "lignes", "postes", "equipements", "circuits", "conversions", "regles"];
 
 export default function IndustrielPage() {
   return (
@@ -48,6 +48,7 @@ function Industriel() {
           { value: "activites", label: "Activités", icon: Layers, count: state.activites.length },
           { value: "usines", label: "Usines", icon: Building2, count: state.usines.length },
           { value: "etapes", label: "Étapes", icon: ListOrdered, count: state.etapesStandard.length },
+          { value: "donnees", label: "Données à saisir", icon: ClipboardList, count: state.donneesEtapes.length },
           { value: "lignes", label: "Lignes", icon: Factory, count: state.lignesProduction.length },
           { value: "postes", label: "Postes", icon: Boxes, count: state.postes.length },
           { value: "equipements", label: "Machines", icon: Wrench, count: state.equipements.length },
@@ -59,6 +60,7 @@ function Industriel() {
       {onglet === "activites" && <Activites />}
       {onglet === "usines" && <Usines />}
       {onglet === "etapes" && <Etapes />}
+      {onglet === "donnees" && <DonneesEtapes />}
       {onglet === "lignes" && <Lignes />}
       {onglet === "postes" && <Postes />}
       {onglet === "equipements" && <Equipements />}
@@ -183,6 +185,38 @@ function Etapes() {
   );
 }
 
+/** Q33 : données réelles à saisir à chaque étape ; une donnée obligatoire accepte 0, jamais le vide. */
+function DonneesEtapes() {
+  const { state, can } = useStore();
+  const o = useOptions();
+  const libelleEtape = (id: number) => state.etapesStandard.find((e) => e.id === id)?.libelle ?? `Étape n°${id}`;
+  const ordre = (id: number) => state.etapesStandard.find((e) => e.id === id)?.ordre_reference ?? 0;
+  return (
+    <RefCrud
+      titre="Données à saisir par étape"
+      description="Liste validée avec les techniciens : l’atelier ne peut pas enregistrer une étape sans ses données obligatoires (0 est accepté)."
+      items={[...state.donneesEtapes].sort((a, b) => ordre(a.etape) - ordre(b.etape) || a.champ.localeCompare(b.champ))}
+      endpoint={endpoints.donneesEtapes}
+      refresh={["donneesEtapes"]}
+      writable={can("PARAM_DONNEES_ETAPES")}
+      rechercheDans={(d) => [libelleEtape(d.etape), CHAMP_ETAPE_LABEL[d.champ]]}
+      libelleItem={(d) => `${libelleEtape(d.etape)} · ${CHAMP_ETAPE_LABEL[d.champ]}`}
+      supprimable={() => true}
+      valeursInitiales={{ etape: 0, champ: "quantite_produite", obligatoire: true }}
+      champs={[
+        { cle: "etape", label: "Étape", type: "select", requis: true, options: o.etapes },
+        { cle: "champ", label: "Donnée", type: "select", requis: true, options: (Object.keys(CHAMP_ETAPE_LABEL) as ChampEtape[]).map((c) => ({ value: c, label: CHAMP_ETAPE_LABEL[c] })) },
+        { cle: "obligatoire", label: "Obligatoire", type: "checkbox" },
+      ]}
+      colonnes={[
+        { cle: "e", label: "Étape", rendu: (d) => libelleEtape(d.etape) },
+        { cle: "c", label: "Donnée", rendu: (d) => CHAMP_ETAPE_LABEL[d.champ] },
+        { cle: "o", label: "Saisie", rendu: (d) => (d.obligatoire ? <StatusBadge tone="warning">Obligatoire</StatusBadge> : <StatusBadge tone="neutral">Facultative</StatusBadge>) },
+      ]}
+    />
+  );
+}
+
 function Lignes() {
   const { state, can, articleName } = useStore();
   const o = useOptions();
@@ -289,6 +323,8 @@ function Equipements() {
         duree_amortissement_mois: "",
         date_mise_en_service: "",
         formats_compatibles: [],
+        postes_supplementaires: [],
+        inducteur_amortissement: "",
         actif: true,
       }}
       champs={[
@@ -296,11 +332,19 @@ function Equipements() {
         { cle: "type_equipement", label: "Type", type: "select", options: (Object.keys(TYPE_EQUIPEMENT_LABEL) as TypeEquipement[]).map((t) => ({ value: t, label: TYPE_EQUIPEMENT_LABEL[t] })), requis: true },
         { cle: "usine", label: "Usine", type: "select", options: o.usines, requis: true },
         { cle: "poste", label: "Poste", type: "select", options: o.postes },
+        { cle: "postes_supplementaires", label: "Autres postes réalisés (machine combinée, ex. remplissage + bouchage)", type: "multi", options: o.postes, pleineLargeur: true },
         { cle: "activite", label: "Activité dédiée (vide = commun)", type: "select", options: o.activites },
         { cle: "cadence_nominale", label: "Capacité / cadence", type: "number" },
         { cle: "unite_cadence", label: "Unité de cadence" },
         { cle: "valeur_acquisition", label: "Valeur d’acquisition (FCFA)", type: "number" },
         { cle: "duree_amortissement_mois", label: "Durée d’amortissement (mois)", type: "number" },
+        {
+          cle: "inducteur_amortissement",
+          label: "Clé d’imputation de l’amortissement",
+          type: "select",
+          aide: "Vide : volume d’eau pour l’amont commun, heures machine ailleurs.",
+          options: (Object.keys(INDUCTEUR_LABEL) as Inducteur[]).map((i) => ({ value: i, label: INDUCTEUR_LABEL[i] })),
+        },
         { cle: "date_mise_en_service", label: "Mise en service", type: "date" },
         { cle: "compteur_energie", label: "Compteur d’énergie (kWh)", type: "checkbox" },
         { cle: "compteur_heures", label: "Compteur d’heures de marche", type: "checkbox" },

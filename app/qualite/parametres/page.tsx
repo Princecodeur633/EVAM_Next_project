@@ -19,7 +19,7 @@ export default function ParametresQualitePage() {
     <div className="space-y-4 max-w-[1440px]">
       <PageHeader
         eyebrow="Qualité"
-        title="Paramètres et instruments"
+        title="Paramètres, instruments et bibliothèque"
         description="Les paramètres (pH, °Brix, température, serrage bouchon, présence étiquette…) alimentent le plan de contrôle. Un instrument dont l’étalonnage est dépassé est refusé à la saisie d’une mesure."
         status={aEtalonner > 0 ? <StatusBadge tone="danger">{aEtalonner} instrument(s) à étalonner</StatusBadge> : undefined}
       />
@@ -57,11 +57,26 @@ export default function ParametresQualitePage() {
         endpoint={endpoints.instruments}
         refresh={["instruments"]}
         writable={writable}
-        rechercheDans={(i) => [i.code, i.designation, i.numero_serie]}
+        rechercheDans={(i) => [i.code, i.designation, i.numero_serie, i.type_instrument, i.grandeur_mesuree]}
         libelleItem={(i) => `${i.code} · ${i.designation}`}
-        valeursInitiales={{ designation: "", numero_serie: "", laboratoire: "LIGNE", date_dernier_etalonnage: "", periodicite_etalonnage_jours: "", actif: true }}
+        valeursInitiales={{
+          designation: "",
+          type_instrument: "",
+          grandeur_mesuree: "",
+          unite: "",
+          activite: 0,
+          numero_serie: "",
+          laboratoire: "LIGNE",
+          date_dernier_etalonnage: "",
+          periodicite_etalonnage_jours: "",
+          actif: true,
+        }}
         champs={[
-          { cle: "designation", label: "Désignation", requis: true, placeholder: "pH-mètre, réfractomètre…" },
+          { cle: "designation", label: "Désignation", requis: true, placeholder: "pH-mètre ligne 1…" },
+          { cle: "type_instrument", label: "Type", placeholder: "pH-mètre, réfractomètre, sonde, balance, couplemètre…" },
+          { cle: "grandeur_mesuree", label: "Mesure", placeholder: "pH, °Brix, température, couple…" },
+          { cle: "unite", label: "Unité" },
+          { cle: "activite", label: "Activité", type: "select", aide: "Vide = commun à toutes les activités.", options: state.activites.map((a) => ({ value: a.id, label: a.designation })) },
           { cle: "numero_serie", label: "N° appareil / série" },
           { cle: "laboratoire", label: "Utilisé", type: "select", options: opt<Laboratoire>(LABORATOIRE_LABEL) },
           { cle: "date_dernier_etalonnage", label: "Dernier étalonnage / vérification", type: "date" },
@@ -70,7 +85,18 @@ export default function ParametresQualitePage() {
         ]}
         colonnes={[
           { cle: "c", label: "Code", rendu: (i) => <span className="num font-medium">{i.code}</span> },
-          { cle: "d", label: "Instrument", rendu: (i) => i.designation },
+          {
+            cle: "d",
+            label: "Instrument",
+            rendu: (i) => (
+              <span className="inline-flex flex-col">
+                <span>{i.designation}</span>
+                {(i.type_instrument || i.grandeur_mesuree) && (
+                  <span className="text-[11.5px] text-muted">{[i.type_instrument, i.grandeur_mesuree && `${i.grandeur_mesuree}${i.unite ? ` (${i.unite})` : ""}`].filter(Boolean).join(" · ")}</span>
+                )}
+              </span>
+            ),
+          },
           { cle: "l", label: "Utilisé", rendu: (i) => LABORATOIRE_LABEL[i.laboratoire] },
           { cle: "e", label: "Dernier étalonnage", rendu: (i) => (i.date_dernier_etalonnage ? formatDate(i.date_dernier_etalonnage) : "—") },
           { cle: "p", label: "Prochaine échéance", rendu: (i) => (i.prochaine_echeance ? formatDate(i.prochaine_echeance) : i.periodicite_etalonnage_jours ? "Jamais réalisé" : "Non suivi") },
@@ -79,6 +105,56 @@ export default function ParametresQualitePage() {
             label: "Étalonnage",
             rendu: (i) => (!i.actif ? <StatusBadge tone="neutral">Inactif</StatusBadge> : i.etalonnage_valide === false ? <StatusBadge tone="danger">À étalonner</StatusBadge> : <StatusBadge tone="success">Valide</StatusBadge>),
           },
+        ]}
+      />
+      <RefCrud
+        titre="Bibliothèque de contrôles"
+        description="Contrôles types enregistrés une fois (paramètre, instrument, méthode, échantillon, obligatoire / bloquant) : un point du plan créé depuis un modèle reprend ces valeurs."
+        items={state.modelesControle}
+        endpoint={endpoints.modelesControle}
+        refresh={["modelesControle"]}
+        writable={writable}
+        rechercheDans={(m) => [m.code, m.designation, m.parametre_libelle, m.methode]}
+        libelleItem={(m) => `${m.code} · ${m.designation}`}
+        valeursInitiales={{
+          designation: "",
+          parametre: 0,
+          instrument: 0,
+          methode: "",
+          laboratoire: "LIGNE",
+          type_echantillon: "",
+          quantite_echantillon: "",
+          nombre_echantillons: 1,
+          obligatoire: false,
+          bloquant: false,
+          actions_si_non_conforme: "",
+          actif: true,
+        }}
+        champs={[
+          { cle: "designation", label: "Désignation", requis: true },
+          { cle: "parametre", label: "Paramètre", type: "select", requis: true, options: state.parametresQualite.filter((p) => p.actif).map((p) => ({ value: p.id, label: `${p.libelle}${p.unite ? ` (${p.unite})` : ""}` })) },
+          { cle: "instrument", label: "Instrument", type: "select", options: state.instruments.filter((i) => i.actif).map((i) => ({ value: i.id, label: `${i.code} · ${i.designation}` })) },
+          { cle: "laboratoire", label: "Réalisé", type: "select", options: opt<Laboratoire>(LABORATOIRE_LABEL) },
+          { cle: "methode", label: "Méthode" },
+          { cle: "type_echantillon", label: "Type d’échantillon" },
+          { cle: "quantite_echantillon", label: "Quantité d’échantillon" },
+          { cle: "nombre_echantillons", label: "Nombre d’échantillons", type: "number" },
+          { cle: "obligatoire", label: "Obligatoire par défaut", type: "checkbox" },
+          { cle: "bloquant", label: "Bloquant par défaut", type: "checkbox" },
+          { cle: "actions_si_non_conforme", label: "Actions en cas de non-conformité", type: "textarea" },
+          { cle: "actif", label: "Actif", type: "checkbox" },
+        ]}
+        colonnes={[
+          { cle: "c", label: "Code", rendu: (m) => <span className="num font-medium">{m.code}</span> },
+          { cle: "d", label: "Contrôle", rendu: (m) => m.designation },
+          { cle: "p", label: "Paramètre", rendu: (m) => m.parametre_libelle ?? "—" },
+          { cle: "l", label: "Réalisé", rendu: (m) => LABORATOIRE_LABEL[m.laboratoire] },
+          {
+            cle: "s",
+            label: "Par défaut",
+            rendu: (m) => [m.obligatoire && "Obligatoire", m.bloquant && "Bloquant"].filter(Boolean).join(" · ") || "—",
+          },
+          { cle: "a", label: "Statut", rendu: (m) => (m.actif ? <StatusBadge tone="success">Actif</StatusBadge> : <StatusBadge tone="neutral">Inactif</StatusBadge>) },
         ]}
       />
     </div>

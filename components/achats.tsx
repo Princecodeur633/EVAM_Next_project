@@ -7,9 +7,9 @@ import { Historique } from "@/components/Historique";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, StatusBadge, inputClass } from "@/components/ui";
 import { actions, endpoints } from "@/lib/api";
-import { STATUT_CF_LABEL } from "@/lib/labels";
+import { STATUT_CF_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { CommandeFournisseur, DemandeAchat } from "@/lib/types";
+import type { CommandeFournisseur, DemandeAchat, UniteMesure } from "@/lib/types";
 import { cn, formatDa, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
 
 export const CF_TONE: Record<CommandeFournisseur["statut"], "neutral" | "info" | "warning" | "success" | "danger"> = {
@@ -20,7 +20,7 @@ export const CF_TONE: Record<CommandeFournisseur["statut"], "neutral" | "info" |
   ANNULEE: "danger",
 };
 
-type LigneSaisie = { cle: number; article: number; qty: string; prix: string };
+type LigneSaisie = { cle: number; article: number; qty: string; prix: string; unite: string };
 
 /**
  * Commande fournisseur en un seul tiroir : fournisseur + lignes (article, quantité, prix).
@@ -33,7 +33,7 @@ export function CommandeFournisseurDrawer({ cf, da, onClose }: { cf?: CommandeFo
   const [fournisseur, setFournisseur] = useState(cf?.fournisseur ?? 0);
   const prixCatalogue = (f: number, article: number) => state.catalogueFournisseurs.find((c) => c.fournisseur === f && c.article === article)?.prix_unitaire ?? "";
   const [lignes, setLignes] = useState<LigneSaisie[]>(() =>
-    cf ? [] : [{ cle: 1, article: da?.article ?? 0, qty: da ? String(num(da.quantite_demandee)) : "", prix: "" }],
+    cf ? [] : [{ cle: 1, article: da?.article ?? 0, qty: da ? String(num(da.quantite_demandee)) : "", prix: "", unite: "" }],
   );
   const [saving, setSaving] = useState<"brouillon" | "envoi" | null>(null);
 
@@ -66,7 +66,7 @@ export function CommandeFournisseurDrawer({ cf, da, onClose }: { cf?: CommandeFo
       fournisseur,
       demande_achat: da?.id,
       envoyer,
-      lignes: valides.map((l) => ({ article: l.article, quantite_commandee: Number(l.qty), prix_unitaire: Number(l.prix) || 0 })),
+      lignes: valides.map((l) => ({ article: l.article, quantite_commandee: Number(l.qty), prix_unitaire: Number(l.prix) || 0, ...(l.unite ? { unite: l.unite } : {}) })),
     });
     setSaving(null);
     if (ok) onClose();
@@ -151,11 +151,12 @@ export function CommandeFournisseurDrawer({ cf, da, onClose }: { cf?: CommandeFo
 
           <DrawerSection title="Lignes">
             <div className="rounded-[9px] border border-line overflow-x-auto">
-              <table className="w-full text-left min-w-[460px]">
+              <table className="w-full text-left min-w-[560px]">
                 <thead>
                   <tr className="bg-surface-2 border-b border-line text-[11px] uppercase tracking-[0.08em] text-muted">
                     <th className="px-3 py-2 font-medium">Article</th>
                     <th className="px-3 py-2 font-medium text-right w-[110px]">Quantité</th>
+                    <th className="px-3 py-2 font-medium w-[100px]">Unité</th>
                     <th className="px-3 py-2 font-medium text-right w-[120px]">Prix unitaire</th>
                     <th className="w-9" />
                   </tr>
@@ -168,6 +169,7 @@ export function CommandeFournisseurDrawer({ cf, da, onClose }: { cf?: CommandeFo
                         {num(l.quantite_recue) > 0 && <span className="block text-[11.5px] text-muted num">reçu {formatQty(num(l.quantite_recue), 2)}</span>}
                       </td>
                       <td className="px-3 py-2.5 text-right text-[13px] num">{formatQty(num(l.quantite_commandee), 2)}</td>
+                      <td className="px-3 py-2.5 text-[12.5px] text-muted">{l.unite ? (UNITE_LABEL[l.unite as UniteMesure] ?? l.unite) : "Stock"}</td>
                       <td className="px-3 py-2.5 text-right text-[13px] num">{formatDa(num(l.prix_unitaire))}</td>
                       <td />
                     </tr>
@@ -187,6 +189,16 @@ export function CommandeFournisseurDrawer({ cf, da, onClose }: { cf?: CommandeFo
                         </td>
                         <td className="px-2 py-1.5">
                           <input type="number" min="0" step="any" aria-label="Quantité" className={cn(inputClass, "h-9 text-right num")} value={l.qty} onChange={(e) => maj(l.cle, { qty: e.target.value })} />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <select aria-label="Unité de commande" className={cn(inputClass, "h-9 text-[12.5px]")} value={l.unite} onChange={(e) => maj(l.cle, { unite: e.target.value })}>
+                            <option value="">Stock</option>
+                            {(Object.keys(UNITE_LABEL) as UniteMesure[]).map((u) => (
+                              <option key={u} value={u}>
+                                {UNITE_LABEL[u]}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-2 py-1.5">
                           <input type="number" min="0" step="any" aria-label="Prix unitaire" className={cn(inputClass, "h-9 text-right num")} value={l.prix} onChange={(e) => maj(l.cle, { prix: e.target.value })} />
@@ -214,7 +226,7 @@ export function CommandeFournisseurDrawer({ cf, da, onClose }: { cf?: CommandeFo
               </table>
             </div>
             {editable && (
-              <Button variant="ghost" className="h-8 px-2.5 text-[12.5px] self-start" onClick={() => setLignes((ls) => [...ls, { cle: Date.now(), article: 0, qty: "", prix: "" }])}>
+              <Button variant="ghost" className="h-8 px-2.5 text-[12.5px] self-start" onClick={() => setLignes((ls) => [...ls, { cle: Date.now(), article: 0, qty: "", prix: "", unite: "" }])}>
                 <Plus size={14} /> Ajouter une ligne
               </Button>
             )}

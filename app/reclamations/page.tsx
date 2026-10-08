@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { RetoursClients } from "@/components/retours";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { STATUT_RECLAMATION_LABEL, TYPE_PROBLEME_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -9,13 +10,16 @@ import { formatDateTime, formatQty, num } from "@/lib/utils";
 import type { TypeProbleme } from "@/lib/types";
 
 export default function ReclamationsPage() {
-  const { state, dispatch, articleName, clientName, can, produitsFinis } = useStore();
+  const { state, dispatch, articleName, clientName, can, produitsFinis, role } = useStore();
   const [client, setClient] = useState(state.clients[0]?.id ?? 0);
   const [article, setArticle] = useState(produitsFinis[0]?.id ?? 0);
   const [qty, setQty] = useState(1);
   const [typeProbleme, setTypeProbleme] = useState<TypeProbleme>("PRODUIT_DEFECTUEUX");
   const [description, setDescription] = useState("");
   const [retourne, setRetourne] = useState(false);
+
+  // Magasinier et Qualité ne lisent pas les réclamations : ils traitent les retours physiques.
+  if (role === "MAGASINIER" || role === "RESPONSABLE_QUALITE") return <RetoursClients />;
 
   return (
     <div className="space-y-4">

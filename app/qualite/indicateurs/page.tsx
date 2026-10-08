@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FileDown, FileSpreadsheet } from "lucide-react";
 import { BarChart, KpiCard, WidgetCard } from "@/components/charts";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { actions } from "@/lib/api";
@@ -67,6 +68,12 @@ export default function IndicateursQualitePage() {
         </Field>
         <Button disabled={chargement} onClick={() => void charger()}>
           {chargement ? "Calcul…" : "Actualiser"}
+        </Button>
+        <Button variant="secondary" onClick={() => void actions.exporterIndicateursQualite("xlsx", { du, au, activite: activite || undefined }).catch(() => {})}>
+          <FileSpreadsheet size={15} /> Excel
+        </Button>
+        <Button variant="secondary" onClick={() => void actions.exporterIndicateursQualite("pdf", { du, au, activite: activite || undefined }).catch(() => {})}>
+          <FileDown size={15} /> PDF
         </Button>
       </Panel>
       {erreur && <Panel className="p-4 text-[13px] text-danger">{erreur}</Panel>}

@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ClipboardCheck, Plus } from "lucide-react";
+import { ClipboardCheck, FileDown, FileSpreadsheet, Plus } from "lucide-react";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { ControleBadge, SaisieControleDrawer } from "@/components/qualite";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { KpiCard } from "@/components/charts";
-import { api, endpoints } from "@/lib/api";
+import { actions, api, endpoints } from "@/lib/api";
 import { DECLENCHEUR_LABEL, FAMILLE_PARAMETRE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import type { ControleRealise, FamilleParametre } from "@/lib/types";
@@ -63,11 +63,19 @@ export default function ControlesPage() {
         title={role === "MAGASINIER" ? "Contrôles de réception" : "Contrôles"}
         description="Générés automatiquement selon le plan de contrôle : au démarrage de l’OF, périodiquement, à chaque lot, après un changement de série et à la réception des lots matières. La conformité est calculée à partir des critères ; un résultat non conforme ouvre une non-conformité."
         actions={
-          can("CREER_CONTROLE_PONCTUEL") ? (
-            <Button onClick={() => setPonctuel(true)}>
-              <Plus size={15} /> Contrôle ponctuel
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => void actions.exporterControles("xlsx").catch(() => {})}>
+              <FileSpreadsheet size={15} /> Excel
             </Button>
-          ) : null
+            <Button variant="secondary" onClick={() => void actions.exporterControles("pdf").catch(() => {})}>
+              <FileDown size={15} /> PDF
+            </Button>
+            {can("CREER_CONTROLE_PONCTUEL") && (
+              <Button onClick={() => setPonctuel(true)}>
+                <Plus size={15} /> Contrôle ponctuel
+              </Button>
+            )}
+          </div>
         }
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

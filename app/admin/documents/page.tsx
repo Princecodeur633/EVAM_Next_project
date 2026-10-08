@@ -163,6 +163,22 @@ export default function DocumentsPage() {
         <h2 className="text-[13px] font-semibold">Mentions des documents</h2>
         <div className="grid sm:grid-cols-2 gap-3">{MENTIONS.map(champ)}</div>
       </Panel>
+      <Panel className="p-4 space-y-3">
+        <div>
+          <h2 className="text-[13px] font-semibold">Facture normalisée (SFEC)</h2>
+          <p className="text-[12px] text-muted">
+            À activer quand l’accès au service est en place : le jeton reste sur le serveur. Tant qu’elle est désactivée, les factures restent « non certifiées ».
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" disabled={!writable} checked={!!form.sfec_actif} onChange={(e) => setForm((f) => ({ ...f, sfec_actif: e.target.checked }))} />
+          Certifier les factures auprès de la SFEC
+        </label>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {champ({ cle: "sfec_url", label: "Adresse du service SFEC" })}
+          {champ({ cle: "sfec_nim", label: "NIM (n° du module)" })}
+        </div>
+      </Panel>
       {writable && (
         <div className="sticky bottom-0 z-20 px-4 py-3 border border-line bg-surface/95 backdrop-blur-md rounded-[10px] shadow-[var(--shadow)] flex items-center justify-between gap-3">
           <p className="text-[12px] text-muted">{dirty ? "Modifications non enregistrées." : "À jour."}</p>

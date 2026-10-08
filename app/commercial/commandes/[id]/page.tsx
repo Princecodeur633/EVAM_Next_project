@@ -5,8 +5,10 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, BadgePercent, Check, FileDown, Plus, Receipt, X } from "lucide-react";
 import { OrderBadge } from "@/components/badges";
+import { DerogationDrawer } from "@/components/DerogationDrawer";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
+import { SfecFacture } from "@/components/sfec";
 import { Button, Guard, ORDER_STEPS, PageHeader, Panel, StatusBadge, StatusStepper, inputClass } from "@/components/ui";
 import { actions, endpoints } from "@/lib/api";
 import { stockDisponible } from "@/lib/engine";
@@ -247,6 +249,7 @@ export default function CommandeDetailPage() {
                     )}
                   </Guard>
                 )}
+                <SfecFacture facture={facture} />
               </div>
             ) : (
               <p className="p-4 text-[12.5px] text-muted">
@@ -390,64 +393,6 @@ function ApercuFacture({ commandeId, onClose }: { commandeId: number; onClose: (
             Ses lignes de facture ne pourront pas être générées tant que le code fiscal n’est pas renseigné.
           </Guard>
         )}
-      </DrawerSection>
-    </Drawer>
-  );
-}
-
-/** Dérogation au tarif imposé (client sous contrat) : nouveau prix et motif, autorisés par la Direction ou la DAF. */
-function DerogationDrawer({
-  ligne,
-  libelle,
-  onClose,
-  onSave,
-}: {
-  ligne: { prix_unitaire: string; prix_tarif?: string | null; motif_derogation?: string };
-  libelle: string;
-  onClose: () => void;
-  onSave: (prix: number, motif: string) => Promise<boolean>;
-}) {
-  const [prix, setPrix] = useState(String(num(ligne.prix_unitaire)));
-  const [motif, setMotif] = useState(ligne.motif_derogation ?? "");
-  const [busy, setBusy] = useState(false);
-  return (
-    <Drawer
-      open
-      onClose={onClose}
-      title="Dérogation de prix"
-      subtitle={libelle}
-      icon={<BadgePercent size={17} />}
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button
-            disabled={!(Number(prix) > 0) || !motif.trim() || busy}
-            onClick={async () => {
-              setBusy(true);
-              const ok = await onSave(Number(prix), motif.trim());
-              setBusy(false);
-              if (ok) onClose();
-            }}
-          >
-            {busy ? "Enregistrement…" : "Autoriser ce prix"}
-          </Button>
-        </>
-      }
-    >
-      <DrawerSection title="Prix" hint="Le tarif est imposé ; une dérogation n’est possible que pour un client sous contrat, avec un motif. Elle est tracée.">
-        <p className="text-[12.5px] text-muted">
-          Tarif en vigueur : <span className="num font-medium text-ink">{ligne.prix_tarif != null ? formatDa(num(ligne.prix_tarif)) : "—"}</span>
-        </p>
-        <label className="block">
-          <span className="block text-[11px] uppercase tracking-wide text-muted mb-1.5 font-medium">Prix unitaire accordé (FCFA)</span>
-          <input type="number" min="0" step="any" className={cn(inputClass, "num text-right")} value={prix} onChange={(e) => setPrix(e.target.value)} />
-        </label>
-        <label className="block">
-          <span className="block text-[11px] uppercase tracking-wide text-muted mb-1.5 font-medium">Motif (obligatoire)</span>
-          <textarea className={cn(inputClass, "h-20 py-2")} value={motif} onChange={(e) => setMotif(e.target.value)} />
-        </label>
       </DrawerSection>
     </Drawer>
   );

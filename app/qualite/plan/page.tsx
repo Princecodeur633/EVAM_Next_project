@@ -66,6 +66,7 @@ export default function PlanControlePage() {
         libelleItem={(p) => `${p.code} v${p.version} · ${p.designation}`}
         supprimable={(p) => p.statut === "BROUILLON"}
         valeursInitiales={{
+          modele: 0,
           designation: "",
           parametre: 0,
           activite: 0,
@@ -80,8 +81,10 @@ export default function PlanControlePage() {
           valeur_max: "",
           tolerance: "",
           bloquant: false,
+          obligatoire: false,
           declencheur: "CHAQUE_OF",
           frequence_minutes: "",
+          frequence_quantite: "",
           type_echantillon: "",
           quantite_echantillon: "",
           nombre_echantillons: 1,
@@ -95,10 +98,27 @@ export default function PlanControlePage() {
           date_fin: "",
         }}
         champs={[
-          { cle: "designation", label: "Désignation", requis: true },
-          { cle: "parametre", label: "Paramètre contrôlé", type: "select", requis: true, options: state.parametresQualite.filter((p) => p.actif).map((p) => ({ value: p.id, label: `${p.libelle}${p.unite ? ` (${p.unite})` : ""}` })) },
+          {
+            cle: "modele",
+            label: "Depuis la bibliothèque",
+            type: "select",
+            creationSeulement: true,
+            pleineLargeur: true,
+            aide: "Paramètre, instrument, méthode, échantillon, obligatoire / bloquant repris du modèle pour les champs laissés vides.",
+            options: state.modelesControle.filter((m) => m.actif).map((m) => ({ value: m.id, label: `${m.code} · ${m.designation}` })),
+          },
+          { cle: "designation", label: "Désignation", aide: "Vide : celle du modèle." },
+          { cle: "parametre", label: "Paramètre contrôlé", type: "select", aide: "Obligatoire sans modèle.", options: state.parametresQualite.filter((p) => p.actif).map((p) => ({ value: p.id, label: `${p.libelle}${p.unite ? ` (${p.unite})` : ""}` })) },
           { cle: "declencheur", label: "Fréquence / déclenchement", type: "select", requis: true, options: opt<Declencheur>(DECLENCHEUR_LABEL) },
           { cle: "frequence_minutes", label: "Toutes les (minutes)", type: "number", visible: (f) => f.declencheur === "PERIODIQUE" },
+          {
+            cle: "frequence_quantite",
+            label: "Toutes les (quantité produite)",
+            type: "number",
+            requis: true,
+            aide: "Quantité saisie à l’étape du contrôle : unités, litres ou m³ (ex. 5 000).",
+            visible: (f) => f.declencheur === "PAR_QUANTITE",
+          },
           { cle: "activite", label: "Activité (sauf contrôle de réception)", type: "select", options: state.activites.map((a) => ({ value: a.id, label: a.designation })) },
           {
             cle: "article",
@@ -116,6 +136,7 @@ export default function PlanControlePage() {
           { cle: "valeur_cible", label: "Valeur cible", type: "number" },
           { cle: "tolerance", label: "Tolérance (±)", type: "number", aide: "S’applique autour de la valeur cible." },
           { cle: "bloquant", label: "Contrôle bloquant (bloque le lot et la clôture de l’OF tant que la NC n’est pas traitée)", type: "checkbox", pleineLargeur: true },
+          { cle: "obligatoire", label: "Contrôle obligatoire (le lot n’est pas libéré, ni l’OF clôturé, tant qu’il n’est pas réalisé)", type: "checkbox", pleineLargeur: true },
           { cle: "type_echantillon", label: "Type d’échantillon" },
           { cle: "quantite_echantillon", label: "Quantité d’échantillon" },
           { cle: "nombre_echantillons", label: "Nombre d’échantillons", type: "number" },
@@ -145,7 +166,14 @@ export default function PlanControlePage() {
           },
           { cle: "o", label: "Où", rendu: (p) => [p.activite_code, p.article ? articleName(p.article) : null, p.etape_libelle].filter(Boolean).join(" · ") || "Réception" },
           { cle: "k", label: "Critère", rendu: (p) => critere(p) || <span className="text-warning">À renseigner</span> },
-          { cle: "q", label: "Quand", rendu: (p) => `${DECLENCHEUR_LABEL[p.declencheur]}${p.declencheur === "PERIODIQUE" && p.frequence_minutes ? ` (${p.frequence_minutes} min)` : ""}` },
+          {
+            cle: "q",
+            label: "Quand",
+            rendu: (p) =>
+              `${DECLENCHEUR_LABEL[p.declencheur]}${p.declencheur === "PERIODIQUE" && p.frequence_minutes ? ` (${p.frequence_minutes} min)` : ""}${
+                p.declencheur === "PAR_QUANTITE" && p.frequence_quantite ? ` (${formatQty(num(p.frequence_quantite), 0)})` : ""
+              }`,
+          },
           {
             cle: "s",
             label: "Statut",
@@ -153,6 +181,7 @@ export default function PlanControlePage() {
               <span className="inline-flex flex-col gap-0.5">
                 <StatusBadge tone={TONE[p.statut]}>{STATUT_POINT_CONTROLE_LABEL[p.statut]}</StatusBadge>
                 {p.bloquant && <span className="text-[11px] text-danger font-medium">Bloquant</span>}
+                {p.obligatoire && !p.bloquant && <span className="text-[11px] text-warning font-medium">Obligatoire</span>}
               </span>
             ),
           },

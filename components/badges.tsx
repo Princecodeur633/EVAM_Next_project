@@ -3,11 +3,12 @@ import {
   STATUT_BL_LABEL,
   STATUT_CMD_LABEL,
   STATUT_DA_LABEL,
+  STATUT_DEVIS_LABEL,
   STATUT_FACTURE_LABEL,
   STATUT_LOT_LABEL,
   STATUT_OF_LABEL,
 } from "@/lib/labels";
-import type { Facture, StatutBL, StatutCommande, StatutDemandeAchat, StatutLot, StatutOF } from "@/lib/types";
+import type { Facture, StatutBL, StatutCommande, StatutDemandeAchat, StatutDevis, StatutLot, StatutOF } from "@/lib/types";
 
 const TONE = {
   neutral: "neutral",
@@ -45,6 +46,18 @@ export function OrderBadge({ status }: { status: StatutCommande }) {
     ANNULEE: "neutral",
   };
   return <StatusBadge tone={tones[status]}>{STATUT_CMD_LABEL[status]}</StatusBadge>;
+}
+
+export function DevisBadge({ status }: { status: StatutDevis }) {
+  const tones: Record<StatutDevis, Tone> = {
+    BROUILLON: "neutral",
+    ENVOYE: "info",
+    ACCEPTE: "success",
+    PARTIELLEMENT_ACCEPTE: "teal",
+    REFUSE: "danger",
+    EXPIRE: "warning",
+  };
+  return <StatusBadge tone={tones[status]}>{STATUT_DEVIS_LABEL[status]}</StatusBadge>;
 }
 
 export function DaBadge({ status }: { status: StatutDemandeAchat }) {

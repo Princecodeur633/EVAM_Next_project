@@ -94,7 +94,8 @@ const I = {
 
 const SUPERVISION: HubTab[] = [
   { label: "Commandes", href: "/commercial/commandes" },
-  { label: "Production", href: "/production/of", items: [{ href: "/production/of", label: "Ordres de fabrication" }, { href: "/production/qualite", label: "Lots" }] },
+  { label: "Devis", href: "/commercial/devis" },
+  { label: "Production", href: "/production/of", items: [{ href: "/production/of", label: "Ordres de fabrication" }, { href: "/production/charge-lignes", label: "Charge des lignes" }, { href: "/production/qualite", label: "Lots" }] },
   {
     label: "Achats",
     href: "/approvisionnement/besoins",
@@ -157,6 +158,8 @@ const DAF_CONTROLE: HubTab[] = [
   { label: "Anomalies", href: "/comptabilite/brouillards" },
   { label: "Impayés", href: "/commercial/impayes" },
   { label: "Écarts de caisse", href: "/comptabilite/ecarts" },
+  // Dérogations de prix sur les devis des clients sous contrat.
+  { label: "Devis", href: "/commercial/devis" },
 ];
 
 const DAF_COMPTA: HubTab[] = [
@@ -212,6 +215,7 @@ const STOCK_MAGASIN: NavItem[] = [
   { href: "/stocks/mouvements", label: "Mouvements" },
   { href: "/stocks/lots-matieres", label: "Lots matières" },
   { href: "/stocks/transferts", label: "Transferts" },
+  { href: "/stocks/palettes", label: "Palettes" },
   { href: "/qualite/controles", label: "Contrôles réception" },
   { href: "/stocks/inventaires", label: "Inventaires" },
   { href: "/parametrage/depots", label: "Dépôts" },
@@ -274,7 +278,13 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   RESPONSABLE_PRODUCTION: [
     g("prod", "Production", "factory", [
       I.accueil,
-      I.planning,
+      {
+        ...I.planning,
+        hub: [
+          { label: "Plans", href: "/production/planning" },
+          { label: "Charge des lignes", href: "/production/charge-lignes" },
+        ],
+      },
       I.of,
       I.sorties,
       { href: "/qualite/controles", label: "Qualité", hint: "Contrôles, non-conformités, indicateurs", hub: QUALITE_SUIVI },
@@ -297,7 +307,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.qualite, label: "Lots", hint: "Lots produits finis et lots matières", hub: QUALITE_LOTS },
       { href: "/qualite/controles", label: "Contrôles", hint: "Contrôles, non-conformités, indicateurs", hub: QUALITE_SUIVI },
       { href: "/qualite/plan", label: "Plan de contrôle", hint: "Plan, paramètres, instruments", hub: QUALITE_PLAN },
-      I.reclamations,
+      { ...I.reclamations, label: "Retours clients", hint: "Réception et contrôle des retours" },
       { ...I.stock, label: "Stock" },
       { href: "/parametrage/produits", label: "Fiches", hint: "Articles et fiches techniques (lecture)", hub: QUALITE_FICHES },
     ]),
@@ -310,7 +320,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.prep,
       I.rec,
       { ...I.stock, label: "Stock", hint: "Situation, mouvements, inventaires, dépôts", hub: STOCK_MAGASIN },
-      I.reclamations,
+      { ...I.reclamations, label: "Retours clients", hint: "Réception, contrôle, reconditionnement" },
     ]),
   ],
   // Menu à plat : 5 entrées ; besoins, demandes, commandes et réceptions sont les étapes du flux « Approvisionnement ».
@@ -337,6 +347,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("vente", "Vente", "handshake", [
       I.accueil,
       I.cmd,
+      { href: "/commercial/devis", label: "Devis", hint: "Offres de prix aux clients" },
       { href: "/commercial/facturation", label: "Facturation", hint: "Factures, impayés, avoirs" },
       { href: "/parametrage/clients", label: "Clients", hint: "Fiches et conditions" },
       { href: "/parametrage/tarifs", label: "Tarifs", hint: "Prix de vente" },
@@ -517,6 +528,8 @@ export function breadcrumbs(pathname: string) {
     dashboard: "Tableau de bord",
     production: "Production",
     planning: "Plans",
+    palettes: "Palettes",
+    "charge-lignes": "Charge des lignes",
     of: "Ordres de fabrication",
     suivi: "Étapes",
     "suivi-eau": "Suivi eau",
@@ -541,6 +554,7 @@ export function breadcrumbs(pathname: string) {
     approvisionnement: "Approvisionnement",
     demandes: "Demandes d'achat",
     commandes: "Commandes",
+    devis: "Devis",
     receptions: "Réceptions",
     commercial: "Commercial",
     nouvelle: "Nouvelle",

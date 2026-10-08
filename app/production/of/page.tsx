@@ -189,6 +189,7 @@ function CreerOfDrawer({ onClose }: { onClose: () => void }) {
   const [plan, setPlan] = useState(0);
   const [ligne, setLigne] = useState(0);
   const [datePrevue, setDatePrevue] = useState("");
+  const [debutPrevu, setDebutPrevu] = useState("");
   const [lignes, setLignes] = useState<LigneProduction[] | null>(null);
   const [circuit, setCircuit] = useState<Circuit | null | undefined>(undefined);
   const [choisis, setChoisis] = useState<number[]>([]);
@@ -238,6 +239,7 @@ function CreerOfDrawer({ onClose }: { onClose: () => void }) {
       agents_affectes: choisis,
       ligne: ligne || null,
       date_prevue: datePrevue || null,
+      date_debut_prevue: debutPrevu ? new Date(debutPrevu).toISOString() : null,
     });
     setSaving(false);
     if (ok) onClose();
@@ -303,7 +305,7 @@ function CreerOfDrawer({ onClose }: { onClose: () => void }) {
         <DrawerSection title="Ligne et circuit" hint="La ligne détermine l’usine : magasin matières des sorties et stock produits finis des lots.">
           <Field label="Ligne de production">
             <select className={inputClass} value={ligne} onChange={(e) => setLigne(Number(e.target.value))} disabled={lignes === null}>
-              <option value={0}>{lignes === null ? "Chargement…" : lignes.length ? "Sans ligne (magasins par défaut)" : "Aucune ligne compatible"}</option>
+              <option value={0}>{lignes === null ? "Chargement…" : lignes.length ? "Choisie au lancement (retenue d’office si une seule convient)" : "Aucune ligne compatible"}</option>
               {(lignes ?? []).map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.code} · {l.designation}
@@ -312,6 +314,11 @@ function CreerOfDrawer({ onClose }: { onClose: () => void }) {
               ))}
             </select>
           </Field>
+          {ligne > 0 && (
+            <Field label="Début planifié sur la ligne (facultatif)">
+              <input type="datetime-local" className={inputClass} value={debutPrevu} onChange={(e) => setDebutPrevu(e.target.value)} />
+            </Field>
+          )}
           <div className="rounded-[8px] border border-line bg-surface-2/60 px-3 py-2.5 flex items-start gap-2 text-[12.5px]">
             <Route size={14} className="text-primary shrink-0 mt-0.5" />
             {circuit === undefined ? (
