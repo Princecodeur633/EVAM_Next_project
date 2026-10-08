@@ -1,18 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, ClipboardPlus, Plus } from "lucide-react";
+import { ChevronRight, ClipboardPlus, Plus, Route } from "lucide-react";
 import { OfBadge } from "@/components/badges";
 import { BarChart, KpiCard, WidgetCard } from "@/components/charts";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { AgentPicker, FtNonValidee, ftValidee, useAgentsDisponibles } from "@/components/production";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
-import { STATUT_OF_LABEL } from "@/lib/labels";
+import { actions } from "@/lib/api";
+import { STATUT_OF_LABEL, TYPES_FABRIQUES } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { StatutOF } from "@/lib/types";
+import type { Circuit, LigneProduction, StatutOF } from "@/lib/types";
 import { cn, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
 
 const STATUTS = Object.keys(STATUT_OF_LABEL) as StatutOF[];
@@ -61,6 +62,7 @@ function MesOf() {
                   </div>
                   <p className="text-[13px] text-muted mt-0.5 truncate">
                     {articleName(o.article)} · {formatQty(num(o.quantite_a_produire), 0)}
+                    {o.ligne_code && ` · ${o.ligne_code}`}
                   </p>
                 </div>
                 <ChevronRight size={18} className="text-muted shrink-0" />
@@ -91,7 +93,7 @@ function OfListe() {
     () =>
       state.ofList
         .filter((o) => (statut === "TOUS" ? true : statut === "OUVERTS" ? o.statut !== "CLOTURE" && o.statut !== "ANNULE" : o.statut === statut))
-        .filter((o) => matchSearch(q, o.numero, articleName(o.article), userName(o.responsable)))
+        .filter((o) => matchSearch(q, o.numero, articleName(o.article), userName(o.responsable), o.ligne_code, o.usine_code))
         .sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime()),
     [state.ofList, statut, q, articleName, userName],
   );
@@ -155,6 +157,7 @@ function OfListe() {
             { key: "n", label: "Numéro" },
             { key: "p", label: "Article" },
             { key: "q", label: "Quantité", className: "text-right" },
+            { key: "li", label: "Ligne" },
             { key: "st", label: "Statut" },
             { key: "ag", label: "Agents" },
             { key: "at", label: "Créé" },
@@ -163,6 +166,7 @@ function OfListe() {
             n: <span className="num font-medium">{o.numero}</span>,
             p: articleName(o.article),
             q: <span className="num">{formatQty(num(o.quantite_a_produire), 0)}</span>,
+            li: o.ligne_code ? <span title={o.usine_code ?? undefined}>{o.ligne_code}</span> : <span className="text-muted">—</span>,
             st: <OfBadge status={o.statut} />,
             ag: o.agents_affectes.length ? `${o.agents_affectes.length} agent${o.agents_affectes.length > 1 ? "s" : ""}` : <span className="text-warning">Aucun</span>,
             at: formatDateTime(o.date_creation),
@@ -178,19 +182,65 @@ function OfListe() {
 }
 
 function CreerOfDrawer({ onClose }: { onClose: () => void }) {
-  const { state, dispatch, produitsFinis, articleName } = useStore();
+  const { state, dispatch, articleName } = useStore();
   const agents = useAgentsDisponibles();
   const [article, setArticle] = useState(0);
   const [qty, setQty] = useState("");
   const [plan, setPlan] = useState(0);
+  const [ligne, setLigne] = useState(0);
+  const [datePrevue, setDatePrevue] = useState("");
+  const [debutPrevu, setDebutPrevu] = useState("");
+  const [lignes, setLignes] = useState<LigneProduction[] | null>(null);
+  const [circuit, setCircuit] = useState<Circuit | null | undefined>(undefined);
   const [choisis, setChoisis] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const plans = state.plans.filter((p) => p.statut === "PREVISION" || p.statut === "A_CONVERTIR_EN_OF");
+  // Tout ce qu’un OF peut fabriquer : produit fini, intermédiaire, fluide de process.
+  const fabricables = state.articles.filter((a) => a.actif && TYPES_FABRIQUES.includes(a.type_article));
   const ft = article > 0 && ftValidee(state, article);
+
+  // Lignes actives compatibles avec le format (activité + formats acceptés), calculées par le backend.
+  useEffect(() => {
+    if (!article) return;
+    let annule = false;
+    void actions
+      .lignesCompatibles(article)
+      .then((l) => {
+        if (annule) return;
+        setLignes(l);
+        setLigne((x) => (l.some((y) => y.id === x) ? x : l.length === 1 ? l[0].id : 0));
+      })
+      .catch(() => !annule && setLignes([]));
+    return () => {
+      annule = true;
+    };
+  }, [article]);
+
+  // Circuit validé que recevra l’OF (le plus précis l’emporte : format + ligne > format > activité).
+  useEffect(() => {
+    if (!article) return;
+    let annule = false;
+    void actions
+      .circuitApplicable(article, ligne || null)
+      .then((c) => !annule && setCircuit(c))
+      .catch(() => !annule && setCircuit(null));
+    return () => {
+      annule = true;
+    };
+  }, [article, ligne]);
 
   async function submit() {
     setSaving(true);
-    const ok = await dispatch({ type: "CREATE_OF", article, quantite_a_produire: Number(qty), plan_production: plan || undefined, agents_affectes: choisis });
+    const ok = await dispatch({
+      type: "CREATE_OF",
+      article,
+      quantite_a_produire: Number(qty),
+      plan_production: plan || undefined,
+      agents_affectes: choisis,
+      ligne: ligne || null,
+      date_prevue: datePrevue || null,
+      date_debut_prevue: debutPrevu ? new Date(debutPrevu).toISOString() : null,
+    });
     setSaving(false);
     if (ok) onClose();
   }
@@ -215,9 +265,18 @@ function CreerOfDrawer({ onClose }: { onClose: () => void }) {
     >
       <DrawerSection title="Production">
         <Field label="Article">
-          <select className={inputClass} value={article} onChange={(e) => setArticle(Number(e.target.value))} autoFocus>
-            <option value={0}>Choisir un produit fini…</option>
-            {produitsFinis.map((a) => (
+          <select
+            className={inputClass}
+            value={article}
+            onChange={(e) => {
+              setArticle(Number(e.target.value));
+              setLignes(null);
+              setCircuit(undefined);
+            }}
+            autoFocus
+          >
+            <option value={0}>Choisir un article à fabriquer…</option>
+            {fabricables.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.code} · {a.designation}
               </option>
@@ -227,6 +286,9 @@ function CreerOfDrawer({ onClose }: { onClose: () => void }) {
         {article > 0 && !ft && <FtNonValidee />}
         <Field label="Quantité à produire">
           <input type="number" min="0" className={cn(inputClass, "num text-right")} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="0" />
+        </Field>
+        <Field label="Date prévue">
+          <input type="date" className={inputClass} value={datePrevue} onChange={(e) => setDatePrevue(e.target.value)} />
         </Field>
         <Field label="Plan d’origine (facultatif)">
           <select className={inputClass} value={plan} onChange={(e) => setPlan(Number(e.target.value))}>
@@ -239,6 +301,39 @@ function CreerOfDrawer({ onClose }: { onClose: () => void }) {
           </select>
         </Field>
       </DrawerSection>
+      {article > 0 && (
+        <DrawerSection title="Ligne et circuit" hint="La ligne détermine l’usine : magasin matières des sorties et stock produits finis des lots.">
+          <Field label="Ligne de production">
+            <select className={inputClass} value={ligne} onChange={(e) => setLigne(Number(e.target.value))} disabled={lignes === null}>
+              <option value={0}>{lignes === null ? "Chargement…" : lignes.length ? "Choisie au lancement (retenue d’office si une seule convient)" : "Aucune ligne compatible"}</option>
+              {(lignes ?? []).map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.code} · {l.designation}
+                  {l.usine_code ? ` (${l.usine_code})` : ""}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {ligne > 0 && (
+            <Field label="Début planifié sur la ligne (facultatif)">
+              <input type="datetime-local" className={inputClass} value={debutPrevu} onChange={(e) => setDebutPrevu(e.target.value)} />
+            </Field>
+          )}
+          <div className="rounded-[8px] border border-line bg-surface-2/60 px-3 py-2.5 flex items-start gap-2 text-[12.5px]">
+            <Route size={14} className="text-primary shrink-0 mt-0.5" />
+            {circuit === undefined ? (
+              <p className="text-muted">Recherche du circuit…</p>
+            ) : circuit ? (
+              <p>
+                Circuit <span className="font-semibold">{circuit.code}</span> v{circuit.version} · {circuit.etapes.length} étape(s) :{" "}
+                <span className="text-muted">{[...circuit.etapes].sort((a, b) => a.ordre - b.ordre).map((e) => e.etape_libelle ?? e.etape_code).join(" → ")}</span>
+              </p>
+            ) : (
+              <p className="text-muted">Aucun circuit validé pour cette activité : les étapes seront libres.</p>
+            )}
+          </div>
+        </DrawerSection>
+      )}
       <DrawerSection title="Agents affectés">
         <AgentPicker agents={agents} value={choisis} onChange={setChoisis} />
       </DrawerSection>

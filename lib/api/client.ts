@@ -172,7 +172,8 @@ let refreshPromise: Promise<boolean> | null = null;
 
 async function rawFetch(path: string, init: RequestInit, access?: string) {
   const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
+  // Un FormData (logo, pièce jointe) fixe lui-même son Content-Type multipart (avec la frontière).
+  if (!headers.has("Content-Type") && init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (access) headers.set("Authorization", `Bearer ${access}`);
   return fetch(`/api${path}`, { ...init, headers });
 }
@@ -225,6 +226,64 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}, retry 
     throw new ApiError(parseApiError(body, `Erreur API ${res.status}`), res.status, body);
   }
   return body as T;
+}
+
+/** Réponse brute authentifiée (jeton rafraîchi si besoin) : pour les PDF et images. */
+async function fetchAuthentifie(path: string, init: RequestInit = {}): Promise<Response> {
+  const session = loadSession();
+  let res = await rawFetch(path, init, session?.access);
+  if (res.status === 401 && session?.refresh && (await tryRefresh())) {
+    res = await rawFetch(path, init, loadSession()?.access);
+  }
+  if (!res.ok) {
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      /* corps non JSON */
+    }
+    throw new ApiError(parseApiError(body, `Erreur API ${res.status}`), res.status, body);
+  }
+  return res;
+}
+
+/** Fichier binaire (PDF, logo) : le jeton est obligatoire, un simple lien <a> ne l'enverrait pas. */
+export async function apiBlob(path: string): Promise<Blob> {
+  return (await fetchAuthentifie(path, { method: "GET" })).blob();
+}
+
+/**
+ * Document PDF généré par le backend (facture, avoir, bon de commande, reçu, BL,
+ * bon de transfert, bon de sortie) : ouvert dans un nouvel onglet pour l'imprimer,
+ * ou téléchargé si `telecharger`. `path` = chemin API complet (ex. /commercial/factures/12/pdf/).
+ */
+export async function ouvrirPdf(path: string, nomFichier: string, telecharger = false) {
+  // L'onglet est ouvert tout de suite (dans le geste de l'utilisateur) pour ne pas être bloqué
+  // par le navigateur, puis rempli quand le PDF est prêt.
+  const onglet = telecharger ? null : window.open("", "_blank");
+  try {
+    const blob = await apiBlob(path);
+    const url = URL.createObjectURL(blob);
+    if (onglet) {
+      onglet.location.href = url;
+    } else {
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = nomFichier.endsWith(".pdf") ? nomFichier : `${nomFichier}.pdf`;
+      lien.click();
+    }
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (err) {
+    onglet?.close();
+    throw err;
+  }
+}
+
+/** Envoi multipart (logo de l'entreprise, photo ou bulletin d'analyse). */
+export async function apiUpload<T>(path: string, form: FormData, method: "POST" | "PATCH" = "POST"): Promise<T> {
+  const res = await fetchAuthentifie(path, { method, body: form });
+  const text = await res.text();
+  return (text ? JSON.parse(text) : null) as T;
 }
 
 export const api = {

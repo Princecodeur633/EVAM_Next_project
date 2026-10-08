@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ConversionsPanel, DonneesIndustriellesPanel } from "@/components/articleIndustriel";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { MOMENT_CONTROLE_LABEL, TYPE_ARTICLE_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
-import type { MomentControle } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export default function ProduitDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, canEditParam, role, familleFiscaleName } = useStore();
+  const { state, dispatch, canEditParam, familleFiscaleName } = useStore();
   const article = state.articles.find((a) => a.id === Number(id));
   const canEditFiche = canEditParam("/parametrage/produits");
   // Champs de codification figés dès que l'article est utilisé (commande, stock, OF, lot...).
   const codeVerrouille = !!article?.est_verrouille;
-  const canGererQualite = role === "RESPONSABLE_PRODUCTION" || role === "RESPONSABLE_QUALITE" || role === "ADMIN_SI";
 
   const [form, setForm] = useState(() => ({
     designation: article?.designation ?? "",
@@ -61,10 +61,6 @@ export default function ProduitDetailPage() {
   }, [article?.id]);
 
   const controles = state.controlesQualiteRequis.filter((c) => c.article === Number(id));
-  const [typeControle, setTypeControle] = useState("");
-  const [norme, setNorme] = useState("");
-  const [moment, setMoment] = useState<MomentControle>("AVANT_LIBERATION");
-  const [obligatoire, setObligatoire] = useState(true);
 
   if (!article) return <p className="text-[13px] text-muted">Article introuvable.</p>;
 
@@ -134,6 +130,8 @@ export default function ProduitDetailPage() {
           </Field>
         </div>
       </Panel>
+
+      <DonneesIndustriellesPanel key={`ind-${article.id}`} article={article} writable={canEditFiche} />
 
       <Panel className="p-4 space-y-3">
         <h2 className="text-[13px] font-semibold">Fiscalité</h2>
@@ -218,47 +216,17 @@ export default function ProduitDetailPage() {
         </Button>
       )}
 
+      <ConversionsPanel article={article} />
+
       <Panel className="p-4 space-y-3">
-        <h2 className="text-[13px] font-semibold">Contrôles qualité requis</h2>
-        <p className="text-[12px] text-muted">Liste théorique des contrôles attendus pour cet article, distincte des contrôles réellement effectués sur un lot (module Qualité).</p>
-        {canGererQualite && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
-            <Field label="Type de contrôle">
-              <input className={inputClass} placeholder="pH, Microbiologie…" value={typeControle} onChange={(e) => setTypeControle(e.target.value)} />
-            </Field>
-            <Field label="Norme / seuil">
-              <input className={inputClass} placeholder="pH entre 3,5 et 4,2" value={norme} onChange={(e) => setNorme(e.target.value)} />
-            </Field>
-            <Field label="Moment">
-              <select className={inputClass} value={moment} onChange={(e) => setMoment(e.target.value as MomentControle)}>
-                {(Object.keys(MOMENT_CONTROLE_LABEL) as MomentControle[]).map((k) => (
-                  <option key={k} value={k}>{MOMENT_CONTROLE_LABEL[k]}</option>
-                ))}
-              </select>
-            </Field>
-            <label className="flex items-center gap-2 text-[13px] pb-2">
-              <input type="checkbox" checked={obligatoire} onChange={(e) => setObligatoire(e.target.checked)} />
-              Obligatoire avant libération
-            </label>
-            <Button
-              disabled={!typeControle.trim() || !norme.trim()}
-              onClick={() => {
-                void dispatch({
-                  type: "CREATE_CONTROLE_QUALITE_REQUIS",
-                  article: article.id,
-                  type_controle: typeControle.trim(),
-                  norme_ou_seuil: norme.trim(),
-                  moment,
-                  obligatoire,
-                });
-                setTypeControle("");
-                setNorme("");
-              }}
-            >
-              Ajouter
-            </Button>
-          </div>
-        )}
+        <h2 className="text-[13px] font-semibold">Contrôles qualité requis (ancien référentiel)</h2>
+        <p className="text-[12px] text-muted">
+          Liste théorique conservée en consultation. La référence est désormais le{" "}
+          <Link href="/qualite/plan" className="text-primary font-medium hover:underline">
+            plan de contrôle
+          </Link>{" "}
+          : c’est lui qui génère les contrôles des OF, des lots et des réceptions, avec leurs critères et leur caractère bloquant.
+        </p>
         <DataTable
           columns={[
             { key: "t", label: "Type de contrôle" },

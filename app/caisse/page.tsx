@@ -9,6 +9,7 @@ import { SplitLayout } from "@/components/Drawer";
 import { FilterBar, SearchInput, matchSearch } from "@/components/Filters";
 import { Tabs } from "@/components/Tabs";
 import { Button, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { actions } from "@/lib/api";
 import { MODE_PAIEMENT_LABEL, STATUT_FACTURE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import type { Facture, ModePaiement } from "@/lib/types";
@@ -181,7 +182,8 @@ function Caisse() {
 }
 
 function EncaissementPanel({ facture, restant, paye, sessionId, onDone }: { facture: Facture; restant: number; paye: number; sessionId: number | null; onDone: () => void }) {
-  const { dispatch, clientName, can } = useStore();
+  const { state, dispatch, clientName, can } = useStore();
+  const recus = state.encaissements.filter((e) => e.facture === facture.id).sort((a, b) => b.date_encaissement.localeCompare(a.date_encaissement));
   const [mode, setMode] = useState<ModePaiement>("ESPECES");
   const [montant, setMontant] = useState(String(restant));
   const [saving, setSaving] = useState(false);
@@ -218,6 +220,30 @@ function EncaissementPanel({ facture, restant, paye, sessionId, onDone }: { fact
             Total {formatDa(num(facture.montant_total))} · déjà payé {formatDa(paye)}
           </p>
         </div>
+
+        {recus.length > 0 && (
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted mb-1.5 font-medium">Paiements reçus</p>
+            <ul className="rounded-[9px] border border-line divide-y divide-line">
+              {recus.map((e) => (
+                <li key={e.id} className="px-3 py-2 flex items-center gap-2 text-[12.5px]">
+                  <span className="num font-medium">{e.numero}</span>
+                  <span className="text-muted truncate flex-1">
+                    {formatDateTime(e.date_encaissement)} · {MODE_PAIEMENT_LABEL[e.mode_paiement]}
+                  </span>
+                  <span className="num">{formatDa(num(e.montant))}</span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-primary text-[12px] font-medium hover:underline"
+                    onClick={() => void actions.pdf("recuCaisse", e.id, e.numero).catch(() => {})}
+                  >
+                    <FileText size={13} /> Reçu
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {soldee ? (
           <p className="text-[13px] text-success flex items-center gap-1.5">

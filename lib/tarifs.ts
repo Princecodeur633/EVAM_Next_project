@@ -1,4 +1,4 @@
-import type { Tarif } from "./types";
+import type { ContratClient, Tarif } from "./types";
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
@@ -13,12 +13,21 @@ export function statutTarif(t: Pick<Tarif, "date_debut_validite" | "date_fin_val
   return { label: "En vigueur", tone: "success" };
 }
 
+/** Contrat en vigueur aujourd'hui pour un client (le plus récent), comme ContratClient.actif_pour. */
+export function contratActif(contrats: ContratClient[], clientId: number | null): ContratClient | undefined {
+  if (!clientId) return undefined;
+  const today = aujourdhui();
+  return contrats
+    .filter((c) => c.client === clientId && c.date_debut <= today && (!c.date_fin || c.date_fin >= today))
+    .sort((a, b) => b.date_debut.localeCompare(a.date_debut))[0];
+}
+
 /**
- * Tarif applicable aujourd'hui pour un article : celui du client s'il en a un
- * en vigueur, sinon le tarif public. En cas de chevauchement, le plus récent
- * (date de début la plus tardive) l'emporte.
+ * Tarif applicable aujourd'hui (règle du backend, Tarif.applicable) : tarif du contrat en vigueur
+ * du client, sinon tarif propre au client, sinon tarif public. À niveau égal, le plus récent l'emporte.
+ * Le prix est imposé : le backend reprend lui-même ce tarif sur chaque ligne.
  */
-export function tarifEnVigueur(tarifs: Tarif[], articleId: number, clientId: number | null): Tarif | undefined {
+export function tarifEnVigueur(tarifs: Tarif[], articleId: number, clientId: number | null, contratId?: number | null): Tarif | undefined {
   const today = aujourdhui();
   const enVigueur = (t: Tarif) =>
     t.article === articleId &&
@@ -27,12 +36,15 @@ export function tarifEnVigueur(tarifs: Tarif[], articleId: number, clientId: num
   const plusRecent = (a: Tarif | undefined, b: Tarif) =>
     !a || b.date_debut_validite > a.date_debut_validite ? b : a;
 
+  let duContrat: Tarif | undefined;
   let specifique: Tarif | undefined;
   let publicTarif: Tarif | undefined;
   for (const t of tarifs) {
     if (!enVigueur(t)) continue;
-    if (t.client == null) publicTarif = plusRecent(publicTarif, t);
+    if (t.contrat != null) {
+      if (contratId && t.contrat === contratId) duContrat = plusRecent(duContrat, t);
+    } else if (t.client == null) publicTarif = plusRecent(publicTarif, t);
     else if (clientId && t.client === clientId) specifique = plusRecent(specifique, t);
   }
-  return specifique ?? publicTarif;
+  return duContrat ?? specifique ?? publicTarif;
 }

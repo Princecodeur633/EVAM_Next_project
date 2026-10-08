@@ -82,13 +82,20 @@ const I = {
   reclamations: { href: "/reclamations", label: "Réclamations", hint: "Retours clients" },
   avoirs: { href: "/commercial/avoirs", label: "Avoirs", hint: "Crédits clients" },
   impayes: { href: "/commercial/impayes", label: "Impayés", hint: "Factures en retard" },
+  industriel: { href: "/industriel", label: "Socle industriel", hint: "Activités, usines, lignes, machines, circuits" },
+  documents: { href: "/admin/documents", label: "Documents", hint: "Identité imprimée sur les PDF" },
+  controlesQualite: { href: "/qualite/controles", label: "Contrôles", hint: "Contrôles à réaliser et réalisés" },
+  nonConformites: { href: "/qualite/non-conformites", label: "Non-conformités", hint: "Traitement et clôture" },
+  lotsMatieres: { href: "/stocks/lots-matieres", label: "Lots matières", hint: "Lots fournisseurs, DLC, traçabilité" },
+  transferts: { href: "/stocks/transferts", label: "Transferts", hint: "Stock usine → dépôts extérieurs" },
 };
 
 // ---------- hubs à onglets ----------
 
 const SUPERVISION: HubTab[] = [
   { label: "Commandes", href: "/commercial/commandes" },
-  { label: "Production", href: "/production/of", items: [{ href: "/production/of", label: "Ordres de fabrication" }, { href: "/production/qualite", label: "Lots" }] },
+  { label: "Devis", href: "/commercial/devis" },
+  { label: "Production", href: "/production/of", items: [{ href: "/production/of", label: "Ordres de fabrication" }, { href: "/production/charge-lignes", label: "Charge des lignes" }, { href: "/production/qualite", label: "Lots" }] },
   {
     label: "Achats",
     href: "/approvisionnement/besoins",
@@ -100,26 +107,59 @@ const SUPERVISION: HubTab[] = [
   },
   { label: "Distribution", href: "/distribution/preparations", items: [{ href: "/distribution/preparations", label: "Préparations" }, { href: "/distribution/bl", label: "Bons de livraison" }] },
   {
+    label: "Qualité",
+    href: "/qualite/indicateurs",
+    items: [
+      { href: "/qualite/indicateurs", label: "Indicateurs" },
+      { href: "/qualite/controles", label: "Contrôles" },
+      { href: "/qualite/non-conformites", label: "Non-conformités" },
+    ],
+  },
+  {
     label: "Stocks",
     href: "/stocks",
     items: [
       { href: "/stocks", label: "Situation" },
       { href: "/stocks/mouvements", label: "Mouvements" },
       { href: "/stocks/inventaires", label: "Inventaires" },
+      { href: "/stocks/lots-matieres", label: "Lots matières" },
+      { href: "/stocks/transferts", label: "Transferts" },
     ],
   },
 ];
 
 const COUTS_MARGES: HubTab[] = [
   { label: "Réels", href: "/couts" },
+  { label: "Cascade", href: "/couts/cascade" },
   { label: "Standards & marges", href: "/couts/marges" },
   { label: "Valorisation", href: "/stocks/valorisation" },
+];
+
+/** Suivi qualité : contrôles générés par le plan, non-conformités, indicateurs. */
+const QUALITE_SUIVI: HubTab[] = [
+  { label: "Contrôles", href: "/qualite/controles" },
+  { label: "Non-conformités", href: "/qualite/non-conformites" },
+  { label: "Indicateurs", href: "/qualite/indicateurs" },
+];
+
+/** Paramétrage qualité : plan de contrôle, paramètres et instruments. */
+const QUALITE_PLAN: HubTab[] = [
+  { label: "Plan de contrôle", href: "/qualite/plan" },
+  { label: "Paramètres & instruments", href: "/qualite/parametres" },
+];
+
+/** Lots de produits finis (contrôle, libération) et lots matières (réception). */
+const QUALITE_LOTS: HubTab[] = [
+  { label: "Lots produits finis", href: "/production/qualite" },
+  { label: "Lots matières", href: "/stocks/lots-matieres" },
 ];
 
 const DAF_CONTROLE: HubTab[] = [
   { label: "Anomalies", href: "/comptabilite/brouillards" },
   { label: "Impayés", href: "/commercial/impayes" },
   { label: "Écarts de caisse", href: "/comptabilite/ecarts" },
+  // Dérogations de prix sur les devis des clients sous contrat.
+  { label: "Devis", href: "/commercial/devis" },
 ];
 
 const DAF_COMPTA: HubTab[] = [
@@ -142,7 +182,7 @@ const ANOMALIES_ECRITURES: HubTab[] = [
 /** Pages du référentiel, listées directement dans le groupe « Référentiel » selon les droits du profil. */
 const PARAM_PAGES: NavItem[] = [
   { href: "/parametrage/produits", label: "Articles", hint: "Eau, jus, yaourts" },
-  { href: "/parametrage/matieres", label: "Matières", hint: "Matières premières" },
+  { href: "/parametrage/matieres", label: "Matières", hint: "Matières et emballages" },
   { href: "/parametrage/conditionnements", label: "Conditionnements", hint: "Cartons et palettes" },
   { href: "/parametrage/fiches-techniques", label: "Fiches techniques", hint: "Recettes de fabrication" },
   { href: "/parametrage/depots", label: "Dépôts", hint: "Magasins" },
@@ -173,6 +213,10 @@ const ACHATS_CATALOGUE: NavItem[] = [
 const STOCK_MAGASIN: NavItem[] = [
   { href: "/stocks", label: "Situation" },
   { href: "/stocks/mouvements", label: "Mouvements" },
+  { href: "/stocks/lots-matieres", label: "Lots matières" },
+  { href: "/stocks/transferts", label: "Transferts" },
+  { href: "/stocks/palettes", label: "Palettes" },
+  { href: "/qualite/controles", label: "Contrôles réception" },
   { href: "/stocks/inventaires", label: "Inventaires" },
   { href: "/parametrage/depots", label: "Dépôts" },
 ];
@@ -189,6 +233,13 @@ const PROD_REF_TABS: NavItem[] = [
   { href: "/parametrage/matieres", label: "Matières" },
   { href: "/parametrage/conditionnements", label: "Conditionnements" },
   { href: "/parametrage/fiches-techniques", label: "Fiches techniques" },
+  { href: "/industriel", label: "Socle industriel" },
+];
+
+/** Stock du Responsable Production : situation et lots matières (lecture). */
+const PROD_STOCK: NavItem[] = [
+  { href: "/stocks", label: "Situation" },
+  { href: "/stocks/lots-matieres", label: "Lots matières" },
 ];
 
 function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup {
@@ -198,7 +249,17 @@ function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup 
 export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   ADMIN_SI: [
     // Menu à plat : 7 entrées, le référentiel est regroupé derrière un hub à onglets.
-    g("config", "Configuration", "shield", [I.accueil, I.users, I.caisses, I.ftAdmin, { ...I.referentiel, hub: REF_TABS }, I.parametres, I.audit]),
+    g("config", "Configuration", "shield", [
+      I.accueil,
+      I.users,
+      I.caisses,
+      I.ftAdmin,
+      I.industriel,
+      { ...I.referentiel, hub: REF_TABS },
+      I.documents,
+      I.parametres,
+      I.audit,
+    ]),
   ],
   // Menu à plat : 6 entrées, tout en lecture sauf l’autorisation des décaissements.
   DIRECTION: [
@@ -209,17 +270,26 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.coutsMarges, hub: COUTS_MARGES },
       { ...I.anomaliesEcritures, hub: ANOMALIES_ECRITURES },
       I.decaissements,
+      I.industriel,
+      I.documents,
     ]),
   ],
   // Menu à plat : 6 entrées ; besoins matières et suivi eau sont des onglets de la fiche OF.
   RESPONSABLE_PRODUCTION: [
     g("prod", "Production", "factory", [
       I.accueil,
-      I.planning,
+      {
+        ...I.planning,
+        hub: [
+          { label: "Plans", href: "/production/planning" },
+          { label: "Charge des lignes", href: "/production/charge-lignes" },
+        ],
+      },
       I.of,
       I.sorties,
-      { ...I.stock, label: "Stock" },
-      { ...I.referentiel, hint: "Articles, matières, conditionnements, fiches techniques", hub: PROD_REF_TABS },
+      { href: "/qualite/controles", label: "Qualité", hint: "Contrôles, non-conformités, indicateurs", hub: QUALITE_SUIVI },
+      { ...I.stock, label: "Stock", hub: PROD_STOCK.map((i) => ({ label: i.label, href: i.href })) },
+      { ...I.referentiel, hint: "Articles, matières, fiches techniques, socle industriel", hub: PROD_REF_TABS },
     ]),
   ],
   // Poste mobile : 3 entrées, affichées en barre basse sur téléphone.
@@ -234,8 +304,10 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
   RESPONSABLE_QUALITE: [
     g("qualite", "Qualité", "check", [
       I.accueil,
-      I.qualite,
-      I.reclamations,
+      { ...I.qualite, label: "Lots", hint: "Lots produits finis et lots matières", hub: QUALITE_LOTS },
+      { href: "/qualite/controles", label: "Contrôles", hint: "Contrôles, non-conformités, indicateurs", hub: QUALITE_SUIVI },
+      { href: "/qualite/plan", label: "Plan de contrôle", hint: "Plan, paramètres, instruments", hub: QUALITE_PLAN },
+      { ...I.reclamations, label: "Retours clients", hint: "Réception et contrôle des retours" },
       { ...I.stock, label: "Stock" },
       { href: "/parametrage/produits", label: "Fiches", hint: "Articles et fiches techniques (lecture)", hub: QUALITE_FICHES },
     ]),
@@ -248,7 +320,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.prep,
       I.rec,
       { ...I.stock, label: "Stock", hint: "Situation, mouvements, inventaires, dépôts", hub: STOCK_MAGASIN },
-      I.reclamations,
+      { ...I.reclamations, label: "Retours clients", hint: "Réception, contrôle, reconditionnement" },
     ]),
   ],
   // Menu à plat : 5 entrées ; besoins, demandes, commandes et réceptions sont les étapes du flux « Approvisionnement ».
@@ -257,6 +329,15 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.accueil,
       { href: "/approvisionnement", label: "Approvisionnement", hint: "Besoins → demandes → commandes → réceptions" },
       { href: "/parametrage/fournisseurs", label: "Fournisseurs", hint: "Fiches fournisseurs" },
+      {
+        href: "/stocks/lots-matieres",
+        label: "Lots & NC",
+        hint: "Lots fournisseurs reçus et non-conformités",
+        hub: [
+          { label: "Lots matières", href: "/stocks/lots-matieres" },
+          { label: "Non-conformités", href: "/qualite/non-conformites" },
+        ],
+      },
       { ...I.stock, label: "Stock" },
       { href: "/parametrage/produits", label: "Catalogue", hint: "Articles et matières", hub: ACHATS_CATALOGUE },
     ]),
@@ -266,6 +347,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("vente", "Vente", "handshake", [
       I.accueil,
       I.cmd,
+      { href: "/commercial/devis", label: "Devis", hint: "Offres de prix aux clients" },
       { href: "/commercial/facturation", label: "Facturation", hint: "Factures, impayés, avoirs" },
       { href: "/parametrage/clients", label: "Clients", hint: "Fiches et conditions" },
       { href: "/parametrage/tarifs", label: "Tarifs", hint: "Prix de vente" },
@@ -287,6 +369,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.accueil,
       { href: "/distribution", label: "Circuit de livraison", hint: "Commandes → préparations → BL → livrées" },
       { href: "/distribution/tournees", label: "Tournées & flotte", hint: "Tournées, véhicules, chauffeurs" },
+      { ...I.transferts, hint: "Approvisionnement des dépôts (lecture)" },
       I.reclamations,
     ]),
   ],
@@ -306,6 +389,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.coutsMarges, label: "Coûts", hub: COUTS_MARGES },
       { href: "/caisse/cloture", label: "Caisse", hint: "Sessions et décaissements", hub: DAF_CAISSE },
       { href: "/parametrage/fiscalite", label: "Fiscalité", hint: "Familles et codes fiscaux" },
+      I.documents,
       I.audit,
     ]),
   ],
@@ -371,6 +455,7 @@ const EXTRA_ACCESS: Partial<Record<Profil, string[]>> = {
   RESPONSABLE_DISTRIBUTION: ["/commercial/commandes"],
   CAISSIER: ["/commercial/commandes"],
   RESPONSABLE_PRODUCTION: ["/production/qualite"],
+  COMPTABILITE_DAF: ["/commercial/commandes"],
 };
 
 export function canAccess(role: Profil, url: string) {
@@ -443,11 +528,22 @@ export function breadcrumbs(pathname: string) {
     dashboard: "Tableau de bord",
     production: "Production",
     planning: "Plans",
+    palettes: "Palettes",
+    "charge-lignes": "Charge des lignes",
     of: "Ordres de fabrication",
     suivi: "Étapes",
     "suivi-eau": "Suivi eau",
     pertes: "Pertes",
-    qualite: "Lots qualité",
+    qualite: "Qualité",
+    industriel: "Socle industriel",
+    controles: "Contrôles",
+    "non-conformites": "Non-conformités",
+    plan: "Plan de contrôle",
+    indicateurs: "Indicateurs",
+    "lots-matieres": "Lots matières",
+    transferts: "Transferts",
+    cascade: "Cascade",
+    documents: "Documents",
     besoins: "Besoins matières",
     "demandes-matieres": "Matières atelier",
     stocks: "Stocks",
@@ -458,6 +554,7 @@ export function breadcrumbs(pathname: string) {
     approvisionnement: "Approvisionnement",
     demandes: "Demandes d'achat",
     commandes: "Commandes",
+    devis: "Devis",
     receptions: "Réceptions",
     commercial: "Commercial",
     nouvelle: "Nouvelle",

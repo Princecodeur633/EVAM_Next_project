@@ -22,7 +22,7 @@ export default function FournisseursPage() {
   return (
     <div className="space-y-4">
       <PageHeader eyebrow="Référentiel" title="Fournisseurs" description="Fournisseurs de matières premières et d’emballages. Cliquez sur une ligne pour voir la fiche complète." />
-      {can("CREATE_CF") && (
+      {can("EDIT_FOURNISSEUR") && (
         <Panel className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
           <Field label="Nom"><input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
           <Field label="Contact"><input className={inputClass} value={contact} onChange={(e) => setContact(e.target.value)} /></Field>

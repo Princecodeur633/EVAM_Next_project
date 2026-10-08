@@ -22,6 +22,7 @@ export default function ClientDetailPage() {
     type_client: (client?.type_client ?? "SOCIETE") as TypeClient,
     adresse: client?.adresse ?? "",
     telephone: client?.telephone ?? "",
+    ifu: client?.ifu ?? "",
     encours_autorise: client?.encours_autorise ?? "0",
     delai_paiement_jours: client?.delai_paiement_jours ?? 0,
     bloque: client?.bloque ?? false,
@@ -34,6 +35,7 @@ export default function ClientDetailPage() {
       type_client: client.type_client,
       adresse: client.adresse ?? "",
       telephone: client.telephone ?? "",
+      ifu: client.ifu ?? "",
       encours_autorise: client.encours_autorise ?? "0",
       delai_paiement_jours: client.delai_paiement_jours ?? 0,
       bloque: client.bloque,
@@ -74,6 +76,9 @@ export default function ClientDetailPage() {
           <Field label="Adresse">
             <input className={inputClass} disabled={!writable} value={form.adresse} onChange={(e) => setForm((f) => ({ ...f, adresse: e.target.value }))} />
           </Field>
+          <Field label="IFU (imprimé sur les factures)">
+            <input className={inputClass} disabled={!writable} value={form.ifu} onChange={(e) => setForm((f) => ({ ...f, ifu: e.target.value }))} />
+          </Field>
         </div>
       </Panel>
 
@@ -106,6 +111,7 @@ export default function ClientDetailPage() {
               type_client: form.type_client,
               adresse: form.adresse,
               telephone: form.telephone,
+              ifu: form.ifu.trim(),
               encours_autorise: Number(form.encours_autorise),
               delai_paiement_jours: form.delai_paiement_jours,
               bloque: form.bloque,

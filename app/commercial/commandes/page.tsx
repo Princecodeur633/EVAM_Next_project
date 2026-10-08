@@ -9,6 +9,7 @@ import { FilterBar, SearchInput, matchSearch } from "@/components/Filters";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
 import { STATUT_CMD_LABEL, TYPE_COMMANDE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import { contratActif } from "@/lib/tarifs";
 import type { StatutCommande, TypeCommande } from "@/lib/types";
 import { cn, formatDa, formatDateTime, num } from "@/lib/utils";
 
@@ -113,6 +114,9 @@ function NouvelleCommandeDrawer({ onClose }: { onClose: () => void }) {
   const [type, setType] = useState<TypeCommande>("COMPTANT");
   const [saving, setSaving] = useState(false);
   const clients = [...state.clients].sort((a, b) => Number(a.bloque) - Number(b.bloque) || a.nom.localeCompare(b.nom, "fr"));
+  // Vente « contrat » : refusée par le backend sans contrat en vigueur pour ce client.
+  const contrat = contratActif(state.contratsClients, client || null);
+  const typeRefuse = type === "CONTRAT" && !!client && !contrat;
 
   // Après création, on ouvre la nouvelle commande dès qu’elle apparaît dans la liste rechargée.
   const attente = useRef<{ client: number; maxId: number } | null>(null);
@@ -146,7 +150,7 @@ function NouvelleCommandeDrawer({ onClose }: { onClose: () => void }) {
           <Button variant="ghost" onClick={onClose}>
             Annuler
           </Button>
-          <Button disabled={!client || saving} onClick={() => void submit()}>
+          <Button disabled={!client || typeRefuse || saving} onClick={() => void submit()}>
             {saving ? "Création…" : "Créer et ouvrir"}
           </Button>
         </>
@@ -179,6 +183,15 @@ function NouvelleCommandeDrawer({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
+        {client > 0 && (
+          <p className={cn("text-[12px]", typeRefuse ? "text-danger" : "text-muted")}>
+            {contrat
+              ? `Contrat en vigueur depuis le ${contrat.date_debut} : tarifs du contrat appliqués, facture émise après la livraison.`
+              : typeRefuse
+                ? "Ce client n’a pas de contrat en vigueur : vente au comptant uniquement."
+                : "Vente au comptant : tarif imposé, facture à encaisser en caisse."}
+          </p>
+        )}
       </DrawerSection>
     </Drawer>
   );

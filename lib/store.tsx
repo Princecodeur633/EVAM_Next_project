@@ -12,9 +12,9 @@ import {
 } from "react";
 import { ApiError, actions, api, catalog, catalogKeysForRole, detail, endpoints, fetchMoi, loadSession, login as apiLogin, logout as apiLogout, saveSession, type AuthSession, type CatalogKey } from "./api";
 import { canAct, stockArticleTotal, type ActionName } from "./engine";
-import { displayName, ORDRE_STATUTS_OF } from "./labels";
+import { displayName, ORDRE_STATUTS_OF, TYPES_ACHETES } from "./labels";
 import { canEditParam as roleCanEditParam } from "./roles";
-import { tarifEnVigueur } from "./tarifs";
+import { contratActif, tarifEnVigueur } from "./tarifs";
 import type {
   AppState,
   Article,
@@ -53,7 +53,19 @@ export type Action =
   | { type: "SET_DEPOT"; depotId: number }
   | { type: "CLEAR_ERROR" }
   | { type: "CREATE_PLAN"; article: number; date_prevue: string; quantite_prevue: number; priorite?: string; commentaire?: string }
-  | { type: "CREATE_OF"; article: number; quantite_a_produire: number; plan_production?: number; agents_affectes?: number[] }
+  | {
+      type: "CREATE_OF";
+      article: number;
+      quantite_a_produire: number;
+      plan_production?: number;
+      agents_affectes?: number[];
+      /** Ligne compatible avec le format : fixe l'usine (magasin matières, stock produits finis). */
+      ligne?: number | null;
+      date_prevue?: string | null;
+      /** Créneau sur la ligne (ISO) ; la fin se calcule depuis la cadence si elle est vide. */
+      date_debut_prevue?: string | null;
+      date_fin_prevue?: string | null;
+    }
   | { type: "AVANCER_OF"; id: number }
   | { type: "ANNULER_OF"; id: number; motif: string }
   | { type: "CONVERTIR_PLAN"; id: number; agents_affectes?: number[] }
@@ -65,9 +77,41 @@ export type Action =
   | { type: "REJETER_COMPLEMENT"; id: number }
   | { type: "CREATE_SUIVI_PROD"; ordre_fabrication: number; date: string; heure_debut: string; quantite_entree: number; quantite_produite?: number; quantite_conforme?: number; quantite_rejetee?: number; equipe?: string; arrets?: string; incidents?: string; observations?: string }
   | { type: "CREATE_SUIVI_EAU"; ordre_fabrication: number; volume_capte_l: number; volume_obtenu_traitement_l: number; volume_envoye_embouteillage_l: number; bouteilles_produites: number; bouteilles_conformes: number; bouteilles_rejetees?: number; volume_envoye_traitement_l?: number; nombre_packs?: number }
-  | { type: "CREATE_ETAPE"; ordre_fabrication: number; etape: string; quantite_produite?: number; observations?: string }
-  | { type: "CREATE_PERTE"; ordre_fabrication: number; quantite_perte: number; motif: string; observations?: string; etape?: number; taux_perte?: number }
-  | { type: "CREATE_SORTIE"; ordre_fabrication: number; matiere: number; quantite_sortie: number; type_sortie?: string; motif?: string }
+  | {
+      type: "CREATE_ETAPE";
+      ordre_fabrication: number;
+      /** Code EtapeStandard (étape du circuit de l'OF s'il en a un). */
+      etape: string;
+      quantite_produite?: number;
+      observations?: string;
+      poste?: number | null;
+      equipement?: number | null;
+      quantite_entree?: number;
+      quantite_rejetee?: number;
+      date_debut?: string;
+      date_fin?: string;
+      duree_arret_min?: number;
+      heures_machine?: number;
+      energie_kwh?: number;
+      energie_mesuree?: boolean;
+    }
+  | {
+      type: "CREATE_PERTE";
+      ordre_fabrication: number;
+      quantite_perte: number;
+      motif: string;
+      observations?: string;
+      etape?: number;
+      taux_perte?: number;
+      nature?: string;
+      etape_code?: string;
+      /** Matière / emballage perdu : la perte est alors valorisée au CMUP par le serveur. */
+      matiere?: number | null;
+      /** Perte réellement comptée ou estimée. */
+      type_quantite?: "REELLE" | "ESTIMEE";
+    }
+  /** `lot_matiere` : lot imposé ; sinon les lots les plus proches de leur DLC sont consommés. */
+  | { type: "CREATE_SORTIE"; ordre_fabrication: number; matiere: number; quantite_sortie: number; type_sortie?: string; motif?: string; lot_matiere?: number | null }
   | { type: "CREATE_RETOUR_MAT"; ordre_fabrication: number; matiere: number; quantite_retournee: number }
   | { type: "VALIDER_FT"; id: number }
   | { type: "CREATE_FT"; article: number; version?: number }
@@ -126,17 +170,27 @@ export type Action =
       obligatoire?: boolean;
     }
   | { type: "CREATE_CONDITIONNEMENT"; article: number; nombre_unites_par_carton: number; type_emballage: string; poids_carton_kg?: number; nombre_cartons_par_palette?: number }
-  | { type: "CREATE_DEPOT"; nom: string; adresse?: string }
+  | {
+      type: "CREATE_DEPOT";
+      nom: string;
+      adresse?: string;
+      /** Magasin matières / stock usine (rattachés à une usine), dépôt extérieur, quarantaine. */
+      type_lieu?: string;
+      usine?: number | null;
+      activite?: number | null;
+      gestion_lots?: boolean;
+    }
   | { type: "CREATE_LOT"; article: number; quantite: number; date_production: string; ordre_fabrication?: number; date_peremption?: string }
   | { type: "CREATE_CONTROLE"; lot: number; resultat: "CONFORME" | "NON_CONFORME"; observations?: string }
   | { type: "LIBERER_LOT"; id: number }
   | { type: "BLOQUER_LOT"; id: number; motif?: string }
-  | { type: "PATCH_CLIENT"; id: number; nom?: string; type_client?: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number; bloque?: boolean }
-  | { type: "PATCH_FOURNISSEUR"; id: number; nom?: string; contact?: string; telephone?: string; email?: string; adresse?: string; actif?: boolean }
+  | { type: "PATCH_CLIENT"; id: number; nom?: string; type_client?: string; adresse?: string; telephone?: string; ifu?: string; encours_autorise?: number; delai_paiement_jours?: number; bloque?: boolean }
+  | { type: "PATCH_FOURNISSEUR"; id: number; nom?: string; contact?: string; telephone?: string; email?: string; adresse?: string; ifu?: string; actif?: boolean }
   | { type: "PATCH_TARIF"; id: number; prix_unitaire?: number; date_debut_validite?: string; date_fin_validite?: string | null }
-  | { type: "CREATE_CLIENT"; nom: string; type_client: string; adresse?: string; telephone?: string; encours_autorise?: number; delai_paiement_jours?: number }
+  | { type: "CREATE_CLIENT"; nom: string; type_client: string; adresse?: string; telephone?: string; ifu?: string; encours_autorise?: number; delai_paiement_jours?: number }
   | { type: "CREATE_COMMANDE"; client: number; type_commande: string }
-  | { type: "ADD_LIGNE_COMMANDE"; commande: number; article: number; quantite: number; prix_unitaire: number }
+  /** Le prix n'est pas envoyé : le backend applique le tarif en vigueur (contrat > client > public). */
+  | { type: "ADD_LIGNE_COMMANDE"; commande: number; article: number; quantite: number }
   | { type: "PATCH_COMMANDE"; id: number; statut: string }
   | { type: "CREATE_FACTURE"; commande: number; client: number; montant_total?: number }
   | { type: "GENERER_LIGNES_FACTURE"; id: number }
@@ -170,24 +224,38 @@ export type Action =
       commande?: number;
       fournisseur: number;
       demande_achat?: number;
-      lignes: { article: number; quantite_commandee: number; prix_unitaire: number }[];
+      /** `unite` : unité de commande (carton, kg…) convertie en unité de stock à la réception. */
+      lignes: { article: number; quantite_commandee: number; prix_unitaire: number; unite?: string }[];
       envoyer: boolean;
     }
   | { type: "CREATE_RECEPTION"; commande: number; conforme?: boolean; observations?: string }
   | { type: "ADD_LIGNE_RECEPTION"; reception: number; ligne_commande: number; quantite_recue: number }
   /** Réception complète en une fois : en-tête puis une ligne par article reçu. */
-  | { type: "RECEVOIR_COMMANDE"; commande: number; lignes: { ligne_commande: number; quantite_recue: number }[]; conforme: boolean; observations?: string }
-  | { type: "CREATE_FOURNISSEUR"; nom: string; contact?: string; telephone?: string; email?: string; adresse?: string }
+  | {
+      type: "RECEVOIR_COMMANDE";
+      commande: number;
+      /** Lot fournisseur et DLC : créent le lot matière (traçabilité amont) des articles suivis par lot. */
+      lignes: { ligne_commande: number; quantite_recue: number; lot_fournisseur?: string; date_peremption?: string | null }[];
+      /** Non conforme : les lots matières créés sont bloqués. */
+      conforme: boolean;
+      observations?: string;
+      /** Lieu de réception ; vide = « Magasin principal ». */
+      depot?: number | null;
+    }
+  | { type: "CREATE_FOURNISSEUR"; nom: string; contact?: string; telephone?: string; email?: string; adresse?: string; ifu?: string }
   | { type: "CREATE_MVT"; article: number; depot: number; type_mouvement: string; quantite: number; motif?: string; document_origine?: string }
   | { type: "CREATE_INVENTAIRE"; depot: number; date_inventaire: string }
   | { type: "ADD_LIGNE_INVENTAIRE"; inventaire: number; article: number; quantite_theorique: number; quantite_comptee: number }
   | { type: "CLOTURER_INVENTAIRE"; id: number }
-  | { type: "CREATE_PREP"; commande: number }
+  /** `depot` : lieu de sortie (stock usine ou dépôt extérieur) ; vide = « Dépôt produits finis ». */
+  | { type: "CREATE_PREP"; commande: number; depot?: number | null }
   | { type: "CREATE_VEHICULE"; immatriculation: string; type_vehicule?: string }
   | { type: "CREATE_CHAUFFEUR"; utilisateur: number; permis_numero?: string }
   | { type: "PREP_CONFIRMER"; id: number }
   | { type: "PREP_SORTIE"; id: number }
-  | { type: "CREATE_TOURNEE"; chauffeur: number; vehicule: number; date_tournee: string }
+  | { type: "CREATE_TOURNEE"; chauffeur: number; vehicule: number; date_tournee: string; kilometrage_depart?: number | null }
+  /** Relevés du compteur (clé « km » du coût de distribution). */
+  | { type: "PATCH_TOURNEE_KM"; id: number; kilometrage_depart: number | null; kilometrage_retour: number | null }
   | { type: "CREATE_BL"; commande: number; tournee?: number }
   | { type: "CONFIRMER_BL"; id: number }
   | { type: "LIVRER_BL"; id: number }
@@ -196,7 +264,8 @@ export type Action =
   | { type: "TOGGLE_USER"; id: number; actif: boolean }
   | { type: "PATCH_USER"; id: number; first_name?: string; last_name?: string; email?: string; telephone?: string; profil?: Profil; password?: string }
   | { type: "RECALCULER_COUT"; id: number }
-  | { type: "CREATE_EXPORT"; type_export: string; periode_debut: string; periode_fin: string }
+  /** `format_fichier` : CSV Sage, CSV générique, Excel ou JSON (indépendant du logiciel comptable). */
+  | { type: "CREATE_EXPORT"; type_export: string; periode_debut: string; periode_fin: string; format_fichier?: string }
   | { type: "CREATE_ANOMALIE"; type_anomalie: string; module_source: string; description: string }
   | { type: "PRENDRE_EN_CHARGE_ANOMALIE"; id: number }
   | { type: "RESOUDRE_ANOMALIE"; id: number; commentaire: string }
@@ -208,7 +277,13 @@ export type Action =
   | { type: "GENERER_RAPPORT"; periode: "JOURNALIER" | "MENSUEL" }
   | { type: "CREATE_VALEUR_LISTE"; liste: ListeValeurs; valeur: string }
   | { type: "TOGGLE_VALEUR_LISTE"; liste: ListeValeurs; id: number; actif: boolean }
-  | { type: "VALORISER_COUT_RETOUR"; id: number; cout_produit_detruit: number };
+  | { type: "VALORISER_COUT_RETOUR"; id: number; cout_produit_detruit: number }
+  /**
+   * Appel API quelconque (modules industriel, qualité, lots, transferts, coûts en cascade...) :
+   * même gestion d'erreur que les autres actions ; `refresh` limite le rechargement aux
+   * collections touchées (sinon tout est rechargé).
+   */
+  | { type: "EXEC"; run: () => Promise<unknown>; refresh?: CatalogKey[] };
 
 function emptyState(): AppState {
   return {
@@ -296,6 +371,32 @@ function emptyState(): AppState {
     seuilsControles: [],
     ecrituresComptables: [],
     rapports: [],
+    activites: [],
+    usines: [],
+    etapesStandard: [],
+    lignesProduction: [],
+    postes: [],
+    equipements: [],
+    circuits: [],
+    changementsSerie: [],
+    lotsMatieres: [],
+    transfertsStock: [],
+    conversions: [],
+    parametresQualite: [],
+    instruments: [],
+    planControle: [],
+    controlesRealises: [],
+    nonConformites: [],
+    naturesCout: [],
+    charges: [],
+    devis: [],
+    reglesComptes: [],
+    evenementsProduction: [],
+    reservations: [],
+    donneesEtapes: [],
+    modelesControle: [],
+    emplacements: [],
+    palettes: [],
     lastError: null,
     loading: false,
   };
@@ -480,6 +581,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, lastError: null }));
       try {
         const userId = session?.userId;
+        if (action.type === "EXEC") {
+          await action.run();
+          if (action.refresh) {
+            const fetched = await fetchCatalogs(action.refresh);
+            setState((s) => withDepotId({ ...s, ...fetched }));
+            return true;
+          }
+          await hydrate(loadSession());
+          return true;
+        }
         switch (action.type) {
           case "CREATE_PLAN":
             await api.post(endpoints.plans, {
@@ -496,6 +607,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               quantite_a_produire: action.quantite_a_produire,
               plan_production: action.plan_production ?? null,
               agents_affectes: action.agents_affectes ?? [],
+              ligne: action.ligne ?? null,
+              date_prevue: action.date_prevue ?? null,
+              date_debut_prevue: action.date_debut_prevue ?? null,
+              date_fin_prevue: action.date_fin_prevue ?? null,
             });
             break;
           case "AVANCER_OF":
@@ -566,7 +681,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               etape: action.etape,
               quantite_produite: action.quantite_produite ?? null,
               observations: action.observations ?? "",
-              date_debut: new Date().toISOString(),
+              date_debut: action.date_debut ?? new Date().toISOString(),
+              date_fin: action.date_fin ?? null,
+              poste: action.poste ?? null,
+              equipement: action.equipement ?? null,
+              quantite_entree: action.quantite_entree ?? null,
+              quantite_rejetee: action.quantite_rejetee ?? null,
+              duree_arret_min: action.duree_arret_min ?? null,
+              heures_machine: action.heures_machine ?? null,
+              energie_kwh: action.energie_kwh ?? null,
+              energie_mesuree: action.energie_mesuree ?? false,
             });
             break;
           case "CREATE_PERTE":
@@ -577,6 +701,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               observations: action.observations ?? "",
               etape: action.etape ?? null,
               taux_perte: action.taux_perte ?? null,
+              nature: action.nature ?? "AUTRE",
+              etape_code: action.etape_code ?? "",
+              matiere: action.matiere ?? null,
+              type_quantite: action.type_quantite ?? "REELLE",
             });
             break;
           case "CREATE_SORTIE":
@@ -586,6 +714,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               quantite_sortie: action.quantite_sortie,
               type_sortie: action.type_sortie ?? "NORMALE",
               motif: action.motif ?? "",
+              lot_matiere: action.lot_matiere ?? null,
             });
             break;
           case "CREATE_RETOUR_MAT":
@@ -687,7 +816,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             });
             break;
           case "CREATE_DEPOT":
-            await api.post(endpoints.depots, { nom: action.nom, adresse: action.adresse ?? "", actif: true });
+            await api.post(endpoints.depots, {
+              nom: action.nom,
+              adresse: action.adresse ?? "",
+              actif: true,
+              type_lieu: action.type_lieu ?? "DEPOT_EXTERIEUR",
+              usine: action.usine ?? null,
+              activite: action.activite ?? null,
+              gestion_lots: action.gestion_lots ?? true,
+            });
             break;
           case "CREATE_LOT":
             await api.post(endpoints.lots, {
@@ -738,6 +875,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               type_client: action.type_client,
               adresse: action.adresse ?? "",
               telephone: action.telephone ?? "",
+              ifu: action.ifu ?? "",
               encours_autorise: action.encours_autorise ?? 0,
               delai_paiement_jours: action.delai_paiement_jours ?? 0,
               bloque: false,
@@ -754,7 +892,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               commande: action.commande,
               article: action.article,
               quantite: action.quantite,
-              prix_unitaire: action.prix_unitaire,
             });
             break;
           case "PATCH_COMMANDE":
@@ -948,9 +1085,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               commande: action.commande,
               conforme: action.conforme,
               observations: action.observations ?? "",
+              depot: action.depot ?? null,
             });
             for (const l of action.lignes) {
-              await api.post(endpoints.lignesReception, { reception: reception.id, ligne_commande: l.ligne_commande, quantite_recue: l.quantite_recue });
+              await api.post(endpoints.lignesReception, {
+                reception: reception.id,
+                ligne_commande: l.ligne_commande,
+                quantite_recue: l.quantite_recue,
+                lot_fournisseur: l.lot_fournisseur ?? "",
+                date_peremption: l.date_peremption || null,
+              });
             }
             break;
           }
@@ -968,6 +1112,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               telephone: action.telephone ?? "",
               email: action.email ?? "",
               adresse: action.adresse ?? "",
+              ifu: action.ifu ?? "",
               actif: true,
             });
             break;
@@ -999,7 +1144,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             await api.patch(detail(endpoints.inventaires, action.id), { statut: "CLOTURE" });
             break;
           case "CREATE_PREP":
-            await api.post(endpoints.preparations, { commande: action.commande });
+            await api.post(endpoints.preparations, { commande: action.commande, depot: action.depot ?? null });
             break;
           case "PREP_CONFIRMER":
             await actions.confirmerPreparation(action.id);
@@ -1025,6 +1170,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               chauffeur: action.chauffeur,
               vehicule: action.vehicule,
               date_tournee: action.date_tournee,
+              kilometrage_depart: action.kilometrage_depart ?? null,
+            });
+            break;
+          case "PATCH_TOURNEE_KM":
+            await api.patch(detail(endpoints.tournees, action.id), {
+              kilometrage_depart: action.kilometrage_depart,
+              kilometrage_retour: action.kilometrage_retour,
             });
             break;
           case "CREATE_BL":
@@ -1071,6 +1223,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               type_export: action.type_export,
               periode_debut: action.periode_debut,
               periode_fin: action.periode_fin,
+              format_fichier: action.format_fichier ?? "SAGE_CSV",
             });
             break;
           case "CREATE_ANOMALIE":
@@ -1139,7 +1292,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const currentUser = useMemo(() => (session ? toUser(session) : null), [session]);
   const role = currentUser?.role ?? null;
 
-  /** Filtre les données sensibles selon le profil (agent → ses OF, chauffeur → ses tournées/BL). */
+  /**
+   * Filtre les données selon le profil (agent → ses OF). Le Chauffeur n'est pas refiltré : le backend
+   * ne lui renvoie déjà que ses tournées et ses BL, et lui refuse la liste des chauffeurs (un filtrage
+   * ici, fondé sur cette liste, vidait tout).
+   */
   const filteredState = useMemo(() => {
     if (!role || !currentUser) return state;
     const uid = currentUser.id;
@@ -1149,12 +1306,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       s.etapes = s.etapes.filter((e) => s.ofList.some((o) => o.id === e.ordre_fabrication));
       s.pertes = s.pertes.filter((p) => s.ofList.some((o) => o.id === p.ordre_fabrication));
     }
-    if (role === "CHAUFFEUR") {
-      const myChIds = state.chauffeurs.filter((c) => c.utilisateur === uid).map((c) => c.id);
-      s.tournees = s.tournees.filter((t) => myChIds.includes(t.chauffeur));
-      const myTourneeIds = s.tournees.map((t) => t.id);
-      s.bonsLivraison = s.bonsLivraison.filter((b) => b.tournee && myTourneeIds.includes(b.tournee));
-    }
     return s;
   }, [state, role, currentUser]);
 
@@ -1163,7 +1314,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const articleName = (id: number | null | undefined) => {
       if (id == null) return "—";
       const a = s.articles.find((x) => x.id === id);
-      return a ? `${a.code} · ${a.designation}` : `#${id}`;
+      if (a) return `${a.code} · ${a.designation}`;
+      // Profils sans accès à la liste des articles (Agent, Distribution, Magasinier…) : désignation
+      // reprise des documents qui la portent (OF, lots, lignes de commande, préparations, besoins).
+      const nom = (code: string | undefined, designation: string | undefined) => (designation ? (code ? `${code} · ${designation}` : designation) : null);
+      const of = s.ofList.find((x) => x.article === id && x.article_designation);
+      const lot = s.lots.find((x) => x.article === id && x.article_designation);
+      const lc = s.lignesCommande.find((x) => x.article === id && x.article_designation) ?? s.lignesFacture.find((x) => x.article === id && x.article_designation);
+      const lm = s.lotsMatieres.find((x) => x.article === id && x.article_designation);
+      const besoin = s.besoinsMatieres.find((x) => x.matiere === id && x.matiere_designation);
+      const prep = s.preparations.flatMap((p) => p.lignes ?? []).find((x) => x.article === id);
+      return (
+        nom(of?.article_code, of?.article_designation) ??
+        nom(lot?.article_code, lot?.article_designation) ??
+        nom(lc?.article_code, lc?.article_designation) ??
+        nom(lm?.article_code, lm?.article_designation) ??
+        nom(besoin?.matiere_code, besoin?.matiere_designation) ??
+        nom(prep?.code, prep?.designation) ??
+        `#${id}`
+      );
     };
     const familleName = (id: number | null | undefined) => {
       if (id == null) return "—";
@@ -1176,7 +1345,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const clientName = (id: number | null | undefined) => {
       if (id == null) return "—";
       const c = s.clients.find((x) => x.id === id);
-      return c ? `${c.code} · ${c.nom}` : `#${id}`;
+      if (c) return `${c.code} · ${c.nom}`;
+      // Profils sans accès à la liste des clients (Caissier…) : nom repris de la facture ou de la commande.
+      const nom = s.factures.find((x) => x.client === id && x.client_nom)?.client_nom ?? s.commandes.find((x) => x.client === id && x.client_nom)?.client_nom;
+      return nom ?? `#${id}`;
     };
     const fournisseurName = (id: number | null | undefined) => {
       if (id == null) return "—";
@@ -1211,9 +1383,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ofNumero,
       userName,
       stockOf: (articleId) => stockArticleTotal(s, articleId),
-      tarifFor: (articleId, clientId) => num(tarifEnVigueur(s.tarifs, articleId, clientId ?? null)?.prix_unitaire),
+      tarifFor: (articleId, clientId) =>
+        num(tarifEnVigueur(s.tarifs, articleId, clientId ?? null, contratActif(s.contratsClients, clientId ?? null)?.id)?.prix_unitaire),
       produitsFinis: s.articles.filter((a) => a.type_article === "PRODUIT_FINI" && a.actif),
-      matieres: s.articles.filter((a) => a.type_article === "MATIERE_PREMIERE" && a.actif),
+      // Articles achetés et consommés (jamais fabriqués) : matières premières, emballages, consommables.
+      matieres: s.articles.filter((a) => TYPES_ACHETES.includes(a.type_article) && a.actif),
       ready,
     };
   }, [currentUser, dispatch, filteredState, ready, role, session, state]);

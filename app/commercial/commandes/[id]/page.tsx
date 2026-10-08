@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Check, FileDown, Plus, Receipt, X } from "lucide-react";
+import { ArrowLeft, BadgePercent, Check, FileDown, Plus, Receipt, X } from "lucide-react";
 import { OrderBadge } from "@/components/badges";
+import { DerogationDrawer } from "@/components/DerogationDrawer";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
+import { SfecFacture } from "@/components/sfec";
 import { Button, Guard, ORDER_STEPS, PageHeader, Panel, StatusBadge, StatusStepper, inputClass } from "@/components/ui";
-import { endpoints } from "@/lib/api";
+import { actions, endpoints } from "@/lib/api";
 import { stockDisponible } from "@/lib/engine";
 import { telechargerFacturePdf } from "@/lib/facturePdf";
 import { STATUT_FACTURE_LABEL, TYPE_COMMANDE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
+import type { LigneCommande } from "@/lib/types";
 import { cn, formatDa, formatDate, formatQty, num } from "@/lib/utils";
 
 export default function CommandeDetailPage() {
@@ -24,6 +27,7 @@ export default function CommandeDetailPage() {
   const [qty, setQty] = useState("");
   const [busy, setBusy] = useState(false);
   const [apercu, setApercu] = useState(false);
+  const [derogation, setDerogation] = useState<LigneCommande | null>(null);
   if (!cmd) return <p className="text-[13px] text-muted">Commande introuvable.</p>;
 
   const lignes = state.lignesCommande.filter((l) => l.commande === cmd.id);
@@ -44,13 +48,16 @@ export default function CommandeDetailPage() {
   const brouillon = cmd.statut === "BROUILLON";
   const peutLignes = brouillon && can("CREATE_COMMANDE");
   const peutValider = brouillon && can("CREATE_COMMANDE") && lignes.length > 0;
-  const peutFacturer = !facture && !brouillon && cmd.statut !== "ANNULEE" && can("CREATE_FACTURE") && lignes.length > 0;
+  // Client sous contrat : la facture est émise automatiquement après la confirmation de livraison.
+  const sousContrat = cmd.type_commande === "CONTRAT";
+  const peutFacturer = !facture && !brouillon && !sousContrat && cmd.statut !== "ANNULEE" && can("CREATE_FACTURE") && lignes.length > 0;
+  const peutDeroger = sousContrat && can("DEROGATION_PRIX") && cmd.statut !== "FACTUREE" && cmd.statut !== "ANNULEE";
   const pdfPret = !!facture && !!client && lignesFacture.length > 0;
   const prix = article ? tarifFor(article, cmd.client) : 0;
 
   async function ajouter() {
     setBusy(true);
-    const ok = await dispatch({ type: "ADD_LIGNE_COMMANDE", commande: cmd!.id, article, quantite: Number(qty), prix_unitaire: prix });
+    const ok = await dispatch({ type: "ADD_LIGNE_COMMANDE", commande: cmd!.id, article, quantite: Number(qty) });
     setBusy(false);
     if (ok) {
       setArticle(0);
@@ -158,6 +165,7 @@ export default function CommandeDetailPage() {
                     <th className="px-4 py-2 font-medium text-right">Quantité</th>
                     <th className="px-4 py-2 font-medium text-right">Prix</th>
                     <th className="px-4 py-2 font-medium text-right">Montant</th>
+                    {peutDeroger && <th className="px-4 py-2 w-[48px]" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -171,8 +179,28 @@ export default function CommandeDetailPage() {
                           <p className={cn("text-[11.5px] num", court ? "text-warning" : "text-muted")}>Stock disponible {formatQty(d, 0)}</p>
                         </td>
                         <td className="px-4 py-2.5 text-right text-[13px] num">{formatQty(num(l.quantite), 0)}</td>
-                        <td className="px-4 py-2.5 text-right text-[13px] num">{formatDa(num(l.prix_unitaire))}</td>
+                        <td className="px-4 py-2.5 text-right text-[13px] num">
+                          {formatDa(num(l.prix_unitaire))}
+                          {l.prix_tarif != null && num(l.prix_tarif) !== num(l.prix_unitaire) && (
+                            <span className="block text-[11px] text-warning" title={l.motif_derogation}>
+                              tarif {formatDa(num(l.prix_tarif))} · dérogation
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 text-right text-[13px] num font-medium">{formatDa(num(l.quantite) * num(l.prix_unitaire))}</td>
+                        {peutDeroger && (
+                          <td className="px-2 py-2.5 text-right">
+                            <button
+                              type="button"
+                              title="Autoriser un prix différent du tarif"
+                              aria-label="Autoriser un prix différent du tarif"
+                              className="h-7 w-7 rounded-[6px] inline-flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2"
+                              onClick={() => setDerogation(l)}
+                            >
+                              <BadgePercent size={14} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -221,15 +249,33 @@ export default function CommandeDetailPage() {
                     )}
                   </Guard>
                 )}
+                <SfecFacture facture={facture} />
               </div>
             ) : (
-              <p className="p-4 text-[12.5px] text-muted">{brouillon ? "Validez la commande avant de la facturer." : "Pas encore facturée."}</p>
+              <p className="p-4 text-[12.5px] text-muted">
+                {brouillon
+                  ? "Validez la commande avant de la facturer."
+                  : sousContrat
+                    ? "Client sous contrat : la facture est émise automatiquement après la livraison et la confirmation de réception."
+                    : "Pas encore facturée."}
+              </p>
             )}
           </Panel>
         </div>
       </div>
 
       <Historique endpoint={endpoints.commandes} id={cmd.id} />
+
+      {derogation && (
+        <DerogationDrawer
+          ligne={derogation}
+          libelle={articleName(derogation.article)}
+          onClose={() => setDerogation(null)}
+          onSave={(prixUnitaire, motif) =>
+            dispatch({ type: "EXEC", run: () => actions.autoriserPrixLigneCommande(derogation.id, prixUnitaire, motif), refresh: ["lignesCommande", "commandes"] })
+          }
+        />
+      )}
 
       {/* Barre fixe : Valider → Facturer → PDF */}
       {(peutValider || peutFacturer || pdfPret) && (
@@ -248,7 +294,14 @@ export default function CommandeDetailPage() {
             </Button>
           )}
           {pdfPret && (
-            <Button variant="secondary" onClick={() => telechargerFacturePdf({ facture: facture!, client: client!, commande: cmd, lignes: lignesFacture, articleName })}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                void actions
+                  .pdf("facture", facture!.id, facture!.numero)
+                  .catch(() => telechargerFacturePdf({ facture: facture!, client: client!, commande: cmd, lignes: lignesFacture, articleName }))
+              }
+            >
               <FileDown size={15} /> PDF
             </Button>
           )}
