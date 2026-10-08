@@ -98,13 +98,13 @@ export const ACTIONS = {
   PARAM_PRODUCTION: ["ADMIN_SI"],
   SAISIR_CHANGEMENT_SERIE: ["RESPONSABLE_PRODUCTION", "AGENT_PRODUCTION"],
   /** Cuve préparée, nettoyage, arrêt/redémarrage : déclenchent les contrôles prévus au plan. */
-  /** Constitution des palettes d'un lot libéré. */
+  SAISIR_EVENEMENT_PRODUCTION: ["RESPONSABLE_PRODUCTION", "AGENT_PRODUCTION"],
   /** Données réelles à saisir par étape (obligatoires ou facultatives), avec les techniciens. */
   PARAM_DONNEES_ETAPES: ["RESPONSABLE_PRODUCTION", "ADMIN_SI"],
+  /** Constitution des palettes d'un lot libéré. */
   PALETTISER_LOT: ["MAGASINIER", "RESPONSABLE_QUALITE"],
   /** Emplacements, rangement, expédition des palettes. */
   GERER_PALETTES: ["MAGASINIER"],
-  SAISIR_EVENEMENT_PRODUCTION: ["RESPONSABLE_PRODUCTION", "AGENT_PRODUCTION"],
   // --- Référentiel : conversions d'unités ---
   GERER_CONVERSIONS: ["RESPONSABLE_PRODUCTION", "RESPONSABLE_ACHATS", "ADMIN_SI"],
   // --- Stocks : lots matières et bons de transfert ---
