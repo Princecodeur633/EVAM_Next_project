@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { ContratsClient } from "@/components/contratsClient";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { TYPE_CLIENT_LABEL } from "@/lib/labels";
 import { canReadParam } from "@/lib/roles";
@@ -11,7 +12,7 @@ import { formatDa, formatDate, num } from "@/lib/utils";
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, canEditParam, articleName, role } = useStore();
+  const { state, dispatch, canEditParam, articleName, role, can } = useStore();
   const client = state.clients.find((c) => c.id === Number(id));
   const writable = canEditParam("/parametrage/clients");
   // Les tarifs ne sont visibles que des profils qui y ont accès (jamais l’Admin SI).
@@ -45,7 +46,8 @@ export default function ClientDetailPage() {
 
   if (!client) return <p className="text-[13px] text-muted">Client introuvable.</p>;
 
-  const tarifs = state.tarifs.filter((t) => t.client === client.id);
+  // Les tarifs négociés d’un contrat s’affichent avec leur contrat.
+  const tarifs = state.tarifs.filter((t) => t.client === client.id && t.contrat == null);
 
   return (
     <div className="space-y-4">
@@ -121,6 +123,9 @@ export default function ClientDetailPage() {
           Enregistrer la fiche client
         </Button>
       )}
+
+      {/* Contrats : lus et gérés par le Commercial (la Direction les lit sans accès à cette fiche). */}
+      {can("GERER_CONTRATS_CLIENTS") && <ContratsClient client={client} />}
 
       {voitTarifs && (
       <Panel className="p-4 space-y-3">
