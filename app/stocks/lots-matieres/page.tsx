@@ -7,7 +7,7 @@ import { FilterBar, FilterSelect, SearchInput, Segmented, matchSearch } from "@/
 import { KpiCard } from "@/components/charts";
 import { ControleLigne, LotMatiereBadge, SaisieControleDrawer } from "@/components/qualite";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
-import { actions, api, endpoints } from "@/lib/api";
+import { actions, api, catalogKeysForRole, endpoints } from "@/lib/api";
 import { TYPES_ACHETES } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import type { ControleRealise, LotMatiere, StatutLotMatiere, TracabiliteLotMatiere } from "@/lib/types";
@@ -135,8 +135,8 @@ export default function LotsMatieresPage() {
 
 function LotMatiereDrawer({ lot, onClose }: { lot: LotMatiere; onClose: () => void }) {
   const { state, dispatch, can, articleName, fournisseurName, role } = useStore();
-  // Le Responsable Achats ne lit pas les contrôles réalisés (backend) : statut du lot seulement.
-  const voitControles = role !== "RESPONSABLE_ACHATS";
+  // Contrôles de réception affichés si le profil les lit (backend : Achats inclus depuis la PR #10).
+  const voitControles = !!role && catalogKeysForRole(role).includes("controlesRealises");
   const [trace, setTrace] = useState<TracabiliteLotMatiere | null>(null);
   const [controle, setControle] = useState<ControleRealise | null>(null);
   const [busy, setBusy] = useState(false);

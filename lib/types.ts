@@ -788,6 +788,9 @@ export interface SortieMatiere {
   /** Lot imposé ; vide = lots consommés automatiquement (DLC la plus proche d'abord). */
   lot_matiere?: number | null;
   date_sortie: string;
+  of_numero?: string;
+  matiere_code?: string;
+  matiere_designation?: string;
 }
 
 export interface RetourMatiere {
@@ -797,6 +800,9 @@ export interface RetourMatiere {
   quantite_retournee: string;
   motif?: string;
   date_retour: string;
+  of_numero?: string;
+  matiere_code?: string;
+  matiere_designation?: string;
 }
 
 export interface SuiviProduction {
@@ -1138,6 +1144,10 @@ export interface Tournee {
   /** Relevés du compteur (clé « km » du coût de distribution). */
   kilometrage_depart?: number | null;
   kilometrage_retour?: number | null;
+  /** Libellés recopiés (le Chauffeur ne lit ni les véhicules ni les fiches chauffeurs). */
+  vehicule_immatriculation?: string;
+  vehicule_type?: string;
+  chauffeur_nom?: string;
 }
 
 export interface PreparationLivraison {
@@ -1177,6 +1187,9 @@ export interface BonLivraison {
   client_adresse?: string;
   articles?: { code: string; designation: string; quantite: string }[];
   statut_paiement?: string;
+  tournee_numero?: string | null;
+  vehicule_immatriculation?: string | null;
+  chauffeur_nom?: string | null;
 }
 
 export interface TransfertDepot {
@@ -1203,6 +1216,15 @@ export interface ReclamationClient {
   cree_par: number;
   date_creation: string;
   date_cloture: string | null;
+  /** État du retour recopié pour le Commercial et la Distribution (qui ne lisent pas les retours). */
+  retour_statut?: StatutRetourPhysique | null;
+  retour_statut_libelle?: string | null;
+  retour_quantite?: string | null;
+  retour_date_reception?: string | null;
+  controle_resultat?: ResultatControleRetour | null;
+  controle_resultat_libelle?: string | null;
+  /** Faux tant que le produit retourné est en quarantaine (ou si la réclamation est clôturée). */
+  solution_possible?: boolean;
 }
 
 export interface RetourPhysique {
