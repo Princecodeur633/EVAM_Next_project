@@ -747,6 +747,7 @@ export interface BesoinMatierePrevu {
 export interface DemandeMatiere {
   id: number;
   numero: string;
+  of_numero?: string;
   /** OF, matière et quantité sont générés en bloc par
    * .../ordres-fabrication/{id}/demander_matieres/ (toute la composition de
    * l'OF en une fois) : plus de création manuelle ligne par ligne. */
@@ -766,6 +767,7 @@ export interface DemandeMatiere {
 export interface DemandeComplementaire {
   id: number;
   numero: string;
+  of_numero?: string;
   ordre_fabrication: number;
   matiere: number;
   quantite: string;

@@ -6,13 +6,16 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ConversionsPanel, DonneesIndustriellesPanel } from "@/components/articleIndustriel";
 import { Button, DataTable, Field, PageHeader, Panel, inputClass } from "@/components/ui";
+import { catalogKeysForRole } from "@/lib/api";
 import { MOMENT_CONTROLE_LABEL, TYPE_ARTICLE_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export default function ProduitDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, canEditParam, familleFiscaleName } = useStore();
+  const { state, dispatch, canEditParam, familleFiscaleName, role } = useStore();
+  // Ancien référentiel des contrôles : lu par la Production et la Qualité seulement (backend).
+  const voitControlesRequis = !!role && catalogKeysForRole(role).includes("controlesQualiteRequis");
   const article = state.articles.find((a) => a.id === Number(id));
   const canEditFiche = canEditParam("/parametrage/produits");
   // Champs de codification figés dès que l'article est utilisé (commande, stock, OF, lot...).
@@ -142,6 +145,8 @@ export default function ProduitDetailPage() {
           <Field label="Code fiscal">
             <select className={inputClass} disabled={!canEditFiche} value={form.code_fiscal} onChange={(e) => setForm((f) => ({ ...f, code_fiscal: Number(e.target.value) }))}>
               <option value={0}>— aucun (non facturable) —</option>
+              {/* Profil sans accès aux codes fiscaux : le code rattaché reste conservé tel quel. */}
+              {form.code_fiscal > 0 && !state.codesFiscaux.some((c) => c.id === form.code_fiscal) && <option value={form.code_fiscal}>Code fiscal rattaché</option>}
               {state.codesFiscaux.filter((c) => c.actif).map((c) => (
                 <option key={c.id} value={c.id}>{c.code} · {familleFiscaleName(c.famille_fiscale)}</option>
               ))}
@@ -218,6 +223,7 @@ export default function ProduitDetailPage() {
 
       <ConversionsPanel article={article} />
 
+      {voitControlesRequis && (
       <Panel className="p-4 space-y-3">
         <h2 className="text-[13px] font-semibold">Contrôles qualité requis (ancien référentiel)</h2>
         <p className="text-[12px] text-muted">
@@ -242,6 +248,7 @@ export default function ProduitDetailPage() {
           }))}
         />
       </Panel>
+      )}
     </div>
   );
 }

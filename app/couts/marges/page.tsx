@@ -43,7 +43,7 @@ export default function MargesPage() {
               { key: "x", label: "" },
             ]}
             rows={state.coutsRetours.map((c) => {
-              const numero = state.reclamations.find((r) => r.id === c.reclamation)?.numero ?? `#${c.reclamation}`;
+              const numero = state.reclamations.find((r) => r.id === c.reclamation)?.numero ?? `Réclamation n°${c.reclamation}`;
               return {
                 r: numero,
                 q: c.quantite_detruite != null ? num(c.quantite_detruite) : "—",

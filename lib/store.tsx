@@ -1357,7 +1357,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
     const ofNumero = (id: number | null | undefined) => {
       if (id == null) return "—";
-      return state.ofList.find((o) => o.id === id)?.numero ?? `#${id}`;
+      return (
+        state.ofList.find((o) => o.id === id)?.numero ??
+        state.demandesMatieres.find((d) => d.ordre_fabrication === id && d.of_numero)?.of_numero ??
+        state.demandesComplementaires.find((d) => d.ordre_fabrication === id && d.of_numero)?.of_numero ??
+        state.besoinsMatieres.find((b) => b.ordre_fabrication === id && b.of_numero)?.of_numero ??
+        state.nonConformites.find((n) => n.ordre_fabrication === id && n.of_numero)?.of_numero ??
+        state.controlesRealises.find((c) => c.ordre_fabrication === id && c.of_numero)?.of_numero ??
+        `#${id}`
+      );
     };
     const userName = (id: number | null | undefined) => {
       if (id == null) return "—";

@@ -328,8 +328,10 @@ function ApercuFacture({ commandeId, onClose }: { commandeId: number; onClose: (
     const accise = ht * taux(code?.taux_accise);
     const centimes = ht * taux(code?.taux_centimes_additionnels);
     const tva = ht * taux(code?.taux_tva);
-    return { l, ht, accise, centimes, tva, sansCode: !code };
+    // Le Commercial ne lit pas les codes fiscaux (backend) : article rattaché mais taux inconnus ici.
+    return { l, ht, accise, centimes, tva, sansCode: article ? !article.code_fiscal : !code, tauxInconnus: !code && !!article?.code_fiscal };
   });
+  const tauxInconnus = detail.some((d) => d.tauxInconnus);
   const somme = (k: "ht" | "accise" | "centimes" | "tva") => detail.reduce((a, d) => a + d[k], 0);
   const ttc = somme("ht") + somme("accise") + somme("centimes") + somme("tva");
   const sansCode = detail.some((d) => d.sansCode);
@@ -380,12 +382,12 @@ function ApercuFacture({ commandeId, onClose }: { commandeId: number; onClose: (
           ].map(([k, v]) => (
             <div key={k as string} className="flex justify-between gap-3">
               <dt className="text-muted">{k}</dt>
-              <dd className="num">{formatDa(v as number)}</dd>
+              <dd className="num">{k !== "Total HT" && tauxInconnus ? "à l’émission" : formatDa(v as number)}</dd>
             </div>
           ))}
           <div className="flex justify-between gap-3 pt-1.5 border-t border-line text-[15px] font-semibold">
             <dt>Total TTC</dt>
-            <dd className="num">{formatDa(ttc)}</dd>
+            <dd className="num">{tauxInconnus ? "calculé à l’émission" : formatDa(ttc)}</dd>
           </div>
         </dl>
         {sansCode && (

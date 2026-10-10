@@ -134,7 +134,9 @@ export default function LotsMatieresPage() {
 }
 
 function LotMatiereDrawer({ lot, onClose }: { lot: LotMatiere; onClose: () => void }) {
-  const { state, dispatch, can, articleName, fournisseurName } = useStore();
+  const { state, dispatch, can, articleName, fournisseurName, role } = useStore();
+  // Le Responsable Achats ne lit pas les contrôles réalisés (backend) : statut du lot seulement.
+  const voitControles = role !== "RESPONSABLE_ACHATS";
   const [trace, setTrace] = useState<TracabiliteLotMatiere | null>(null);
   const [controle, setControle] = useState<ControleRealise | null>(null);
   const [busy, setBusy] = useState(false);
@@ -206,7 +208,10 @@ function LotMatiereDrawer({ lot, onClose }: { lot: LotMatiere; onClose: () => vo
           </dl>
           {lot.observations && <p className="text-[12.5px] text-muted">{lot.observations}</p>}
         </DrawerSection>
-        {(controles.length > 0 || ncs.length > 0) && (
+        {!voitControles && lot.statut === "A_CONTROLER" && (
+          <p className="text-[12.5px] text-muted">Contrôle de réception en cours par le Magasin ou la Qualité.</p>
+        )}
+        {voitControles && (controles.length > 0 || ncs.length > 0) && (
           <DrawerSection title="Contrôles de réception" hint="Tous conformes (sans NC ouverte) : le lot est libéré automatiquement.">
             <div className="rounded-[9px] border border-line divide-y divide-line">
               {controles.map((c) => (

@@ -462,6 +462,10 @@ const EXTRA_ACCESS: Partial<Record<Profil, string[]>> = {
 export function canAccess(role: Profil, url: string) {
   const href = url.split(/[?#]/)[0];
   if (["/403", "/login", "/", "/accueil"].includes(href)) return true;
+  // Retours clients : Magasinier et Qualité n’ouvrent que la liste (pas le détail des réclamations).
+  if ((role === "MAGASINIER" || role === "RESPONSABLE_QUALITE") && href.startsWith("/reclamations/")) return false;
+  // Avoirs : lus par le Commercial, la DAF et la Direction seulement (backend).
+  if (href.startsWith("/commercial/avoirs") && !["COMMERCIAL", "COMPTABILITE_DAF", "DIRECTION"].includes(role)) return false;
   if (flattenNav(role).some((i) => itemPatterns(i).some((p) => matchesItem(href, p)))) return true;
   const extra = EXTRA_ACCESS[role] ?? [];
   if (extra.some((p) => matchesExtra(href, p))) return true;

@@ -33,7 +33,8 @@ export default function BlDetailPage() {
 
   // Comptant : la livraison ne se confirme qu’une fois la facture soldée.
   const comptant = cmd?.type_commande === "COMPTANT";
-  const soldee = facture?.statut === "PAYEE";
+  // Sans accès aux factures (Chauffeur), le statut de paiement vient du BL.
+  const soldee = facture ? facture.statut === "PAYEE" : bl.statut_paiement === "Payée";
   const bloqueParPaiement = comptant && !soldee;
   const peutConfirmer = can("CONFIRMER_BL") && bl.statut !== "LIVREE";
   const peutRemettre = enCours && can("LIVRER_BL") && !bl.signature_client;
@@ -51,7 +52,9 @@ export default function BlDetailPage() {
     ...(bl.client_adresse ? ([["Adresse", bl.client_adresse]] as [string, React.ReactNode][]) : []),
     ["Type", cmd ? TYPE_COMMANDE_LABEL[cmd.type_commande] : "—"],
     ["Tournée", tournee ? `${tournee.numero} · ${formatDate(tournee.date_tournee)}` : "Non affecté"],
-    ["Chauffeur / véhicule", tournee ? `${userName(chauffeur?.utilisateur)} · ${vehicule?.immatriculation ?? "—"}` : "—"],
+    ...(chauffeur || vehicule
+      ? ([["Chauffeur / véhicule", `${userName(chauffeur?.utilisateur)} · ${vehicule?.immatriculation ?? "—"}`]] as [string, React.ReactNode][])
+      : []),
     ["Signature client", bl.signature_client ? `Oui${bl.date_signature ? ` · ${formatDateTime(bl.date_signature)}` : ""}` : "Non"],
     ["Généré le", formatDateTime(bl.date_generation)],
   ];

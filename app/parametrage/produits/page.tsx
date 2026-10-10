@@ -122,7 +122,7 @@ export default function ArticlesPage() {
           </Field>
           <Field label="Code fiscal (TVA)">
             <select className={inputClass} value={codeFiscal} onChange={(e) => setCodeFiscal(Number(e.target.value))}>
-              <option value={0}>— à rattacher plus tard —</option>
+              <option value={0}>{state.codesFiscaux.length ? "— à rattacher plus tard —" : "— rattaché par la Production ou la DAF —"}</option>
               {state.codesFiscaux.filter((c) => c.actif).map((c) => (
                 <option key={c.id} value={c.id}>{c.code} · {state.famillesFiscales.find((f) => f.id === c.famille_fiscale)?.nom ?? ""}</option>
               ))}
@@ -185,7 +185,7 @@ export default function ArticlesPage() {
             u: UNITE_LABEL[a.unite_mesure] ?? a.unite_mesure,
             f: familleName(a.famille),
             act: activiteCode(a.activite),
-            fisc: a.code_fiscal ? (state.codesFiscaux.find((c) => c.id === a.code_fiscal)?.code ?? `#${a.code_fiscal}`) : "—",
+            fisc: a.code_fiscal ? (state.codesFiscaux.find((c) => c.id === a.code_fiscal)?.code ?? "Rattaché") : "—",
             ft: a.fiche_technique_validee ? (
               <Link href={`/parametrage/fiches-techniques/${a.fiche_technique_validee}`} className="text-primary" onClick={(e) => e.stopPropagation()}>
                 <StatusBadge tone="success">Validée</StatusBadge>

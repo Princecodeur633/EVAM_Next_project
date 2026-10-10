@@ -259,7 +259,11 @@ function TransfertDrawer({ transfert, onClose }: { transfert: TransfertStock; on
             ]}
             rows={transfert.lignes.map((l) => ({
               a: articleName(l.article),
-              l: l.lot ? (state.lots.find((x) => x.id === l.lot)?.numero_lot ?? `#${l.lot}`) : "—",
+              l: l.lot
+                ? (state.lots.find((x) => x.id === l.lot)?.numero_lot ??
+                  state.palettes.find((p) => p.lot === l.lot && p.lot_numero)?.lot_numero ??
+                  `Lot n°${l.lot}`)
+                : "—",
               q: <span className="num">{formatQty(num(l.quantite), 3)}</span>,
               x:
                 writable && brouillon ? (
