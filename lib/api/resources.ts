@@ -715,6 +715,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "tournees",
     "devis",
     "reglesComptes",
+    // Commandes clients en lecture : dérogation de prix sur les lignes des clients sous contrat.
+    "commandes",
+    "lignesCommande",
     // Critères des règles de comptes (format, unité de vente).
     "formatsArticle",
     "unitesVente",

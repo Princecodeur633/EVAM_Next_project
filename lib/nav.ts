@@ -158,7 +158,8 @@ const DAF_CONTROLE: HubTab[] = [
   { label: "Anomalies", href: "/comptabilite/brouillards" },
   { label: "Impayés", href: "/commercial/impayes" },
   { label: "Écarts de caisse", href: "/comptabilite/ecarts" },
-  // Dérogations de prix sur les devis des clients sous contrat.
+  // Dérogations de prix sur les commandes et devis des clients sous contrat.
+  { label: "Commandes", href: "/commercial/commandes" },
   { label: "Devis", href: "/commercial/devis" },
 ];
 
