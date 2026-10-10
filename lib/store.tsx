@@ -1323,6 +1323,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const lc = s.lignesCommande.find((x) => x.article === id && x.article_designation) ?? s.lignesFacture.find((x) => x.article === id && x.article_designation);
       const lm = s.lotsMatieres.find((x) => x.article === id && x.article_designation);
       const besoin = s.besoinsMatieres.find((x) => x.matiere === id && x.matiere_designation);
+      const sortie = s.sortiesMatieres.find((x) => x.matiere === id && x.matiere_designation) ?? s.retoursMatieres.find((x) => x.matiere === id && x.matiere_designation);
       const prep = s.preparations.flatMap((p) => p.lignes ?? []).find((x) => x.article === id);
       return (
         nom(of?.article_code, of?.article_designation) ??
@@ -1330,6 +1331,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         nom(lc?.article_code, lc?.article_designation) ??
         nom(lm?.article_code, lm?.article_designation) ??
         nom(besoin?.matiere_code, besoin?.matiere_designation) ??
+        nom(sortie?.matiere_code, sortie?.matiere_designation) ??
         nom(prep?.code, prep?.designation) ??
         `#${id}`
       );
@@ -1362,6 +1364,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         state.demandesMatieres.find((d) => d.ordre_fabrication === id && d.of_numero)?.of_numero ??
         state.demandesComplementaires.find((d) => d.ordre_fabrication === id && d.of_numero)?.of_numero ??
         state.besoinsMatieres.find((b) => b.ordre_fabrication === id && b.of_numero)?.of_numero ??
+        state.sortiesMatieres.find((x) => x.ordre_fabrication === id && x.of_numero)?.of_numero ??
+        state.retoursMatieres.find((x) => x.ordre_fabrication === id && x.of_numero)?.of_numero ??
         state.nonConformites.find((n) => n.ordre_fabrication === id && n.of_numero)?.of_numero ??
         state.controlesRealises.find((c) => c.ordre_fabrication === id && c.of_numero)?.of_numero ??
         `#${id}`

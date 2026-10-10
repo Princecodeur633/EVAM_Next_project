@@ -1097,7 +1097,8 @@ function distribution(state: AppState, h: HomeHelpers): HomeData {
   const enLivraison = state.bonsLivraison.filter((b) => b.statut === "EN_LIVRAISON");
   const tourneesJour = state.tournees.filter((t) => sameDay(t.date_tournee));
   const cmd = (id: number) => state.commandes.find((c) => c.id === id);
-  const vehicule = (id: number) => state.vehicules.find((v) => v.id === id)?.immatriculation ?? `Véhicule n°${id}`;
+  const vehicule = (id: number) =>
+    state.vehicules.find((v) => v.id === id)?.immatriculation ?? state.tournees.find((t) => t.vehicule === id && t.vehicule_immatriculation)?.vehicule_immatriculation ?? `Véhicule n°${id}`;
   const chauffeurNom = (id: number) => h.userName(state.chauffeurs.find((c) => c.id === id)?.utilisateur);
   return {
     actions: [

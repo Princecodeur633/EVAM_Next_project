@@ -42,7 +42,9 @@ export function ChauffeurHome() {
           {firstName ? `, ${firstName}` : ""}
         </h1>
         <p className="text-[13px] text-muted mt-0.5">
-          {tournees.length ? tournees.map((t) => t.numero).join(" · ") : "Aucune tournée aujourd’hui."}
+          {tournees.length
+            ? tournees.map((t) => `${t.numero}${t.vehicule_immatriculation ? ` · ${t.vehicule_immatriculation}` : ""}`).join(" · ")
+            : "Aucune tournée aujourd’hui."}
         </p>
       </div>
 

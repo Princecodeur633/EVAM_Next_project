@@ -77,8 +77,8 @@ export default function ReclamationDetailPage() {
     etapes.push({
       key: "retour",
       titre: "Retour physique en quarantaine",
-      done: !!retour,
-      date: retour?.date_reception,
+      done: !!retour || !!reclamation.retour_statut,
+      date: retour?.date_reception ?? reclamation.retour_date_reception ?? undefined,
       contenu: retour ? (
         <p className="text-[13px]">
           {formatQty(num(retour.quantite_retournee), 0)} reçu(s) · {STATUT_RETOUR_PHYSIQUE_LABEL[retour.statut]} · par {userName(retour.receptionne_par)}
@@ -92,20 +92,29 @@ export default function ReclamationDetailPage() {
             Réceptionner en quarantaine
           </Button>
         </div>
-      ) : voitRetours ? (
-        <p className="text-[12.5px] text-muted">En attente de réception par le magasin.</p>
-      ) : (
-        <p className="text-[12.5px] text-muted">
-          Réception et contrôle suivis par le Magasin et la Qualité (non transmis à ce poste). La solution est refusée tant que le produit retourné n’a pas été contrôlé.
+      ) : !voitRetours && reclamation.retour_statut ? (
+        <p className="text-[13px]">
+          {reclamation.retour_quantite != null && `${formatQty(num(reclamation.retour_quantite), 0)} reçu(s) · `}
+          {reclamation.retour_statut_libelle ?? reclamation.retour_statut}
         </p>
+      ) : (
+        <p className="text-[12.5px] text-muted">En attente de réception par le magasin.</p>
       ),
     });
     etapes.push({
       key: "controle",
       titre: "Contrôle du retour",
-      done: !!controle,
+      done: !!controle || !!reclamation.controle_resultat,
       date: controle?.date_controle,
-      contenu: controle ? (
+      contenu: !controle && !voitRetours ? (
+        reclamation.controle_resultat ? (
+          <StatusBadge tone={reclamation.controle_resultat === "NON_RECUPERABLE" ? "danger" : "success"}>
+            {reclamation.controle_resultat_libelle ?? RESULTAT_CONTROLE_RETOUR_LABEL[reclamation.controle_resultat]}
+          </StatusBadge>
+        ) : (
+          <p className="text-[12.5px] text-muted">Contrôle à réaliser par le Magasin ou la Qualité.</p>
+        )
+      ) : controle ? (
         <div className="text-[13px] space-y-1">
           <StatusBadge tone={controle.resultat === "NON_RECUPERABLE" ? "danger" : "success"}>{RESULTAT_CONTROLE_RETOUR_LABEL[controle.resultat]}</StatusBadge>
           <p className="text-muted">{controle.observations || "Aucune observation."} · par {userName(controle.controle_par)}</p>
@@ -178,6 +187,8 @@ export default function ReclamationDetailPage() {
         {solution.montant_avoir != null && ` · avoir ${formatDa(num(solution.montant_avoir))}`}
         {solution.montant_rembourse != null && ` · remboursé ${formatDa(num(solution.montant_rembourse))}`} · réclamation clôturée
       </p>
+    ) : can("CREATE_SOLUTION") && reclamation.statut !== "CLOTUREE" && reclamation.solution_possible === false ? (
+      <p className="text-[12.5px] text-warning">Le produit retourné est en quarantaine : la solution sera possible une fois le retour contrôlé.</p>
     ) : can("CREATE_SOLUTION") && reclamation.statut !== "CLOTUREE" ? (
       <div className="flex flex-col sm:flex-row sm:items-end gap-2 flex-wrap">
         <Field label="Type">

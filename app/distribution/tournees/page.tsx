@@ -24,14 +24,14 @@ export default function TourneesPage() {
 
 function useNoms() {
   const { state, userName } = useStore();
-  const chauffeur = (id: number) => {
+  const chauffeur = (id: number, recopie?: string | null) => {
     const ch = state.chauffeurs.find((c) => c.id === id);
-    if (!ch) return "—";
+    if (!ch) return recopie || "—";
     const nom = userName(ch.utilisateur);
     if (nom !== "—" && !nom.startsWith("#")) return nom;
     return ch.permis_numero ? `Permis ${ch.permis_numero}` : `Chauffeur n°${ch.id}`;
   };
-  const vehicule = (id: number) => state.vehicules.find((v) => v.id === id)?.immatriculation ?? `Véhicule n°${id}`;
+  const vehicule = (id: number, recopie?: string | null) => state.vehicules.find((v) => v.id === id)?.immatriculation ?? recopie ?? `Véhicule n°${id}`;
   return { chauffeur, vehicule };
 }
 
@@ -134,7 +134,7 @@ function OngletTournees({ initiale }: { initiale: number | null }) {
                         {t.date_tournee === aujourdhui && <StatusBadge tone="teal">Aujourd’hui</StatusBadge>}
                       </div>
                       <p className="text-[12px] text-muted truncate">
-                        {formatDate(t.date_tournee)} · {chauffeur(t.chauffeur)} · {vehicule(t.vehicule)}
+                        {formatDate(t.date_tournee)} · {chauffeur(t.chauffeur, t.chauffeur_nom)} · {vehicule(t.vehicule, t.vehicule_immatriculation)}
                       </p>
                     </div>
                     <span className="text-[11px] num font-semibold px-1.5 py-0.5 rounded-[5px] bg-surface-2 text-muted shrink-0">{nb} BL</span>
@@ -153,7 +153,7 @@ function OngletTournees({ initiale }: { initiale: number | null }) {
               <div className="min-w-0 flex-1">
                 <p className="num text-[15px] font-semibold">{tournee.numero}</p>
                 <p className="text-[12.5px] text-muted">
-                  {formatDate(tournee.date_tournee)} · {chauffeur(tournee.chauffeur)} · {vehicule(tournee.vehicule)}
+                  {formatDate(tournee.date_tournee)} · {chauffeur(tournee.chauffeur, tournee.chauffeur_nom)} · {vehicule(tournee.vehicule, tournee.vehicule_immatriculation)}
                 </p>
               </div>
               <Kilometrage key={tournee.id} tournee={tournee} />

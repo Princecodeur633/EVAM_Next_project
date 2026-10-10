@@ -642,6 +642,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "conversions",
     "nonConformites",
     "reservations",
+    // Contrôles et instruments (lecture) : non-conformités et lots matières.
+    "controlesRealises",
+    "instruments",
   ],
   COMMERCIAL: [
     "famillesArticle",
@@ -665,6 +668,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "transfertsStock",
     "conversions",
     "devis",
+    // Taux fiscaux (lecture) : aperçu des taxes avant facturation.
+    "codesFiscaux",
+    "famillesFiscales",
   ],
   // Caissier : ni clients ni articles côté backend ; les noms viennent de la facture (client_nom).
   // Lignes de commande et de facture : fiche commande ouverte depuis la caisse.
