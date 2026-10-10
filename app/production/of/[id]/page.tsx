@@ -395,7 +395,15 @@ function BesoinsMatieres({ of, modifiable }: { of: OrdreFabrication; modifiable:
   // Aucune donnée financière n'est jamais transmise à l'Agent Production.
   const voitMontants = role !== "AGENT_PRODUCTION";
 
-  const action = !modifiable ? undefined : !dejaDemandees ? (
+  // L’Agent consulte l’OF en lecture, mais peut demander un complément pendant la production.
+  const complementAgent = role === "AGENT_PRODUCTION" && of.statut === "EN_PRODUCTION" && can("CREATE_COMPLEMENT");
+  const action = !modifiable ? (
+    complementAgent ? (
+      <Button variant="secondary" className="h-8 px-3 text-[12.5px]" onClick={() => setComplement(true)}>
+        <Plus size={14} /> Demande complémentaire
+      </Button>
+    ) : undefined
+  ) : !dejaDemandees ? (
     can("DEMANDER_MATIERES_OF") && besoins.length > 0 ? (
       <Button
         className="h-8 px-3 text-[12.5px]"
