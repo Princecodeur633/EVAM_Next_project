@@ -389,7 +389,8 @@ function VehiculeDrawer({ onClose }: { onClose: () => void }) {
 function ChauffeurDrawer({ onClose }: { onClose: () => void }) {
   const { state, dispatch } = useStore();
   const dejaChauffeurs = new Set(state.chauffeurs.map((c) => c.utilisateur));
-  const comptes = state.utilisateurs.filter((u) => u.profil === "CHAUFFEUR" && u.actif && !dejaChauffeurs.has(u.id));
+  // Annuaire (ouvert à tous) : la liste complète des utilisateurs est réservée à l’Admin SI.
+  const comptes = state.annuaire.filter((u) => u.profil === "CHAUFFEUR" && u.actif && !dejaChauffeurs.has(u.id));
   const [user, setUser] = useState(0);
   const [permis, setPermis] = useState("");
   const [saving, setSaving] = useState(false);
@@ -425,7 +426,7 @@ function ChauffeurDrawer({ onClose }: { onClose: () => void }) {
             <option value={0}>Choisir…</option>
             {comptes.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.first_name} {u.last_name} ({u.username})
+                {u.nom} ({u.username})
               </option>
             ))}
           </select>

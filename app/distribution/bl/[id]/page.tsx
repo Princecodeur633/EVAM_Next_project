@@ -33,7 +33,8 @@ export default function BlDetailPage() {
 
   // Comptant : la livraison ne se confirme qu’une fois la facture soldée.
   const comptant = cmd?.type_commande === "COMPTANT";
-  const soldee = facture?.statut === "PAYEE";
+  // Sans accès aux factures (Chauffeur), le statut de paiement vient du BL.
+  const soldee = facture ? facture.statut === "PAYEE" : bl.statut_paiement === "Payée";
   const bloqueParPaiement = comptant && !soldee;
   const peutConfirmer = can("CONFIRMER_BL") && bl.statut !== "LIVREE";
   const peutRemettre = enCours && can("LIVRER_BL") && !bl.signature_client;

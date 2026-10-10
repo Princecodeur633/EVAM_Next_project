@@ -175,7 +175,6 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     icon: "boxes",
     homeHint: "Servir l’atelier, sortir les préparations, réceptionner.",
     paramAllow: ["/parametrage/depots"],
-    paramRead: ["/parametrage/fiches-techniques"],
   },
   RESPONSABLE_ACHATS: {
     role: "RESPONSABLE_ACHATS",

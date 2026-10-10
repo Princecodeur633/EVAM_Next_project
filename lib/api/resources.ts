@@ -476,6 +476,18 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "reservations",
     "donneesEtapes",
     "palettes",
+    // Fiche OF (supervision) : sorties, retours, étapes, pertes, suivi eau, compléments.
+    "sortiesMatieres",
+    "retoursMatieres",
+    "etapes",
+    "pertes",
+    "suivisEau",
+    "demandesComplementaires",
+    // Fiche BL : chauffeur et véhicule de la tournée.
+    "chauffeurs",
+    "vehicules",    // Familles (activité d'un OF) et coûts des retours (marges).
+    "famillesArticle",
+    "coutsRetours",
   ],
   RESPONSABLE_PRODUCTION: [
     "codesFiscaux",
@@ -513,6 +525,11 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "evenementsProduction",
     "reservations",
     "donneesEtapes",
+    // Fiche lot (accès en lecture) : contrôle final et palettes.
+    "controles",
+    "palettes",
+    // Fiche article : ancien référentiel des contrôles (lecture).
+    "controlesQualiteRequis",
   ],
   // Agent : ses OF (filtrés par le backend), leurs besoins et saisies, de quoi choisir étape, poste et
   // machine, et les contrôles de ses OF. Il ne lit ni articles, ni stock, ni lots.
@@ -650,7 +667,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "devis",
   ],
   // Caissier : ni clients ni articles côté backend ; les noms viennent de la facture (client_nom).
-  CAISSIER: ["commandes", "factures", "caisses", "sessionsCaisse", "encaissements", "decaissements", "ecartsCaisse"],
+  // Lignes de commande et de facture : fiche commande ouverte depuis la caisse.
+  CAISSIER: ["commandes", "lignesCommande", "factures", "lignesFacture", "caisses", "sessionsCaisse", "encaissements", "decaissements", "ecartsCaisse"],
   RESPONSABLE_DISTRIBUTION: [
     "clients",
     "stock",
@@ -718,6 +736,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     // Commandes clients en lecture : dérogation de prix sur les lignes des clients sous contrat.
     "commandes",
     "lignesCommande",
+    "lignesFacture",
+    // Tarifs (lecture) : marges des coûts standards.
+    "tarifs",
     // Critères des règles de comptes (format, unité de vente).
     "formatsArticle",
     "unitesVente",
