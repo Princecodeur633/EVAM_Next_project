@@ -52,7 +52,9 @@ export default function BlDetailPage() {
     ...(bl.client_adresse ? ([["Adresse", bl.client_adresse]] as [string, React.ReactNode][]) : []),
     ["Type", cmd ? TYPE_COMMANDE_LABEL[cmd.type_commande] : "—"],
     ["Tournée", tournee ? `${tournee.numero} · ${formatDate(tournee.date_tournee)}` : "Non affecté"],
-    ["Chauffeur / véhicule", tournee ? `${userName(chauffeur?.utilisateur)} · ${vehicule?.immatriculation ?? "—"}` : "—"],
+    ...(chauffeur || vehicule
+      ? ([["Chauffeur / véhicule", `${userName(chauffeur?.utilisateur)} · ${vehicule?.immatriculation ?? "—"}`]] as [string, React.ReactNode][])
+      : []),
     ["Signature client", bl.signature_client ? `Oui${bl.date_signature ? ` · ${formatDateTime(bl.date_signature)}` : ""}` : "Non"],
     ["Généré le", formatDateTime(bl.date_generation)],
   ];

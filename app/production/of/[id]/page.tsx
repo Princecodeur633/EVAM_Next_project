@@ -742,7 +742,7 @@ function LotsConsommes({ of }: { of: OrdreFabrication }) {
 
 /** Contrôles qualité, non-conformités et changements de série de l’OF. */
 function QualiteOf({ of, controles }: { of: OrdreFabrication; controles: ControleRealise[] }) {
-  const { state, can } = useStore();
+  const { state, can, role } = useStore();
   const [ouvert, setOuvert] = useState<ControleRealise | null>(null);
   const [serie, setSerie] = useState(false);
   const aFaire = controlesEnAttente(controles);
@@ -775,6 +775,7 @@ function QualiteOf({ of, controles }: { of: OrdreFabrication; controles: Control
           </div>
         )}
       </Bloc>
+      {role !== "AGENT_PRODUCTION" && (
       <Bloc titre={`Non-conformités (${ncs.length})`}>
         {ncs.length === 0 ? (
           <p className="px-4 py-6 text-center text-[12.5px] text-muted">Aucune non-conformité.</p>
@@ -796,6 +797,7 @@ function QualiteOf({ of, controles }: { of: OrdreFabrication; controles: Control
           </ul>
         )}
       </Bloc>
+      )}
       <Bloc
         titre={`Changements de série (${series.length})`}
         action={

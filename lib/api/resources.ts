@@ -670,6 +670,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   // Lignes de commande et de facture : fiche commande ouverte depuis la caisse.
   CAISSIER: ["commandes", "lignesCommande", "factures", "lignesFacture", "caisses", "sessionsCaisse", "encaissements", "decaissements", "ecartsCaisse"],
   RESPONSABLE_DISTRIBUTION: [
+    // Palettes (lecture) : numéros de lot des lignes de transfert.
+    "palettes",
     "clients",
     "stock",
     "vehicules",

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { Historique } from "@/components/Historique";
 import { Button, Field, PageHeader, StatusBadge, inputClass } from "@/components/ui";
-import { endpoints } from "@/lib/api";
+import { catalogKeysForRole, endpoints } from "@/lib/api";
 import {
   RESULTAT_CONTROLE_RETOUR_LABEL,
   STATUT_RECLAMATION_LABEL,
@@ -24,7 +24,9 @@ type Etape = { key: string; titre: string; done: boolean; contenu: ReactNode; da
 
 export default function ReclamationDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { state, dispatch, articleName, clientName, can, userName } = useStore();
+  const { state, dispatch, articleName, clientName, can, userName, role } = useStore();
+  // Retour physique, contrôle et reconditionnement : lus par le Magasin et la Qualité seulement.
+  const voitRetours = !!role && catalogKeysForRole(role).includes("retoursPhysiques");
   const reclamation = state.reclamations.find((r) => r.id === Number(id));
   const retour = state.retoursPhysiques.find((r) => r.reclamation === reclamation?.id);
   const controle = state.controlesRetour.find((c) => c.retour_physique === retour?.id);
@@ -90,8 +92,12 @@ export default function ReclamationDetailPage() {
             Réceptionner en quarantaine
           </Button>
         </div>
-      ) : (
+      ) : voitRetours ? (
         <p className="text-[12.5px] text-muted">En attente de réception par le magasin.</p>
+      ) : (
+        <p className="text-[12.5px] text-muted">
+          Réception et contrôle suivis par le Magasin et la Qualité (non transmis à ce poste). La solution est refusée tant que le produit retourné n’a pas été contrôlé.
+        </p>
       ),
     });
     etapes.push({

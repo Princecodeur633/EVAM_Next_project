@@ -10,16 +10,7 @@ import {
 } from "@/lib/labels";
 import type { Facture, StatutBL, StatutCommande, StatutDemandeAchat, StatutDevis, StatutLot, StatutOF } from "@/lib/types";
 
-const TONE = {
-  neutral: "neutral",
-  info: "info",
-  success: "success",
-  warning: "warning",
-  danger: "danger",
-  teal: "teal",
-} as const;
-
-type Tone = (typeof TONE)[keyof typeof TONE];
+type Tone = "neutral" | "info" | "success" | "warning" | "danger" | "teal";
 
 export function OfBadge({ status }: { status: StatutOF }) {
   const tones: Record<StatutOF, Tone> = {
