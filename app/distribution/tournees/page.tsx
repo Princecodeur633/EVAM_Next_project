@@ -9,7 +9,8 @@ import { Segmented } from "@/components/Filters";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
-import type { Tournee } from "@/lib/types";
+import { api, endpoints } from "@/lib/api";
+import type { Chauffeur, Tournee, Vehicule } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 
 type Onglet = "tournees" | "vehicules" | "chauffeurs";
@@ -190,11 +191,13 @@ function OngletTournees({ initiale }: { initiale: number | null }) {
 }
 
 function OngletVehicules() {
-  const { state } = useStore();
+  const { state, can } = useStore();
+  const [edition, setEdition] = useState<Vehicule | null>(null);
   return (
     <Panel className="overflow-hidden">
       <DataTable
         emptyText="Aucun véhicule."
+        onRowClick={can("CREATE_VEHICULE") ? (row) => setEdition(state.vehicules.find((v) => String(v.id) === row.id) ?? null) : undefined}
         columns={[
           { key: "i", label: "Immatriculation" },
           { key: "t", label: "Type" },
@@ -202,34 +205,133 @@ function OngletVehicules() {
           { key: "s", label: "Statut" },
         ]}
         rows={state.vehicules.map((v) => ({
+          id: String(v.id),
           i: <span className="num font-medium">{v.immatriculation}</span>,
           t: v.type_vehicule || "—",
           n: state.tournees.filter((t) => t.vehicule === v.id).length,
           s: v.actif ? <StatusBadge tone="success">Actif</StatusBadge> : <StatusBadge tone="neutral">Inactif</StatusBadge>,
         }))}
       />
+      {edition && <VehiculeEditionDrawer vehicule={edition} onClose={() => setEdition(null)} />}
     </Panel>
   );
 }
 
+/** Modification d'un véhicule : immatriculation, type ; un véhicule inactif n'est plus proposé pour une tournée. */
+function VehiculeEditionDrawer({ vehicule, onClose }: { vehicule: Vehicule; onClose: () => void }) {
+  const { dispatch } = useStore();
+  const [immat, setImmat] = useState(vehicule.immatriculation);
+  const [type, setType] = useState(vehicule.type_vehicule ?? "");
+  const [actif, setActif] = useState(vehicule.actif);
+  const [saving, setSaving] = useState(false);
+  async function submit() {
+    setSaving(true);
+    const ok = await dispatch({
+      type: "EXEC",
+      run: () => api.patch(`${endpoints.vehicules}${vehicule.id}/`, { immatriculation: immat.trim(), type_vehicule: type.trim(), actif }),
+      refresh: ["vehicules", "tournees"],
+    });
+    setSaving(false);
+    if (ok) onClose();
+  }
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      title={vehicule.immatriculation}
+      subtitle="Modifier le véhicule"
+      icon={<CarFront size={17} />}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button disabled={!immat.trim() || saving} onClick={() => void submit()}>
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </>
+      }
+    >
+      <DrawerSection title="Véhicule">
+        <Field label="Immatriculation">
+          <input className={inputClass} value={immat} onChange={(e) => setImmat(e.target.value)} />
+        </Field>
+        <Field label="Type">
+          <input className={inputClass} value={type} onChange={(e) => setType(e.target.value)} placeholder="Camion, fourgon…" />
+        </Field>
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={actif} onChange={(e) => setActif(e.target.checked)} />
+          Actif (proposé pour les nouvelles tournées)
+        </label>
+      </DrawerSection>
+    </Drawer>
+  );
+}
+
 function OngletChauffeurs() {
-  const { state, userName } = useStore();
+  const { state, userName, can } = useStore();
+  const [edition, setEdition] = useState<Chauffeur | null>(null);
   return (
     <Panel className="overflow-hidden">
       <DataTable
         emptyText="Aucun chauffeur enregistré."
+        onRowClick={can("CREATE_CHAUFFEUR") ? (row) => setEdition(state.chauffeurs.find((c) => String(c.id) === row.id) ?? null) : undefined}
         columns={[
           { key: "n", label: "Chauffeur" },
           { key: "p", label: "N° de permis" },
           { key: "t", label: "Tournées" },
         ]}
         rows={state.chauffeurs.map((c) => ({
+          id: String(c.id),
           n: userName(c.utilisateur),
           p: c.permis_numero || "—",
           t: state.tournees.filter((t) => t.chauffeur === c.id).length,
         }))}
       />
+      {edition && <ChauffeurEditionDrawer chauffeur={edition} onClose={() => setEdition(null)} />}
     </Panel>
+  );
+}
+
+/** Fiche chauffeur : n° de permis (le compte se gère dans l'administration des utilisateurs). */
+function ChauffeurEditionDrawer({ chauffeur, onClose }: { chauffeur: Chauffeur; onClose: () => void }) {
+  const { dispatch, userName } = useStore();
+  const [permis, setPermis] = useState(chauffeur.permis_numero ?? "");
+  const [saving, setSaving] = useState(false);
+  async function submit() {
+    setSaving(true);
+    const ok = await dispatch({
+      type: "EXEC",
+      run: () => api.patch(`${endpoints.chauffeurs}${chauffeur.id}/`, { permis_numero: permis.trim() }),
+      refresh: ["chauffeurs"],
+    });
+    setSaving(false);
+    if (ok) onClose();
+  }
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      title={userName(chauffeur.utilisateur)}
+      subtitle="Fiche chauffeur"
+      icon={<IdCard size={17} />}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button disabled={saving} onClick={() => void submit()}>
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </>
+      }
+    >
+      <DrawerSection title="Chauffeur" hint="Pour désactiver le chauffeur, désactivez son compte (Admin SI).">
+        <Field label="N° de permis">
+          <input className={inputClass} value={permis} onChange={(e) => setPermis(e.target.value)} />
+        </Field>
+      </DrawerSection>
+    </Drawer>
   );
 }
 

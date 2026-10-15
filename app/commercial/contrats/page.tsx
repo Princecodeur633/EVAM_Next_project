@@ -108,7 +108,7 @@ export default function ContratsPage() {
               k: <span className="text-muted">{c.conditions || "—"}</span>,
             };
           })}
-          onRowClick={(row) => router.push(String(row.href))}
+          onRowClick={can("GERER_CONTRATS_CLIENTS") ? (row) => router.push(String(row.href)) : undefined}
         />
       </Panel>
       {creation && <NouveauContratDrawer onClose={() => setCreation(false)} />}

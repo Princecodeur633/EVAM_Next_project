@@ -5,6 +5,7 @@ import { Eye, Lock, MapPin, Plus, Search, ShieldCheck, Warehouse } from "lucide-
 import { DrawerSection, SidePanel, SplitLayout } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { api, endpoints } from "@/lib/api";
 import { stockDisponible } from "@/lib/engine";
 import { TYPE_LIEU_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -165,7 +166,7 @@ export default function DepotsPage() {
 }
 
 function DepotPanel({ depot, mobileOpen, onClose }: { depot: Depot; mobileOpen: boolean; onClose: () => void }) {
-  const { state, articleName } = useStore();
+  const { state, articleName, can } = useStore();
   const [q, setQ] = useState("");
   const lignes = state.stock
     .filter((s) => s.depot === depot.id && num(s.quantite_physique) > 0)
@@ -215,6 +216,7 @@ function DepotPanel({ depot, mobileOpen, onClose }: { depot: Depot; mobileOpen: 
           </div>
         ))}
       </dl>
+      {can("CREATE_DEPOT") && !depot.est_systeme && <ModifierDepot key={depot.id} depot={depot} />}
 
       <div className="grid grid-cols-2 gap-2">
         {[
@@ -357,5 +359,75 @@ function CreateDepotPanel({ onClose }: { onClose: () => void }) {
         </label>
       </DrawerSection>
     </SidePanel>
+  );
+}
+
+/** Modification d'un dépôt (hors dépôts système, verrouillés par le backend). */
+function ModifierDepot({ depot }: { depot: Depot }) {
+  const { state, dispatch } = useStore();
+  const [nom, setNom] = useState(depot.nom);
+  const [adresse, setAdresse] = useState(depot.adresse ?? "");
+  const [usine, setUsine] = useState(depot.usine ?? 0);
+  const [activite, setActivite] = useState(depot.activite ?? 0);
+  const [gestionLots, setGestionLots] = useState(depot.gestion_lots !== false);
+  const [actif, setActif] = useState(depot.actif);
+  const [saving, setSaving] = useState(false);
+  const usineRequise = depot.type_lieu === "MAGASIN_MATIERES" || depot.type_lieu === "STOCK_USINE";
+  const dirty =
+    nom !== depot.nom || adresse !== (depot.adresse ?? "") || usine !== (depot.usine ?? 0) || activite !== (depot.activite ?? 0) || gestionLots !== (depot.gestion_lots !== false) || actif !== depot.actif;
+
+  async function enregistrer() {
+    setSaving(true);
+    await dispatch({
+      type: "EXEC",
+      run: () =>
+        api.patch(`${endpoints.depots}${depot.id}/`, { nom: nom.trim(), adresse: adresse.trim(), usine: usine || null, activite: activite || null, gestion_lots: gestionLots, actif }),
+      refresh: ["depots"],
+    });
+    setSaving(false);
+  }
+
+  return (
+    <DrawerSection title="Modifier le dépôt" hint="Le type de lieu ne change pas ; un dépôt inactif ne reçoit plus de stock.">
+      <Field label="Nom">
+        <input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} />
+      </Field>
+      <Field label="Adresse">
+        <input className={inputClass} value={adresse} onChange={(e) => setAdresse(e.target.value)} />
+      </Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label={usineRequise ? "Usine *" : "Usine"}>
+          <select className={inputClass} value={usine} onChange={(e) => setUsine(Number(e.target.value))}>
+            <option value={0}>—</option>
+            {state.usines.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nom}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Activité">
+          <select className={inputClass} value={activite} onChange={(e) => setActivite(Number(e.target.value))}>
+            <option value={0}>Toutes activités</option>
+            {state.activites.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.designation}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <label className="flex items-center gap-2 text-[13px]">
+        <input type="checkbox" checked={gestionLots} onChange={(e) => setGestionLots(e.target.checked)} />
+        Gestion des lots
+      </label>
+      <label className="flex items-center gap-2 text-[13px]">
+        <input type="checkbox" checked={actif} onChange={(e) => setActif(e.target.checked)} />
+        Actif
+      </label>
+      <Button className="h-8" disabled={!dirty || !nom.trim() || (usineRequise && !usine) || saving} onClick={() => void enregistrer()}>
+        {saving ? "Enregistrement…" : "Enregistrer le dépôt"}
+      </Button>
+    </DrawerSection>
   );
 }

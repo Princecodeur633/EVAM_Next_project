@@ -451,10 +451,12 @@ function ApercuFacture({ commandeId, onClose }: { commandeId: number; onClose: (
     const ht = num(l.quantite) * num(l.prix_unitaire);
     const article = state.articles.find((a) => a.id === l.article);
     const code = state.codesFiscaux.find((c) => c.id === article?.code_fiscal);
-    const taux = (v: string | undefined) => (code && !code.exonere ? num(v) / 100 : 0);
-    const accise = ht * taux(code?.taux_accise);
-    const centimes = ht * taux(code?.taux_centimes_additionnels);
-    const tva = ht * taux(code?.taux_tva);
+    // Même séquence que le backend (CodeFiscal.calculer_taxes) : accise sur le HT, TVA sur HT + accise,
+    // centimes additionnels sur la TVA ; l'exonération ne porte que sur la TVA.
+    const pct = (v: string | undefined) => (code ? num(v) / 100 : 0);
+    const accise = ht * pct(code?.taux_accise);
+    const tva = code && !code.exonere ? (ht + accise) * pct(code.taux_tva) : 0;
+    const centimes = tva * pct(code?.taux_centimes_additionnels);
     // Le Commercial ne lit pas les codes fiscaux (backend) : article rattaché mais taux inconnus ici.
     return { l, ht, accise, centimes, tva, sansCode: article ? !article.code_fiscal : !code, tauxInconnus: !code && !!article?.code_fiscal };
   });

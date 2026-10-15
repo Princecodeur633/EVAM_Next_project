@@ -7,6 +7,7 @@ import { Drawer, DrawerSection } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { AgentPicker, FtNonValidee, ftValidee, useAgentsDisponibles } from "@/components/production";
 import { Button, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
+import { api, endpoints } from "@/lib/api";
 import { PRIORITE_LABEL, STATUT_PLAN_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import type { PlanProduction, Priorite, StatutPlan } from "@/lib/types";
@@ -19,7 +20,7 @@ const PRIORITE_ORDRE: Record<Priorite, number> = { URGENTE: 0, HAUTE: 1, NORMALE
 type Filtre = "A_CONVERTIR" | "CONVERTIE" | "TOUS";
 
 export default function PlanningPage() {
-  const { state, articleName, can, userName } = useStore();
+  const { state, articleName, can, userName, dispatch } = useStore();
   const [creating, setCreating] = useState(false);
   const [converting, setConverting] = useState<PlanProduction | null>(null);
   const [q, setQ] = useState("");
@@ -115,6 +116,30 @@ export default function PlanningPage() {
                           </Button>
                         ) : (
                           <span className="text-muted text-[12px]">—</span>
+                        )}
+                        {can("CREATE_PLAN") && ouvert(p) && (
+                          <span className="flex justify-end gap-2 mt-1">
+                            {p.statut === "A_CONVERTIR_EN_OF" && (
+                              <button
+                                type="button"
+                                className="text-[11.5px] text-muted hover:text-ink"
+                                onClick={() => void dispatch({ type: "EXEC", run: () => api.patch(`${endpoints.plans}${p.id}/`, { statut: "PREVISION" }), refresh: ["plans"] })}
+                              >
+                                Repasser en prévision
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="text-[11.5px] text-danger hover:underline"
+                              onClick={() => {
+                                if (window.confirm("Annuler ce plan ? Il ne pourra plus être converti en OF.")) {
+                                  void dispatch({ type: "EXEC", run: () => api.patch(`${endpoints.plans}${p.id}/`, { statut: "ANNULEE" }), refresh: ["plans"] });
+                                }
+                              }}
+                            >
+                              Annuler le plan
+                            </button>
+                          </span>
                         )}
                         {can("CONVERTIR_PLAN") && ouvert(p) && !ft && (
                           <Link href="/parametrage/fiches-techniques" className="block text-[11px] text-warning font-medium mt-1 hover:underline">
