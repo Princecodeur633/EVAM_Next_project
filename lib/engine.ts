@@ -95,6 +95,11 @@ export const ACTIONS = {
   DEROGATION_PRIX: ["DIRECTION", "COMPTABILITE_DAF"],
   // Fiche fournisseur (référentiel) : distincte de la passation de commande, réservée au Responsable Achat.
   EDIT_FOURNISSEUR: ["RESPONSABLE_ACHATS", "ADMIN_SI"],
+  /** Catalogue (prix négociés) et contrats fournisseurs. */
+  GERER_CATALOGUE_FOURNISSEURS: ["RESPONSABLE_ACHATS"],
+  GERER_CONTRATS_FOURNISSEURS: ["RESPONSABLE_ACHATS"],
+  /** Retour au fournisseur d'une marchandise reçue (sortie de stock). */
+  CREATE_RETOUR_FOURNISSEUR: ["RESPONSABLE_ACHATS", "MAGASINIER"],
   // --- Fiches techniques : essai (Admin SI, comme la validation) ---
   TESTER_FT: ["ADMIN_SI"],
   // --- Socle industriel : activités, usines, lignes, postes, machines, circuits ---

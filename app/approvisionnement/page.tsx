@@ -9,6 +9,7 @@ import { DaBadge } from "@/components/badges";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Button, DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
 import { ORIGINE_BESOIN_LABEL, STATUT_CF_LABEL } from "@/lib/labels";
+import { api, endpoints } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import type { CommandeFournisseur, DemandeAchat } from "@/lib/types";
 import { cn, formatDa, formatDate, formatQty, num } from "@/lib/utils";
@@ -211,6 +212,20 @@ function Approvisionnement() {
               x:
                 d.statut === "EN_ATTENTE" && can("APPROUVER_DA") ? (
                   <span className="flex gap-1.5 justify-end">
+                    {can("CREATE_DA") && (
+                      <Button
+                        variant="ghost"
+                        className="h-8 px-2 text-[12px] text-muted"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          if (window.confirm("Supprimer cette demande d’achat en attente ?")) {
+                            void dispatch({ type: "EXEC", run: () => api.del(`${endpoints.demandesAchat}${d.id}/`), refresh: ["demandesAchat", "besoinsAchat"] });
+                          }
+                        }}
+                      >
+                        Supprimer
+                      </Button>
+                    )}
                     {can("REJETER_DA") && (
                       <Button variant="secondary" className="h-8 px-2.5 text-[12px] text-danger" disabled={busy !== null} onClick={() => void run(`r${d.id}`, { type: "REJETER_DA", id: d.id })}>
                         <X size={13} /> Rejeter

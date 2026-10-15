@@ -1,4 +1,5 @@
 import type {
+  StatutContratFournisseur,
   ChampEtape,
   FormatExport,
   SensCompte,
@@ -580,6 +581,13 @@ export const STATUT_CF_LABEL: Record<StatutCommandeFournisseur, string> = {
   PARTIELLEMENT_RECUE: "Partiellement reçue",
   RECUE: "Reçue",
   ANNULEE: "Annulée",
+};
+
+export const STATUT_CONTRAT_FOURNISSEUR_LABEL: Record<StatutContratFournisseur, string> = {
+  BROUILLON: "Brouillon",
+  ACTIF: "Actif",
+  EXPIRE: "Expiré",
+  RESILIE: "Résilié",
 };
 
 export const MOTIF_RETOUR_LABEL: Record<MotifRetour, string> = {

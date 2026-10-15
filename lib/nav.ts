@@ -95,6 +95,14 @@ const I = {
 const SUPERVISION: HubTab[] = [
   { label: "Commandes", href: "/commercial/commandes" },
   { label: "Devis", href: "/commercial/devis" },
+  {
+    label: "Clients",
+    href: "/commercial/contrats",
+    items: [
+      { href: "/commercial/contrats", label: "Contrats" },
+      { href: "/commercial/prospects", label: "Prospects" },
+    ],
+  },
   { label: "Production", href: "/production/of", items: [{ href: "/production/of", label: "Ordres de fabrication" }, { href: "/production/charge-lignes", label: "Charge des lignes" }, { href: "/production/qualite", label: "Lots" }] },
   {
     label: "Achats",
@@ -105,7 +113,15 @@ const SUPERVISION: HubTab[] = [
       { href: "/approvisionnement/receptions", label: "Réceptions" },
     ],
   },
-  { label: "Distribution", href: "/distribution/preparations", items: [{ href: "/distribution/preparations", label: "Préparations" }, { href: "/distribution/bl", label: "Bons de livraison" }] },
+  {
+    label: "Distribution",
+    href: "/distribution/preparations",
+    items: [
+      { href: "/distribution/preparations", label: "Préparations" },
+      { href: "/distribution/bl", label: "Bons de livraison" },
+      { href: "/distribution/tournees", label: "Tournées & flotte" },
+    ],
+  },
   {
     label: "Qualité",
     href: "/qualite/indicateurs",
@@ -319,7 +335,13 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.accueil,
       { ...I.sorties, label: "Servir l’atelier", hint: "Livrer les matières demandées" },
       I.prep,
-      I.rec,
+      {
+        ...I.rec,
+        hub: [
+          { label: "Réceptions", href: "/approvisionnement/receptions" },
+          { label: "Retours fournisseurs", href: "/approvisionnement/retours-fournisseurs" },
+        ],
+      },
       { ...I.stock, label: "Stock", hint: "Situation, mouvements, inventaires, dépôts", hub: STOCK_MAGASIN },
       { ...I.reclamations, label: "Retours clients", hint: "Réception, contrôle, reconditionnement" },
     ]),
@@ -329,7 +351,17 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("appro", "Achats", "cart", [
       I.accueil,
       { href: "/approvisionnement", label: "Approvisionnement", hint: "Besoins → demandes → commandes → réceptions" },
-      { href: "/parametrage/fournisseurs", label: "Fournisseurs", hint: "Fiches fournisseurs" },
+      {
+        href: "/parametrage/fournisseurs",
+        label: "Fournisseurs",
+        hint: "Fiches, catalogue, contrats, retours",
+        hub: [
+          { label: "Fiches", href: "/parametrage/fournisseurs" },
+          { label: "Catalogue", href: "/approvisionnement/catalogue" },
+          { label: "Contrats", href: "/approvisionnement/contrats-fournisseurs" },
+          { label: "Retours", href: "/approvisionnement/retours-fournisseurs" },
+        ],
+      },
       {
         href: "/stocks/lots-matieres",
         label: "Lots & NC",
@@ -563,6 +595,9 @@ export function breadcrumbs(pathname: string) {
     commandes: "Commandes",
     devis: "Devis",
     prospects: "Prospects",
+    catalogue: "Catalogue fournisseurs",
+    "contrats-fournisseurs": "Contrats fournisseurs",
+    "retours-fournisseurs": "Retours fournisseurs",
     contrats: "Contrats",
     receptions: "Réceptions",
     commercial: "Commercial",

@@ -488,6 +488,10 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "vehicules",    // Familles (activité d'un OF) et coûts des retours (marges).
     "famillesArticle",
     "coutsRetours",
+    // Supervision : prospects, contrats clients, retours fournisseurs (lecture).
+    "prospects",
+    "contratsClients",
+    "retoursFournisseur",
   ],
   RESPONSABLE_PRODUCTION: [
     "codesFiscaux",
@@ -619,6 +623,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "retoursPhysiques",
     "controlesRetour",
     "reconditionnements",
+    // Retours fournisseurs (sortie de la marchandise renvoyée).
+    "retoursFournisseur",
   ],
   RESPONSABLE_ACHATS: [
     "famillesArticle",
@@ -645,6 +651,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     // Contrôles et instruments (lecture) : non-conformités et lots matières.
     "controlesRealises",
     "instruments",
+    // Retours fournisseurs.
+    "retoursFournisseur",
   ],
   COMMERCIAL: [
     "famillesArticle",

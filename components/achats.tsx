@@ -6,7 +6,7 @@ import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, StatusBadge, inputClass } from "@/components/ui";
-import { actions, endpoints } from "@/lib/api";
+import { actions, api, endpoints } from "@/lib/api";
 import { STATUT_CF_LABEL, UNITE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import type { CommandeFournisseur, DemandeAchat, UniteMesure } from "@/lib/types";
@@ -171,7 +171,18 @@ export function CommandeFournisseurDrawer({ cf, da, onClose }: { cf?: CommandeFo
                       <td className="px-3 py-2.5 text-right text-[13px] num">{formatQty(num(l.quantite_commandee), 2)}</td>
                       <td className="px-3 py-2.5 text-[12.5px] text-muted">{l.unite ? (UNITE_LABEL[l.unite as UniteMesure] ?? l.unite) : "Stock"}</td>
                       <td className="px-3 py-2.5 text-right text-[13px] num">{formatDa(num(l.prix_unitaire))}</td>
-                      <td />
+                      <td className="pr-2">
+                        {editable && (
+                          <button
+                            type="button"
+                            aria-label="Supprimer la ligne"
+                            onClick={() => void dispatch({ type: "EXEC", run: () => api.del(`${endpoints.lignesCommandeFournisseur}${l.id}/`), refresh: ["lignesCommandeFournisseur", "commandesFournisseur"] })}
+                            className="h-8 w-8 rounded-[6px] flex items-center justify-center text-muted hover:text-danger hover:bg-danger-soft"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {editable &&

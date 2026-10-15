@@ -7,7 +7,7 @@ import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } 
 import { api } from "@/lib/api";
 import { endpoints } from "@/lib/api/resources";
 import { useStore } from "@/lib/store";
-import type { FamilleFiscale } from "@/lib/types";
+import type { CodeFiscal, FamilleFiscale } from "@/lib/types";
 import { cn, num } from "@/lib/utils";
 
 /** Fiscalité : familles à gauche, codes de la famille à droite, création de code en tiroir (code généré). */
@@ -17,6 +17,7 @@ export default function FiscalitePage() {
   const [choix, setChoix] = useState<number | null>(null);
   const [nouvelle, setNouvelle] = useState("");
   const [creation, setCreation] = useState(false);
+  const [edition, setEdition] = useState<CodeFiscal | null>(null);
   const familles = [...state.famillesFiscales].sort((a, b) => Number(b.actif) - Number(a.actif) || a.nom.localeCompare(b.nom, "fr"));
   const famille = familles.find((f) => f.id === choix) ?? familles[0] ?? null;
   const codes = famille ? state.codesFiscaux.filter((c) => c.famille_fiscale === famille.id) : [];
@@ -106,7 +107,9 @@ export default function FiscalitePage() {
               { key: "art", label: "Articles", className: "text-right" },
               { key: "s", label: "Statut" },
             ]}
+            onRowClick={canEdit ? (row) => setEdition(codes.find((c) => String(c.id) === row.id) ?? null) : undefined}
             rows={codes.map((c) => ({
+              id: String(c.id),
               c: <span className="num font-medium">{c.code}</span>,
               t: <span className="num">{c.exonere ? "Exonéré" : `${num(c.taux_tva)} %`}</span>,
               a: <span className="num">{num(c.taux_accise)} %</span>,
@@ -119,6 +122,7 @@ export default function FiscalitePage() {
       </div>
 
       {creation && famille && <NouveauCodeDrawer famille={famille} onClose={() => setCreation(false)} />}
+      {edition && <ModifierCodeDrawer code={edition} onClose={() => setEdition(null)} />}
     </div>
   );
 }
@@ -201,6 +205,94 @@ function NouveauCodeDrawer({ famille, onClose }: { famille: FamilleFiscale; onCl
           </Field>
         </div>
         {err && <p className="text-[12.5px] text-danger">{err}</p>}
+      </DrawerSection>
+    </Drawer>
+  );
+}
+
+/**
+ * Modification d'un code fiscal : taux, exonération, SFEC, situation, actif. Les factures déjà émises
+ * gardent les taux figés sur leurs lignes ; un code inactif ne se rattache plus à un article.
+ */
+function ModifierCodeDrawer({ code, onClose }: { code: CodeFiscal; onClose: () => void }) {
+  const { state, dispatch } = useStore();
+  const [tva, setTva] = useState(String(num(code.taux_tva)));
+  const [centimes, setCentimes] = useState(String(num(code.taux_centimes_additionnels)));
+  const [accise, setAccise] = useState(String(num(code.taux_accise)));
+  const [exonere, setExonere] = useState(code.exonere);
+  const [sfec, setSfec] = useState(code.sfec_actif);
+  const [situation, setSituation] = useState(code.situation ?? "");
+  const [actif, setActif] = useState(code.actif);
+  const [saving, setSaving] = useState(false);
+  const nbArticles = state.articles.filter((a) => a.code_fiscal === code.id).length;
+
+  async function submit() {
+    setSaving(true);
+    const ok = await dispatch({
+      type: "EXEC",
+      run: () =>
+        api.patch(`${endpoints.codesFiscaux}${code.id}/`, {
+          exonere,
+          taux_tva: exonere ? "0" : tva,
+          taux_centimes_additionnels: centimes,
+          taux_accise: accise,
+          sfec_actif: sfec,
+          situation: situation.trim(),
+          actif,
+        }),
+      refresh: ["codesFiscaux"],
+    });
+    setSaving(false);
+    if (ok) onClose();
+  }
+
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      title={code.code}
+      subtitle={`${nbArticles} article(s) rattaché(s). Les factures déjà émises gardent leurs taux.`}
+      icon={<Percent size={17} />}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button disabled={saving} onClick={() => void submit()}>
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </>
+      }
+    >
+      <DrawerSection title="Taux">
+        <label className="flex items-center gap-2.5 rounded-[9px] border border-line px-3.5 py-2.5 text-[13px] cursor-pointer">
+          <input type="checkbox" className="h-4 w-4" checked={exonere} onChange={(e) => setExonere(e.target.checked)} />
+          Exonéré de TVA
+        </label>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="TVA %">
+            <input className={cn(inputClass, "num text-right")} value={exonere ? "0" : tva} disabled={exonere} onChange={(e) => setTva(e.target.value)} />
+          </Field>
+          <Field label="Accise %">
+            <input className={cn(inputClass, "num text-right")} value={accise} onChange={(e) => setAccise(e.target.value)} />
+          </Field>
+          <Field label="Centimes % (de la TVA)">
+            <input className={cn(inputClass, "num text-right")} value={centimes} onChange={(e) => setCentimes(e.target.value)} />
+          </Field>
+        </div>
+      </DrawerSection>
+      <DrawerSection title="Suivi">
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={sfec} onChange={(e) => setSfec(e.target.checked)} />
+          Facture normalisée (SFEC) pour ce code
+        </label>
+        <Field label="Situation / réserve">
+          <textarea className={cn(inputClass, "h-20 py-2")} value={situation} onChange={(e) => setSituation(e.target.value)} />
+        </Field>
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={actif} onChange={(e) => setActif(e.target.checked)} />
+          Actif (un code inactif ne se rattache plus à un nouvel article)
+        </label>
       </DrawerSection>
     </Drawer>
   );
