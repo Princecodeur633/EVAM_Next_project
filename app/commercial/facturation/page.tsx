@@ -7,7 +7,7 @@ import { Drawer, DrawerSection } from "@/components/Drawer";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Tabs } from "@/components/Tabs";
 import { Button, DataTable, Field, PageHeader, Panel, StatusBadge, inputClass } from "@/components/ui";
-import { actions, fetchImpayes, type FactureImpayee } from "@/lib/api";
+import { actions, api, endpoints, fetchImpayes, type FactureImpayee } from "@/lib/api";
 import { telechargerFacturePdf } from "@/lib/facturePdf";
 import { STATUT_AVOIR_LABEL, STATUT_FACTURE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -196,7 +196,7 @@ function Impayes({ rows, erreur }: { rows: FactureImpayee[] | null; erreur: stri
 }
 
 function Avoirs() {
-  const { state, clientName, can } = useStore();
+  const { state, clientName, can, dispatch } = useStore();
   const [q, setQ] = useState("");
   const [appliquer, setAppliquer] = useState<Avoir | null>(null);
   const rows = state.avoirs
@@ -244,6 +244,19 @@ function Avoirs() {
               {a.statut === "EMIS" && can("UTILISER_AVOIR") && (
                 <Button variant="secondary" className="h-8 px-3 text-[12.5px]" onClick={() => setAppliquer(a)}>
                   Appliquer
+                </Button>
+              )}
+              {a.statut === "EMIS" && can("CREATE_AVOIR") && (
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2.5 text-[12.5px] text-danger"
+                  onClick={() => {
+                    if (window.confirm(`Annuler l’avoir ${a.numero} ? Il ne pourra plus être appliqué.`)) {
+                      void dispatch({ type: "EXEC", run: () => api.patch(`${endpoints.avoirs}${a.id}/`, { statut: "ANNULE" }), refresh: ["avoirs"] });
+                    }
+                  }}
+                >
+                  Annuler
                 </Button>
               )}
             </span>
