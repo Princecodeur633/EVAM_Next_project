@@ -34,6 +34,8 @@ export const ACTIONS = {
   GERER_DEVIS: ["COMMERCIAL"],
   /** Contrats clients et leurs tarifs négociés (exigés pour une vente « Contrat »). */
   GERER_CONTRATS_CLIENTS: ["COMMERCIAL"],
+  /** Prospects (clients potentiels) : création, suivi, conversion en client. */
+  GERER_PROSPECTS: ["COMMERCIAL"],
   CREATE_FACTURE: ["COMMERCIAL"],
   GENERER_LIGNES_FACTURE: ["COMMERCIAL"],
   CREATE_AVOIR: ["COMMERCIAL", "COMPTABILITE_DAF"],

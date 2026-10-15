@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, BadgePercent, Check, FileDown, Plus, Receipt, X } from "lucide-react";
+import { ArrowLeft, BadgePercent, Ban, Check, FileDown, Pencil, Plus, Receipt, RotateCcw, Trash2, X } from "lucide-react";
 import { OrderBadge } from "@/components/badges";
 import { DerogationDrawer } from "@/components/DerogationDrawer";
 import { Drawer, DrawerSection } from "@/components/Drawer";
 import { Historique } from "@/components/Historique";
 import { SfecFacture } from "@/components/sfec";
 import { Button, Guard, ORDER_STEPS, PageHeader, Panel, StatusBadge, StatusStepper, inputClass } from "@/components/ui";
-import { actions, endpoints } from "@/lib/api";
+import { actions, api, endpoints } from "@/lib/api";
 import { stockDisponible } from "@/lib/engine";
 import { telechargerFacturePdf } from "@/lib/facturePdf";
 import { STATUT_FACTURE_LABEL, TYPE_COMMANDE_LABEL } from "@/lib/labels";
@@ -21,7 +21,10 @@ import { cn, formatDa, formatDate, formatQty, num } from "@/lib/utils";
 export default function CommandeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, dispatch, clientName, articleName, produitsFinis, tarifFor, can } = useStore();
+  const router = useRouter();
   const cmd = state.commandes.find((c) => c.id === Number(id));
+  const [edition, setEdition] = useState<{ id: number; qty: string } | null>(null);
+  const [confirmer, setConfirmer] = useState<"annuler" | "supprimer" | "annulerFacture" | null>(null);
   const [ajout, setAjout] = useState(false);
   const [article, setArticle] = useState(0);
   const [qty, setQty] = useState("");
@@ -31,7 +34,9 @@ export default function CommandeDetailPage() {
   if (!cmd) return <p className="text-[13px] text-muted">Commande introuvable.</p>;
 
   const lignes = state.lignesCommande.filter((l) => l.commande === cmd.id);
-  const facture = state.factures.find((f) => f.commande === cmd.id);
+  // Facture active d'abord (une facture annulée ne compte plus).
+  const facture = state.factures.find((f) => f.commande === cmd.id && f.statut !== "ANNULEE") ?? state.factures.find((f) => f.commande === cmd.id);
+  const factureActive = !!facture && facture.statut !== "ANNULEE";
   const lignesFacture = state.lignesFacture.filter((l) => l.facture === facture?.id);
   const client = state.clients.find((c) => c.id === cmd.client);
   const total = lignes.reduce((a, l) => a + num(l.quantite) * num(l.prix_unitaire), 0);
@@ -46,11 +51,18 @@ export default function CommandeDetailPage() {
   const depasse = plafond > 0 && encours + (facture ? 0 : total) > plafond;
 
   const brouillon = cmd.statut === "BROUILLON";
-  const peutLignes = brouillon && can("CREATE_COMMANDE");
+  // Lignes modifiables tant que la commande n'est pas partie en préparation et n'est pas facturée (backend).
+  const modifiable = (cmd.statut === "BROUILLON" || cmd.statut === "VALIDEE") && !factureActive && can("CREATE_COMMANDE");
+  const peutLignes = modifiable;
+  const peutRepasserBrouillon = cmd.statut === "VALIDEE" && !factureActive && can("CREATE_COMMANDE");
+  const peutAnnuler = (cmd.statut === "BROUILLON" || cmd.statut === "VALIDEE") && !factureActive && can("CREATE_COMMANDE");
+  const peutSupprimer = brouillon && can("CREATE_COMMANDE");
+  // Facture annulable tant qu'aucun paiement n'est reçu (sinon : avoir).
+  const peutAnnulerFacture = !!facture && facture.statut === "EMISE" && can("CREATE_FACTURE");
   const peutValider = brouillon && can("CREATE_COMMANDE") && lignes.length > 0;
   // Client sous contrat : la facture est émise automatiquement après la confirmation de livraison.
   const sousContrat = cmd.type_commande === "CONTRAT";
-  const peutFacturer = !facture && !brouillon && !sousContrat && cmd.statut !== "ANNULEE" && can("CREATE_FACTURE") && lignes.length > 0;
+  const peutFacturer = !factureActive && !brouillon && !sousContrat && cmd.statut !== "ANNULEE" && can("CREATE_FACTURE") && lignes.length > 0;
   const peutDeroger = sousContrat && can("DEROGATION_PRIX") && cmd.statut !== "FACTUREE" && cmd.statut !== "ANNULEE";
   const pdfPret = !!facture && !!client && lignesFacture.length > 0;
   const prix = article ? tarifFor(article, cmd.client) : 0;
@@ -70,13 +82,75 @@ export default function CommandeDetailPage() {
     await dispatch({ type: "PATCH_COMMANDE", id: cmd!.id, statut: "VALIDEE" });
     setBusy(false);
   }
+  async function exec(run: () => Promise<unknown>, refresh: ("commandes" | "lignesCommande" | "factures")[] = ["commandes", "lignesCommande"]) {
+    setBusy(true);
+    const ok = await dispatch({ type: "EXEC", run, refresh });
+    setBusy(false);
+    return ok;
+  }
+  async function enregistrerQuantite() {
+    if (!edition) return;
+    if (await exec(() => api.patch(`${endpoints.lignesCommande}${edition.id}/`, { quantite: Number(edition.qty) }))) setEdition(null);
+  }
+  async function actionConfirmee() {
+    const quoi = confirmer;
+    setConfirmer(null);
+    if (quoi === "annuler") await exec(() => api.patch(`${endpoints.commandes}${cmd!.id}/`, { statut: "ANNULEE" }));
+    if (quoi === "annulerFacture") await exec(() => api.patch(`${endpoints.factures}${facture!.id}/`, { statut: "ANNULEE" }), ["factures", "commandes"]);
+    if (quoi === "supprimer" && (await exec(() => api.del(`${endpoints.commandes}${cmd!.id}/`)))) router.push("/commercial/commandes");
+  }
 
   return (
     <div className="space-y-4 max-w-[1280px]">
       <Link href="/commercial/commandes" className="inline-flex items-center gap-1 text-[12px] text-muted hover:text-ink">
         <ArrowLeft size={13} /> Commandes
       </Link>
-      <PageHeader eyebrow="Commande" title={cmd.numero} status={<OrderBadge status={cmd.statut} />} description={TYPE_COMMANDE_LABEL[cmd.type_commande] ?? cmd.type_commande} />
+      <PageHeader
+        eyebrow="Commande"
+        title={cmd.numero}
+        status={<OrderBadge status={cmd.statut} />}
+        description={TYPE_COMMANDE_LABEL[cmd.type_commande] ?? cmd.type_commande}
+        actions={
+          peutRepasserBrouillon || peutAnnuler || peutSupprimer ? (
+            <div className="flex flex-wrap gap-2">
+              {peutRepasserBrouillon && (
+                <Button variant="secondary" disabled={busy} onClick={() => void exec(() => api.patch(`${endpoints.commandes}${cmd.id}/`, { statut: "BROUILLON" }))}>
+                  <RotateCcw size={14} /> Repasser en brouillon
+                </Button>
+              )}
+              {peutSupprimer && (
+                <Button variant="ghost" className="text-danger" disabled={busy} onClick={() => setConfirmer("supprimer")}>
+                  <Trash2 size={14} /> Supprimer
+                </Button>
+              )}
+              {peutAnnuler && (
+                <Button variant="ghost" className="text-danger" disabled={busy} onClick={() => setConfirmer("annuler")}>
+                  <Ban size={14} /> Annuler la commande
+                </Button>
+              )}
+            </div>
+          ) : undefined
+        }
+      />
+      {confirmer && (
+        <Guard variant="warn" title={confirmer === "supprimer" ? "Supprimer cette commande brouillon ?" : confirmer === "annuler" ? "Annuler cette commande ?" : "Annuler cette facture ?"}>
+          <p>
+            {confirmer === "supprimer"
+              ? "La commande et ses lignes seront supprimées définitivement."
+              : confirmer === "annuler"
+                ? "La commande passe « Annulée » : elle ne pourra plus être préparée, livrée ni facturée."
+                : "La facture passe « Annulée » (document conservé). La commande pourra être facturée à nouveau."}
+          </p>
+          <div className="flex gap-2 mt-2">
+            <Button variant="danger" className="h-8" disabled={busy} onClick={() => void actionConfirmee()}>
+              Confirmer
+            </Button>
+            <Button variant="ghost" className="h-8" onClick={() => setConfirmer(null)}>
+              Retour
+            </Button>
+          </div>
+        </Guard>
+      )}
       <StatusStepper steps={ORDER_STEPS} current={cmd.statut === "ANNULEE" ? "BROUILLON" : cmd.statut} />
 
       {/* Client + encours en direct */}
@@ -165,7 +239,7 @@ export default function CommandeDetailPage() {
                     <th className="px-4 py-2 font-medium text-right">Quantité</th>
                     <th className="px-4 py-2 font-medium text-right">Prix</th>
                     <th className="px-4 py-2 font-medium text-right">Montant</th>
-                    {peutDeroger && <th className="px-4 py-2 w-[48px]" />}
+                    {(peutDeroger || modifiable) && <th className="px-4 py-2 w-[88px]" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -178,7 +252,30 @@ export default function CommandeDetailPage() {
                           <p className="text-[13px] font-medium">{articleName(l.article)}</p>
                           <p className={cn("text-[11.5px] num", court ? "text-warning" : "text-muted")}>Stock disponible {formatQty(d, 0)}</p>
                         </td>
-                        <td className="px-4 py-2.5 text-right text-[13px] num">{formatQty(num(l.quantite), 0)}</td>
+                        <td className="px-4 py-2.5 text-right text-[13px] num">
+                          {edition?.id === l.id ? (
+                            <span className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                aria-label="Nouvelle quantité"
+                                className={cn(inputClass, "h-8 w-[90px] num text-right")}
+                                value={edition.qty}
+                                onChange={(e) => setEdition({ id: l.id, qty: e.target.value })}
+                                autoFocus
+                              />
+                              <button type="button" aria-label="Enregistrer la quantité" className="h-7 w-7 inline-flex items-center justify-center text-success" disabled={!(Number(edition.qty) > 0) || busy} onClick={() => void enregistrerQuantite()}>
+                                <Check size={14} />
+                              </button>
+                              <button type="button" aria-label="Annuler la modification" className="h-7 w-7 inline-flex items-center justify-center text-muted" onClick={() => setEdition(null)}>
+                                <X size={14} />
+                              </button>
+                            </span>
+                          ) : (
+                            formatQty(num(l.quantite), 0)
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 text-right text-[13px] num">
                           {formatDa(num(l.prix_unitaire))}
                           {l.prix_tarif != null && num(l.prix_tarif) !== num(l.prix_unitaire) && (
@@ -188,8 +285,32 @@ export default function CommandeDetailPage() {
                           )}
                         </td>
                         <td className="px-4 py-2.5 text-right text-[13px] num font-medium">{formatDa(num(l.quantite) * num(l.prix_unitaire))}</td>
-                        {peutDeroger && (
-                          <td className="px-2 py-2.5 text-right">
+                        {(peutDeroger || modifiable) && (
+                          <td className="px-2 py-2.5 text-right whitespace-nowrap">
+                            {modifiable && edition?.id !== l.id && (
+                              <button
+                                type="button"
+                                title="Modifier la quantité"
+                                aria-label="Modifier la quantité"
+                                className="h-7 w-7 rounded-[6px] inline-flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2"
+                                onClick={() => setEdition({ id: l.id, qty: String(num(l.quantite)) })}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
+                            {modifiable && !(cmd.statut === "VALIDEE" && lignes.length <= 1) && (
+                              <button
+                                type="button"
+                                title="Supprimer la ligne"
+                                aria-label="Supprimer la ligne"
+                                className="h-7 w-7 rounded-[6px] inline-flex items-center justify-center text-muted hover:text-danger hover:bg-danger-soft"
+                                disabled={busy}
+                                onClick={() => void exec(() => api.del(`${endpoints.lignesCommande}${l.id}/`))}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                            {peutDeroger && (
                             <button
                               type="button"
                               title="Autoriser un prix différent du tarif"
@@ -199,6 +320,7 @@ export default function CommandeDetailPage() {
                             >
                               <BadgePercent size={14} />
                             </button>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -250,6 +372,11 @@ export default function CommandeDetailPage() {
                   </Guard>
                 )}
                 <SfecFacture facture={facture} />
+                {peutAnnulerFacture && (
+                  <Button variant="ghost" className="h-8 px-3 text-[12px] text-danger" disabled={busy} onClick={() => setConfirmer("annulerFacture")}>
+                    <Ban size={13} /> Annuler la facture (aucun paiement reçu)
+                  </Button>
+                )}
               </div>
             ) : (
               <p className="p-4 text-[12.5px] text-muted">
