@@ -1271,6 +1271,8 @@ export interface CoutRetourPerte {
   quantite_detruite: string | null;
   cout_produit_detruit: string | null;
   cout_reconditionnement: string | null;
+  /** Numéro recopié (Direction et DAF ne lisent pas les réclamations). */
+  reclamation_numero?: string;
   date_enregistrement: string;
 }
 
@@ -1687,6 +1689,8 @@ export interface LigneTransfert {
   cout_unitaire: string | null;
   /** Palette entière : article, lot et quantité sont repris de la palette. */
   palette?: number | null;
+  /** Numéro du lot recopié par le backend (la Distribution ne lit pas les lots). */
+  lot_numero?: string | null;
 }
 
 export interface TransfertStock {
