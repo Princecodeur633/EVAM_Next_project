@@ -169,7 +169,7 @@ export type TypeSolution = "REMPLACEMENT" | "AVOIR" | "REMBOURSEMENT";
 export type PeriodeRapport = "JOURNALIER" | "MENSUEL";
 
 // --- Socle industriel ---
-export type PhaseEtape = "AMONT" | "PREPARATION" | "CONDITIONNEMENT" | "APRES_PRODUCTION";
+export type PhaseEtape = "AMONT" | "PREPARATION" | "CONDITIONNEMENT" | "SITE" | "APRES_PRODUCTION";
 export type TypeEquipement =
   | "FORAGE"
   | "POMPE"
@@ -232,6 +232,8 @@ export type DecisionNC = "LIBERATION" | "REPRISE" | "REJET" | "QUARANTAINE";
 
 // --- Coûts en cascade ---
 export type Inducteur =
+  | "QUANTITE_PRODUITE"
+  | "VOLUME_EAU_BRUTE_M3"
   | "VOLUME_EAU_M3"
   | "BOUTEILLES"
   | "PACKS"
@@ -247,8 +249,17 @@ export type Inducteur =
   | "TEMPS_CHANGEMENT_SERIE"
   | "PALETTES_LIVREES"
   | "LITRES_LIVRES"
+  | "SURFACE_M2"
+  | "EFFECTIF"
+  | "TEMPS_UTILISATION_H"
+  | "VOLUME_OCCUPE_M3"
+  | "EMPLACEMENTS_PALETTES"
+  | "CHIFFRE_AFFAIRES"
+  | "QUANTITE_VENDUE"
   | "AUCUN";
-export type CategorieCout = "PRODUCTION" | "STOCKAGE" | "DISTRIBUTION" | "HORS_COUT";
+/** Clés « de site » : valeurs saisies par usine / activité (ValeurCle), pas mesurées sur les OF. */
+export type CleDeSite = "SURFACE_M2" | "EFFECTIF" | "TEMPS_UTILISATION_H" | "VOLUME_OCCUPE_M3" | "EMPLACEMENTS_PALETTES";
+export type CategorieCout = "PRODUCTION" | "STOCKAGE" | "DISTRIBUTION" | "COMMERCIAL" | "HORS_COUT";
 export type Traitement = "DIRECT" | "INDIRECT";
 export type CategorieEconomique =
   | "ENERGIE"
@@ -265,7 +276,7 @@ export type CategorieEconomique =
   | "AUTRE";
 export type StatutDonnee = "REEL" | "ESTIME";
 export type StatutRepartition = "A_REPARTIR" | "REPARTIE" | "PARTIELLE" | "NON_REPARTIE";
-export type NiveauRepartition = "ACTIVITE" | "OF" | "PRODUIT" | "ARTICLE";
+export type NiveauRepartition = "SITE" | "ACTIVITE" | "OF" | "PRODUIT" | "ARTICLE";
 
 export interface Utilisateur {
   id: number;
@@ -1456,6 +1467,8 @@ export interface Activite {
   code: string;
   designation: string;
   regles_specifiques: string;
+  /** Litres équivalents par unité produite (Eau, Jus : 1 L ; Yaourt : 1 kg = 1 L) pour partager une charge commune. */
+  litres_equivalents_par_unite?: string;
   actif: boolean;
 }
 
@@ -1979,6 +1992,11 @@ export interface NatureCout {
   categorie_economique: CategorieEconomique;
   traitement: Traitement;
   inducteur: Inducteur;
+  /** Clé de l'activité vers ses OF (production) ; vide = la clé ci-dessus, ou arrêt à l'activité pour une clé de site. */
+  inducteur_of?: Inducteur | "";
+  /** Affectation directe par défaut (ex. traitement de l'eau → Eau). */
+  activite?: number | null;
+  activite_code?: string | null;
   justification: string;
   date_debut: string | null;
   date_fin: string | null;
@@ -1997,6 +2015,12 @@ export interface Charge {
   periode: string;
   montant: string;
   activite: number | null;
+  /** Charge propre à un site : répartie entre les seules activités de ce site. */
+  usine?: number | null;
+  usine_code?: string | null;
+  /** Part d'une facture ventilée (FactureCharge). */
+  facture?: number | null;
+  facture_numero?: string | null;
   equipement: number | null;
   ordre_fabrication: number | null;
   tournee: number | null;
@@ -2014,6 +2038,8 @@ export interface RepartitionCout {
   charge: number;
   parent: number | null;
   niveau: NiveauRepartition;
+  usine?: number | null;
+  usine_code?: string | null;
   activite: number | null;
   ordre_fabrication: number | null;
   article: number | null;
@@ -2074,12 +2100,18 @@ export interface CoutRevientPeriode {
     article: string;
     designation: string;
     unites: Montant;
+    /** Unités facturées sur la période : base des coûts de distribution par unité. */
+    unites_vendues?: Montant;
     production: Montant;
     stockage: Montant;
     distribution: Montant;
+    commercialisation?: Montant;
+    /** Stockage + distribution + commercialisation. */
+    cout_distribution?: Montant;
     production_par_unite: Montant | null;
     stockage_par_unite: Montant | null;
     distribution_par_unite: Montant | null;
+    commercialisation_par_unite?: Montant | null;
     cout_revient_complet: Montant;
     cout_revient_complet_par_unite: Montant | null;
   }[];
@@ -2482,6 +2514,10 @@ export interface AppState {
   coutsMainOeuvre: CoutMainOeuvre[];
   amortissements: Amortissement[];
   coutsStandards: CoutStandard[];
+  facturesCharges: FactureCharge[];
+  volumesEauSites: VolumeEauSite[];
+  valeursCles: ValeurCle[];
+  relevesElectricite: ReleveElectricite[];
   coutsReels: CoutReel[];
   anomalies: AnomalieDetectee[];
   exportsComptables: ExportComptable[];
@@ -2530,4 +2566,111 @@ export interface Paginated<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+}
+
+// =====================================================================
+// Backend PR #14 : coûts par site, factures à ventiler, compteurs et clés
+// =====================================================================
+
+/** Facture à découper (ex. SBEE : forage, site Eau, site Jus & Yaourt, infrastructures). Chaque part est une charge. */
+export interface FactureCharge {
+  id: number;
+  numero: string;
+  reference: string;
+  fournisseur: string;
+  /** AAAA-MM */
+  periode: string;
+  montant_total: string;
+  date_facture: string | null;
+  observations: string;
+  saisi_par: number | null;
+  date_saisie: string;
+  parts: Charge[];
+  montant_ventile: string;
+  reste_a_ventiler: string;
+  est_ventilee: boolean;
+}
+
+/** Relevé du compteur d'eau brute (forage) par site ou par activité : clé du forage commun. */
+export interface VolumeEauSite {
+  id: number;
+  periode: string;
+  usine: number;
+  usine_code?: string;
+  activite: number | null;
+  activite_code?: string | null;
+  volume_m3: string;
+  statut_donnee: StatutDonnee;
+  source: string;
+  justification: string;
+  saisi_par: number | null;
+  date_saisie: string;
+}
+
+/** Valeur d'une clé de site (surface, effectif…) pour une usine ou une activité, à partir d'une date. */
+export interface ValeurCle {
+  id: number;
+  inducteur: CleDeSite;
+  usine: number;
+  usine_code?: string;
+  activite: number | null;
+  activite_code?: string | null;
+  valeur: string;
+  date_debut: string;
+  source: string;
+  saisi_par: number | null;
+}
+
+/** kWh d'une étape sur la période : clé de répartition de la facture d'électricité par étape. */
+export interface ReleveElectricite {
+  id: number;
+  periode: string;
+  etape: number;
+  etape_libelle?: string;
+  nature: number | null;
+  nature_libelle?: string | null;
+  usine: number | null;
+  usine_code?: string | null;
+  activite: number | null;
+  activite_code?: string | null;
+  facture: number | null;
+  kwh: string;
+  statut_donnee: StatutDonnee;
+  source: string;
+  justification: string;
+  saisi_par: number | null;
+  date_saisie: string;
+}
+
+/** GET /couts/cascade/par-site/?periode= */
+export interface CoutParSite {
+  periode: string;
+  sites: {
+    usine: string;
+    nom: string;
+    charges_imputees: Montant;
+    electricite: Montant;
+    reste_au_site: Montant;
+    activites: {
+      activite: string;
+      designation: string;
+      charges_imputees: Montant;
+      dont_electricite: Montant;
+      par_categorie_economique: Record<string, Montant>;
+      descendu_aux_of: Montant;
+      reste_a_l_activite: Montant;
+      ofs_clotures: number;
+      unites_produites: Montant;
+      cout_production_of: Montant;
+      cout_unitaire_moyen: Montant | null;
+      chiffre_affaires_ht: Montant;
+      unites_vendues: Montant;
+      cout_des_ventes: Montant | null;
+      marge: Montant | null;
+      taux_marge: number | null;
+    }[];
+  }[];
+  production_non_repartie: Montant;
+  frais_generaux_non_incorpores: Montant;
+  factures_incompletes: { facture: string; reference: string; montant_total: Montant; montant_ventile: Montant; reste_a_ventiler: Montant }[];
 }

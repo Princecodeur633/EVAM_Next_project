@@ -1,4 +1,5 @@
 import { api, apiBlob, apiUpload, listAll, ouvrirPdf } from "./client";
+import type { CoutParSite, FactureCharge, ReleveElectricite, ValeurCle, VolumeEauSite } from "../types";
 import type {
   Devis,
   DonneeObligatoireEtape,
@@ -212,6 +213,10 @@ export const endpoints = {
   coutsMainOeuvre: "/couts/couts-main-oeuvre/",
   amortissements: "/couts/amortissements/",
   coutsStandards: "/couts/couts-standards/",
+  facturesCharges: "/couts/factures/",
+  volumesEauSites: "/couts/volumes-eau-sites/",
+  valeursCles: "/couts/valeurs-cles/",
+  relevesElectricite: "/couts/releves-electricite/",
   coutsReels: "/couts/couts-reels/",
   anomalies: "/comptabilite/anomalies/",
   exportsComptables: "/comptabilite/exports/",
@@ -338,6 +343,10 @@ export const catalog = {
   coutsMainOeuvre: () => listAll<CoutMainOeuvre>(endpoints.coutsMainOeuvre),
   amortissements: () => listAll<Amortissement>(endpoints.amortissements),
   coutsStandards: () => listAll<CoutStandard>(endpoints.coutsStandards),
+  facturesCharges: () => listAll<FactureCharge>(endpoints.facturesCharges),
+  volumesEauSites: () => listAll<VolumeEauSite>(endpoints.volumesEauSites),
+  valeursCles: () => listAll<ValeurCle>(endpoints.valeursCles),
+  relevesElectricite: () => listAll<ReleveElectricite>(endpoints.relevesElectricite),
   coutsReels: () => listAll<CoutReel>(endpoints.coutsReels),
   anomalies: () => listAll<AnomalieDetectee>(endpoints.anomalies),
   exportsComptables: () => listAll<ExportComptable>(endpoints.exportsComptables),
@@ -492,6 +501,11 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "prospects",
     "contratsClients",
     "retoursFournisseur",
+    // Coûts par site : factures à ventiler, compteurs d'eau brute, clés de site, relevés d'électricité.
+    "facturesCharges",
+    "volumesEauSites",
+    "valeursCles",
+    "relevesElectricite",
   ],
   RESPONSABLE_PRODUCTION: [
     "codesFiscaux",
@@ -758,6 +772,11 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     // Critères des règles de comptes (format, unité de vente).
     "formatsArticle",
     "unitesVente",
+    // Coûts par site : factures à ventiler, compteurs d'eau brute, clés de site, relevés d'électricité.
+    "facturesCharges",
+    "volumesEauSites",
+    "valeursCles",
+    "relevesElectricite",
   ],
 };
 
@@ -958,6 +977,15 @@ export const actions = {
   calculerCascade: (periode: string) => api.post<ResultatCalculCascade>("/couts/cascade/calculer/", { periode }),
   genererAmortissements: (periode: string) => api.post<Charge[]>("/couts/cascade/amortissements/", { periode }),
   coutRevient: (periode: string) => api.get<CoutRevientPeriode>(`/couts/cascade/cout-revient/?periode=${periode}`),
+  /** Charges, électricité et rentabilité par site et par activité. */
+  coutParSite: (periode: string) => api.get<CoutParSite>(`/couts/cascade/par-site/?periode=${periode}`),
+  /** Remplace les parts de la facture ; la somme doit égaler le montant de la facture. */
+  ventilerFactureCharge: (
+    id: number,
+    parts: { nature: number; montant: number; usine?: number | null; activite?: number | null; equipement?: number | null; statut_donnee?: string; observations?: string }[],
+  ) => api.post<FactureCharge>(`${endpoints.facturesCharges}${id}/ventiler/`, { parts }),
+  /** Une part par étape au prorata des kWh relevés (relevés d'électricité). */
+  repartirFactureParEtape: (id: number) => api.post<FactureCharge>(`${endpoints.facturesCharges}${id}/repartir_par_etape/`),
   coutEauTraitee: (periode: string) => api.get<CoutEauTraitee[]>(`/couts/cascade/eau-traitee/?periode=${periode}`),
   controleDoubleCompte: (periode: string) => api.get<ControleDoubleCompte>(`/couts/cascade/controle/?periode=${periode}`),
   cascadeCharge: (id: number) => api.get<{ charge: Charge; repartitions: RepartitionCout[] }>(`${endpoints.charges}${id}/cascade/`),
