@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Calculator, CheckCircle2, Droplets, Layers, ListTree, Receipt, Wrench } from "lucide-react";
+import { Building2, Calculator, CheckCircle2, Droplets, Gauge, Layers, ListTree, Receipt, Split, Wrench } from "lucide-react";
+import { CompteursEtCles, CoutsParSite, FacturesAVentiler } from "@/components/coutsSites";
 import { DrawerSection } from "@/components/Drawer";
 import { KpiCard } from "@/components/charts";
 import { RefCrud } from "@/components/RefCrud";
@@ -33,7 +34,7 @@ import type {
 } from "@/lib/types";
 import { cn, formatDa, formatQty, num } from "@/lib/utils";
 
-type Onglet = "charges" | "revient" | "eau" | "natures";
+type Onglet = "charges" | "factures" | "compteurs" | "sites" | "revient" | "eau" | "natures";
 
 const TONE_REPARTITION: Record<StatutRepartition, "neutral" | "success" | "warning" | "danger"> = {
   A_REPARTIR: "neutral",
@@ -47,6 +48,10 @@ function moisCourant() {
 }
 
 const opt = <T extends string>(labels: Record<T, string>) => (Object.keys(labels) as T[]).map((k) => ({ value: k, label: labels[k] }));
+
+// Mêmes groupes que le backend (apps/couts/models.py) : clés non mesurées sur un OF, clés hors production.
+const CLES_SANS_VALEUR_OF: Inducteur[] = ["SURFACE_M2", "EFFECTIF", "TEMPS_UTILISATION_H", "VOLUME_OCCUPE_M3", "EMPLACEMENTS_PALETTES", "VOLUME_EAU_BRUTE_M3"];
+const CLES_HORS_PRODUCTION: Inducteur[] = ["PALETTES_JOURS", "KM", "QUANTITE_LIVREE", "PALETTES_LIVREES", "LITRES_LIVRES", "CHIFFRE_AFFAIRES", "QUANTITE_VENDUE"];
 
 /**
  * Coûts en cascade : charge → étape → direct / indirect → activité → OF → produit → pack → unité.
@@ -65,7 +70,7 @@ export default function CoutsCascadePage() {
       <PageHeader
         eyebrow="Coûts"
         title="Coûts en cascade"
-        description="Chaque charge est rattachée à l’étape où elle est consommée puis répartie par son inducteur (m³ d’eau, bouteilles, heures machine…) jusqu’à l’OF et au produit. La chaîne de calcul de chaque montant est conservée."
+        description="Chaque charge est rattachée à l’étape où elle est consommée, puis répartie site → activité → OF → produit par sa clé (eau brute, surface, quantité produite en L ou kg…). La chaîne de calcul de chaque montant est conservée."
         actions={
           <Field label="Période">
             <input type="month" className={cn(inputClass, "w-[160px]")} value={periode} onChange={(e) => setPeriode(e.target.value)} />
@@ -79,12 +84,18 @@ export default function CoutsCascadePage() {
         onChange={setOnglet}
         items={[
           { value: "charges", label: "Charges", icon: Receipt },
+          { value: "factures", label: "Factures à ventiler", icon: Split },
+          { value: "compteurs", label: "Compteurs & clés", icon: Gauge },
+          { value: "sites", label: "Par site", icon: Building2 },
           { value: "revient", label: "Coût de revient", icon: Calculator },
           { value: "eau", label: "Eau traitée", icon: Droplets },
           { value: "natures", label: "Éléments de coût", icon: Layers },
         ]}
       />
       {onglet === "charges" && <Charges periode={periode} gestion={gestion} />}
+      {onglet === "factures" && <FacturesAVentiler periode={periode} gestion={gestion} />}
+      {onglet === "compteurs" && <CompteursEtCles periode={periode} gestion={gestion} />}
+      {onglet === "sites" && <CoutsParSite periode={periode} />}
       {onglet === "revient" && <CoutRevient periode={periode} />}
       {onglet === "eau" && <EauTraitee periode={periode} />}
       {onglet === "natures" && <Natures gestion={gestion} />}
@@ -121,7 +132,7 @@ function CalculPeriode({ periode, gestion }: { periode: string; gestion: boolean
         const r = await actions.calculerCascade(periode);
         texte = `${r.charges} charge(s) traitée(s) : ${r.repartie} répartie(s), ${r.partielle} partielle(s), ${r.non_repartie} non répartie(s) ; ${r.ofs_recalcules} OF recalculé(s).`;
       },
-      refresh: ["charges", "coutsReels"],
+      refresh: ["charges", "coutsReels", "facturesCharges"],
     });
     setBusy(null);
     if (ok) {
@@ -202,7 +213,7 @@ function Charges({ periode, gestion }: { periode: string; gestion: boolean }) {
       </div>
       <RefCrud
         titre={`Charges ${periode}`}
-        description="Factures, salaires, maintenance, amortissements… Directe si elle vise un OF, une activité (cuve dédiée) ou une tournée ; commune sinon (ex. forage)."
+        description="Factures, salaires, maintenance, amortissements… Directe si elle vise un OF, une activité (cuve dédiée) ou une tournée ; propre à un site (répartie entre ses seules activités) ; commune sinon (ex. forage). Une facture à découper se saisit dans « Factures à ventiler »."
         items={charges}
         endpoint={endpoints.charges}
         refresh={["charges"]}
@@ -211,13 +222,14 @@ function Charges({ periode, gestion }: { periode: string; gestion: boolean }) {
         libelleItem={(c) => `${c.numero} · ${c.nature_libelle ?? ""}`}
         supprimable={() => true}
         vide="Aucune charge saisie pour cette période."
-        valeursInitiales={{ nature: 0, periode, montant: "", activite: 0, equipement: 0, ordre_fabrication: 0, tournee: 0, statut_donnee: "REEL", source: "", observations: "" }}
+        valeursInitiales={{ nature: 0, periode, montant: "", usine: 0, activite: 0, equipement: 0, ordre_fabrication: 0, tournee: 0, statut_donnee: "REEL", source: "", observations: "" }}
         champs={[
           { cle: "nature", label: "Élément de coût", type: "select", options: natures, requis: true },
           { cle: "periode", label: "Période (AAAA-MM)", requis: true },
           { cle: "montant", label: "Montant (FCFA)", type: "number", requis: true },
           { cle: "statut_donnee", label: "Donnée", type: "select", options: opt<StatutDonnee>(STATUT_DONNEE_LABEL) },
-          { cle: "activite", label: "Activité (vide = commune)", type: "select", options: state.activites.map((a) => ({ value: a.id, label: a.designation })) },
+          { cle: "usine", label: "Site / usine (charge propre au site)", type: "select", options: state.usines.map((u) => ({ value: u.id, label: u.nom })) },
+          { cle: "activite", label: "Activité (vide = commune ou par défaut de l’élément)", type: "select", options: state.activites.map((a) => ({ value: a.id, label: a.designation })) },
           { cle: "equipement", label: "Équipement", type: "select", options: state.equipements.map((e) => ({ value: e.id, label: `${e.code} · ${e.designation}` })) },
           { cle: "ordre_fabrication", label: "OF (charge directe)", type: "select", options: state.ofList.map((o) => ({ value: o.id, label: o.numero })) },
           { cle: "tournee", label: "Tournée (distribution)", type: "select", options: state.tournees.map((t) => ({ value: t.id, label: t.numero })) },
@@ -240,6 +252,12 @@ function Charges({ periode, gestion }: { periode: string; gestion: boolean }) {
             ),
           },
           { cle: "c", label: "Catégorie", rendu: (c) => (c.categorie ? CATEGORIE_COUT_LABEL[c.categorie] : "—") },
+          {
+            cle: "s",
+            label: "Rattachement",
+            rendu: (c) =>
+              [c.usine_code, c.activite ? state.activites.find((a) => a.id === c.activite)?.code : null, c.facture_numero && `part de ${c.facture_numero}`].filter(Boolean).join(" · ") || "Commune",
+          },
           { cle: "m", label: "Montant", className: "text-right", rendu: (c) => <span className="num">{formatDa(num(c.montant))}</span> },
           { cle: "d", label: "Donnée", rendu: (c) => (c.statut_donnee === "ESTIME" ? <StatusBadge tone="warning">Estimé</StatusBadge> : "Réel") },
           {
@@ -274,7 +292,7 @@ function ChaineCalcul({ charge }: { charge: Charge }) {
   }, [charge.id, charge.statut_repartition]);
 
   return (
-    <DrawerSection title="Chaîne de calcul" hint="Calculée par « Calculer la période ».">
+    <DrawerSection title="Chaîne de calcul" hint="Site → activité → OF → produit ; calculée par « Calculer la période ».">
       {!lignes ? (
         <p className="text-[12.5px] text-muted">Chargement…</p>
       ) : lignes.length === 0 ? (
@@ -282,11 +300,11 @@ function ChaineCalcul({ charge }: { charge: Charge }) {
       ) : (
         <ul className="rounded-[9px] border border-line divide-y divide-line">
           {lignes.map((l) => (
-            <li key={l.id} className={cn("px-3 py-2 text-[12.5px]", l.niveau === "OF" && "pl-6", (l.niveau === "PRODUIT" || l.niveau === "ARTICLE") && "pl-9")}>
+            <li key={l.id} className={cn("px-3 py-2 text-[12.5px]", l.niveau === "ACTIVITE" && l.parent != null && "pl-5", l.niveau === "OF" && "pl-8", (l.niveau === "PRODUIT" || l.niveau === "ARTICLE") && "pl-11")}>
               <div className="flex justify-between gap-3">
                 <span>
                   <ListTree size={12} className="inline text-muted mr-1" />
-                  {NIVEAU_REPARTITION_LABEL[l.niveau]} : <span className="font-medium">{l.of_numero ?? l.article_code ?? l.activite_code ?? "—"}</span>
+                  {NIVEAU_REPARTITION_LABEL[l.niveau]} : <span className="font-medium">{l.of_numero ?? l.article_code ?? l.activite_code ?? l.usine_code ?? "—"}</span>
                   {l.etape_libelle && <span className="text-muted"> · {l.etape_libelle}</span>}
                 </span>
                 <span className="num font-semibold">{formatDa(num(l.montant))}</span>
@@ -347,16 +365,17 @@ function CoutRevient({ periode }: { periode: string }) {
       <Panel className="overflow-hidden">
         <div className="px-4 py-3 border-b border-line flex items-center gap-2">
           <h2 className="text-[13px] font-semibold">Coût de revient complet par produit</h2>
-          <span className="text-[12px] text-muted">production + stockage + distribution</span>
+          <span className="text-[12px] text-muted">production (sur les unités produites) + stockage, distribution, commercialisation (sur les unités vendues)</span>
         </div>
         <DataTable
           emptyText="Aucune production sur la période."
           columns={[
             { key: "a", label: "Produit" },
-            { key: "u", label: "Unités", className: "text-right" },
+            { key: "u", label: "Produites / vendues", className: "text-right" },
             { key: "p", label: "Production / unité", className: "text-right" },
             { key: "s", label: "Stockage / unité", className: "text-right" },
             { key: "d", label: "Distribution / unité", className: "text-right" },
+            { key: "k", label: "Commercialisation / unité", className: "text-right" },
             { key: "c", label: "Revient complet / unité", className: "text-right" },
             { key: "t", label: "Total", className: "text-right" },
           ]}
@@ -367,10 +386,15 @@ function CoutRevient({ periode }: { periode: string }) {
                 <span className="text-[11.5px] text-muted">{p.article}</span>
               </span>
             ),
-            u: <span className="num">{formatQty(num(p.unites), 0)}</span>,
+            u: (
+              <span className="num">
+                {formatQty(num(p.unites), 0)} / {p.unites_vendues != null ? formatQty(num(p.unites_vendues), 0) : "—"}
+              </span>
+            ),
             p: <span className="num">{m(p.production_par_unite)}</span>,
             s: <span className="num">{m(p.stockage_par_unite)}</span>,
             d: <span className="num">{m(p.distribution_par_unite)}</span>,
+            k: <span className="num">{m(p.commercialisation_par_unite ?? null)}</span>,
             c: <span className="num font-semibold">{m(p.cout_revient_complet_par_unite)}</span>,
             t: <span className="num">{m(p.cout_revient_complet)}</span>,
           }))}
@@ -467,6 +491,8 @@ function Natures({ gestion }: { gestion: boolean }) {
         categorie_economique: "AUTRE",
         traitement: "INDIRECT",
         inducteur: "HEURES_MACHINE",
+        inducteur_of: "",
+        activite: 0,
         justification: "",
         date_debut: "",
         date_fin: "",
@@ -479,6 +505,24 @@ function Natures({ gestion }: { gestion: boolean }) {
         { cle: "categorie_economique", label: "Catégorie économique", type: "select", options: opt<CategorieEconomique>(CATEGORIE_ECONOMIQUE_LABEL) },
         { cle: "traitement", label: "Traitement", type: "select", requis: true, options: opt<Traitement>(TRAITEMENT_LABEL) },
         { cle: "inducteur", label: "Clé / inducteur", type: "select", requis: true, options: opt<Inducteur>(INDUCTEUR_LABEL) },
+        {
+          cle: "inducteur_of",
+          label: "Clé de l’activité vers les OF",
+          type: "select",
+          aide: "Production : vide = la clé ci-dessus ; pour une clé de site (surface, eau brute…), vide = la charge s’arrête à l’activité.",
+          visible: (f) => f.categorie === "PRODUCTION",
+          options: (Object.keys(INDUCTEUR_LABEL) as Inducteur[])
+            .filter((i) => !CLES_SANS_VALEUR_OF.includes(i) && !CLES_HORS_PRODUCTION.includes(i) && i !== "AUCUN")
+            .map((i) => ({ value: i, label: INDUCTEUR_LABEL[i] })),
+        },
+        {
+          cle: "activite",
+          label: "Activité par défaut",
+          type: "select",
+          aide: "Affectation directe quand la charge ne précise ni activité, ni site, ni OF (ex. traitement de l’eau → Eau).",
+          visible: (f) => f.categorie !== "HORS_COUT",
+          options: state.activites.map((a) => ({ value: a.id, label: a.designation })),
+        },
         { cle: "date_debut", label: "Valide à partir du", type: "date" },
         { cle: "date_fin", label: "Valide jusqu’au", type: "date" },
         { cle: "actif", label: "Actif", type: "checkbox" },
@@ -489,7 +533,17 @@ function Natures({ gestion }: { gestion: boolean }) {
         { cle: "e", label: "Étape", rendu: (n) => n.etape_libelle ?? "—" },
         { cle: "c", label: "Catégorie", rendu: (n) => CATEGORIE_COUT_LABEL[n.categorie] },
         { cle: "t", label: "Traitement", rendu: (n) => TRAITEMENT_LABEL[n.traitement] },
-        { cle: "i", label: "Inducteur", rendu: (n) => INDUCTEUR_LABEL[n.inducteur] },
+        {
+          cle: "i",
+          label: "Inducteur",
+          rendu: (n) => (
+            <span className="inline-flex flex-col">
+              <span>{INDUCTEUR_LABEL[n.inducteur]}</span>
+              {n.inducteur_of && <span className="text-[11.5px] text-muted">vers les OF : {INDUCTEUR_LABEL[n.inducteur_of]}</span>}
+              {n.activite_code && <span className="text-[11.5px] text-muted">par défaut : {n.activite_code}</span>}
+            </span>
+          ),
+        },
         { cle: "s", label: "Statut", rendu: (n) => (n.actif ? <StatusBadge tone="success">Actif</StatusBadge> : <StatusBadge tone="neutral">Inactif</StatusBadge>) },
       ]}
     />

@@ -218,6 +218,7 @@ export const PHASE_ETAPE_LABEL: Record<PhaseEtape, string> = {
   AMONT: "Amont (eau)",
   PREPARATION: "Préparation",
   CONDITIONNEMENT: "Remplissage et conditionnement",
+  SITE: "Utilités et frais du site",
   APRES_PRODUCTION: "Après production",
 };
 
@@ -354,7 +355,9 @@ export const DECISION_NC_LABEL: Record<DecisionNC, string> = {
 };
 
 export const INDUCTEUR_LABEL: Record<Inducteur, string> = {
-  VOLUME_EAU_M3: "Volume d'eau (m³)",
+  QUANTITE_PRODUITE: "Quantité produite (L pour l'Eau et le Jus, kg pour le Yaourt)",
+  VOLUME_EAU_BRUTE_M3: "Volume d'eau brute captée (m³, compteurs)",
+  VOLUME_EAU_M3: "Volume d'eau traitée utilisée par les OF (m³)",
   BOUTEILLES: "Bouteilles / pots produits",
   PACKS: "Packs / cartons",
   PALETTES: "Palettes",
@@ -369,6 +372,13 @@ export const INDUCTEUR_LABEL: Record<Inducteur, string> = {
   TEMPS_CHANGEMENT_SERIE: "Temps de changement de série (min)",
   PALETTES_LIVREES: "Palettes livrées",
   LITRES_LIVRES: "Volume livré (litres)",
+  SURFACE_M2: "Surface occupée (m²)",
+  EFFECTIF: "Effectif (personnes)",
+  TEMPS_UTILISATION_H: "Temps d'utilisation (h)",
+  VOLUME_OCCUPE_M3: "Volume occupé (m³)",
+  EMPLACEMENTS_PALETTES: "Emplacements de palettes occupés",
+  CHIFFRE_AFFAIRES: "Chiffre d'affaires HT",
+  QUANTITE_VENDUE: "Quantité vendue (unités facturées)",
   AUCUN: "Aucun (charge directe)",
 };
 
@@ -422,7 +432,8 @@ export const CATEGORIE_COUT_LABEL: Record<CategorieCout, string> = {
   PRODUCTION: "Coût de production",
   STOCKAGE: "Stockage produit fini",
   DISTRIBUTION: "Distribution",
-  HORS_COUT: "Frais généraux non incorporés",
+  COMMERCIAL: "Commercialisation (points de vente, caisses)",
+  HORS_COUT: "Frais généraux non incorporés (siège, direction, comptabilité)",
 };
 
 export const TRAITEMENT_LABEL: Record<Traitement, string> = {
@@ -458,6 +469,7 @@ export const STATUT_REPARTITION_LABEL: Record<StatutRepartition, string> = {
 };
 
 export const NIVEAU_REPARTITION_LABEL: Record<NiveauRepartition, string> = {
+  SITE: "Site / usine",
   ACTIVITE: "Activité",
   OF: "Ordre de fabrication",
   PRODUIT: "Produit / format",

@@ -99,9 +99,15 @@ function Activites() {
       writable={can("PARAM_INDUSTRIEL")}
       rechercheDans={(a) => [a.code, a.designation]}
       libelleItem={(a) => `${a.code} · ${a.designation}`}
-      valeursInitiales={{ designation: "", regles_specifiques: "", actif: true }}
+      valeursInitiales={{ designation: "", litres_equivalents_par_unite: "1", regles_specifiques: "", actif: true }}
       champs={[
         { cle: "designation", label: "Désignation", requis: true },
+        {
+          cle: "litres_equivalents_par_unite",
+          label: "Litres équivalents par unité produite",
+          type: "number",
+          aide: "Partage d’une charge commune au prorata de la production : Eau et Jus en litres, Yaourt en kg (1 kg = 1 L).",
+        },
         { cle: "actif", label: "Active", type: "checkbox" },
         { cle: "regles_specifiques", label: "Règles spécifiques", type: "textarea" },
       ]}
