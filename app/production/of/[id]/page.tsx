@@ -28,7 +28,7 @@ import { nextOfStatut, useStore } from "@/lib/store";
 import type { ConsommationLotMatiere, ControleRealise, OrdreFabrication, VerificationStockOF } from "@/lib/types";
 import { cn, formatDa, formatDate, formatDateTime, formatQty, num } from "@/lib/utils";
 
-type Onglet = "synthese" | "besoins" | "sorties" | "etapes" | "qualite" | "eau" | "lots" | "historique";
+type Onglet = "synthese" | "besoins" | "sorties" | "etapes" | "qualite" | "eau" | "lots" | "equipe" | "historique";
 
 export default function OfDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -60,6 +60,7 @@ export default function OfDetailPage() {
   const ncs = state.nonConformites.filter((n) => n.ordre_fabrication === of.id);
   const nonLivrees = demandes.filter((d) => d.statut !== "LIVREE_A_LA_PRODUCTION" && d.statut !== "ANNULEE").length;
 
+  const equipe = state.affectationsOuvriers.filter((a) => a.ordre_fabrication === of.id);
   const tous: { value: Onglet; label: string; count?: number }[] = [
     { value: "synthese", label: "Synthèse" },
     { value: "besoins", label: "Besoins matières", count: besoins.length },
@@ -68,9 +69,10 @@ export default function OfDetailPage() {
     { value: "qualite", label: "Qualité", count: controlesEnAttente(controles).length + ncs.filter((n) => n.statut !== "CLOTUREE").length },
     ...(estEau ? [{ value: "eau" as const, label: "Suivi eau", count: suivisEau.length }] : []),
     { value: "lots", label: "Lots", count: lots.length },
+    ...(can("VOIR_EQUIPES") ? [{ value: "equipe" as const, label: "Équipe", count: equipe.length }] : []),
     { value: "historique", label: "Historique" },
   ];
-  const onglets = lecture ? tous.filter((t) => t.value === "besoins" || t.value === "etapes" || t.value === "qualite" || t.value === "eau") : tous;
+  const onglets = lecture ? tous.filter((t) => t.value === "besoins" || t.value === "etapes" || t.value === "qualite" || t.value === "eau" || t.value === "equipe") : tous;
   const onglet: Onglet = choix && onglets.some((t) => t.value === choix) ? choix : onglets[0].value;
 
   const peutAvancer = !lecture && can("AVANCER_OF") && next != null;
@@ -226,6 +228,23 @@ export default function OfDetailPage() {
           </div>
         )}
         {onglet === "qualite" && <QualiteOf of={of} controles={controles} />}
+        {onglet === "equipe" && (
+          <Bloc titre="Ouvriers affectés à cet OF">
+            <DataTable
+              emptyText="Aucun ouvrier affecté : voir Équipes › Affectations."
+              columns={[
+                { key: "o", label: "Ouvrier" },
+                { key: "e", label: "Étape / poste" },
+                { key: "p", label: "Période" },
+              ]}
+              rows={equipe.map((a) => ({
+                o: `${a.ouvrier_matricule} · ${a.ouvrier_nom}`,
+                e: [a.etape_libelle, a.poste_code].filter(Boolean).join(" · "),
+                p: `${formatDate(a.date_debut)} → ${a.date_fin ? formatDate(a.date_fin) : "sans fin"}`,
+              }))}
+            />
+          </Bloc>
+        )}
         {onglet === "eau" && <SuiviEauOnglet of={of} modifiable={modifiable && !lecture} />}
         {onglet === "lots" && (
           <Bloc titre="Lots issus de cet OF">

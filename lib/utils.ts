@@ -4,6 +4,11 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
+/** Date locale au format AAAA-MM-JJ (celui des champs date et de l'API). */
+export function dateISO(d: Date = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function formatDa(value: number) {
   return new Intl.NumberFormat("fr-FR", {
     style: "decimal",

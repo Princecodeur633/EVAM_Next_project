@@ -1,4 +1,4 @@
-import type { AppState, Profil, StockArticle } from "./types";
+import type { AppState, BesoinApprovisionnement, Profil, StockArticle } from "./types";
 import { num } from "./utils";
 
 export const ACTIONS = {
@@ -132,6 +132,15 @@ export const ACTIONS = {
   // --- Coûts en cascade ---
   GERER_COUTS_CASCADE: ["COMPTABILITE_DAF"],
   VOIR_COUTS_CASCADE: ["COMPTABILITE_DAF", "DIRECTION"],
+  // --- Personnel : ouvriers sans compte, tenus par le RH ---
+  GERER_OUVRIERS: ["RH", "ADMIN_SI"],
+  GERER_AFFECTATIONS: ["RH", "RESPONSABLE_PRODUCTION", "ADMIN_SI"],
+  GERER_REMUNERATIONS: ["RH", "ADMIN_SI"],
+  GERER_POINTAGES: ["RH", "ADMIN_SI"],
+  VOIR_EQUIPES: ["RH", "RESPONSABLE_PRODUCTION", "AGENT_PRODUCTION", "DIRECTION", "COMPTABILITE_DAF", "ADMIN_SI"],
+  PREPARER_PAIE: ["RH", "ADMIN_SI"],
+  VALIDER_PAIE: ["COMPTABILITE_DAF", "DIRECTION"],
+  PAYER_PAIE: ["CAISSIER"],
   // --- Documents imprimés : identité et logo de l'entreprise ---
   PARAM_DOCUMENTS: ["ADMIN_SI", "COMPTABILITE_DAF"],
 } as const;
@@ -141,6 +150,13 @@ export type ActionName = keyof typeof ACTIONS;
 export function canAct(role: Profil | null, action: ActionName) {
   if (!role) return false;
   return (ACTIONS[action] as readonly Profil[]).includes(role);
+}
+
+/** OF couverts par un besoin d'achat : numéros si le profil lit les OF, sinon leur nombre. */
+export function ofsDuBesoin(state: AppState, besoin: BesoinApprovisionnement) {
+  const numeros = besoin.ordres_fabrication.flatMap((id) => state.ofList.find((o) => o.id === id)?.numero ?? []);
+  if (numeros.length === besoin.ordres_fabrication.length) return `Pour ${numeros.join(", ")}`;
+  return `Pour ${besoin.ordres_fabrication.length} OF`;
 }
 
 export function stockDisponible(line: StockArticle) {
