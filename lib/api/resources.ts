@@ -571,6 +571,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   // machine, et les contrôles de ses OF. Il ne lit ni articles, ni stock, ni lots.
   AGENT_PRODUCTION: [
     "ouvriers",
+    "usines",
     "affectationsOuvriers",
     "pointages",
     "ofList",
@@ -717,8 +718,8 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   // Caissier : ni clients ni articles côté backend ; les noms viennent de la facture (client_nom).
   // Lignes de commande et de facture : fiche commande ouverte depuis la caisse.
   CAISSIER: ["commandes", "lignesCommande", "factures", "lignesFacture", "caisses", "sessionsCaisse", "encaissements", "decaissements", "ecartsCaisse", "etatsPaie"],
-  // RH : son module seulement (le backend ne lui ouvre ni le socle industriel ni les OF).
-  RH: ["ouvriers", "affectationsOuvriers", "remunerations", "pointages", "etatsPaie"],
+  // RH : son module ; usines, étapes, postes et OF (lecture) pour les compétences et les affectations.
+  RH: ["ouvriers", "affectationsOuvriers", "remunerations", "pointages", "etatsPaie", "usines", "etapesStandard", "postes", "ofList"],
   RESPONSABLE_DISTRIBUTION: [
     // Palettes (lecture) : numéros de lot des lignes de transfert.
     "palettes",

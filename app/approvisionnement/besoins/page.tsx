@@ -1,7 +1,6 @@
 "use client";
 
 import { Button, DataTable, PageHeader, Panel } from "@/components/ui";
-import { ofsDuBesoin } from "@/lib/engine";
 import { ORIGINE_BESOIN_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
 import { formatQty, num } from "@/lib/utils";
@@ -26,7 +25,7 @@ export default function BesoinsAchatPage() {
             o: (
               <span className="inline-flex flex-col">
                 <span>{ORIGINE_BESOIN_LABEL[b.origine] ?? b.origine}</span>
-                {b.ordres_fabrication.length > 0 && <span className="text-[11.5px] text-muted">{ofsDuBesoin(state, b)}</span>}
+                {b.ordres_fabrication_numeros.length > 0 && <span className="text-[11.5px] text-muted">Pour {b.ordres_fabrication_numeros.join(", ")}</span>}
               </span>
             ),
             s: b.satisfait ? "Oui" : "Non",

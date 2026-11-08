@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { RefCrud } from "@/components/RefCrud";
 import { Segmented } from "@/components/Filters";
-import { Button, Field, Guard, PageHeader, inputClass } from "@/components/ui";
+import { Button, Field, PageHeader, inputClass } from "@/components/ui";
 import { actions, endpoints } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import type { AffectationOuvrier, Ouvrier } from "@/lib/types";
@@ -17,8 +17,7 @@ import { dateISO, formatDate } from "@/lib/utils";
 export default function AffectationsPage() {
   const { state, can } = useStore();
   const [filtre, setFiltre] = useState<"ACTIVES" | "TOUTES">("ACTIVES");
-  const avecSocle = state.etapesStandard.length > 0;
-  const writable = can("GERER_AFFECTATIONS") && avecSocle;
+  const writable = can("GERER_AFFECTATIONS");
   const jour = dateISO();
   const active = (a: AffectationOuvrier) => a.date_debut <= jour && (!a.date_fin || a.date_fin >= jour);
   const items = filtre === "ACTIVES" ? state.affectationsOuvriers.filter(active) : state.affectationsOuvriers;
@@ -41,11 +40,6 @@ export default function AffectationsPage() {
           />
         }
       />
-      {can("GERER_AFFECTATIONS") && !avecSocle && (
-        <Guard variant="warn" title="Consultation seulement">
-          Votre profil n’a pas accès au socle industriel ni aux OF : le Responsable Production ou l’Administrateur SI crée les affectations.
-        </Guard>
-      )}
       {writable && <OuvriersDisponibles />}
       <RefCrud<AffectationOuvrier>
         titre="Affectations des ouvriers"

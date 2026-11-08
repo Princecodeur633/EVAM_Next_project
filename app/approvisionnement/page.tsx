@@ -8,7 +8,6 @@ import { CF_TONE, CommandeFournisseurDrawer, NouvelleDaDrawer, ReceptionDrawer }
 import { DaBadge } from "@/components/badges";
 import { FilterBar, SearchInput, Segmented, matchSearch } from "@/components/Filters";
 import { Button, DataTable, PageHeader, Panel, StatusBadge } from "@/components/ui";
-import { ofsDuBesoin } from "@/lib/engine";
 import { ORIGINE_BESOIN_LABEL, STATUT_CF_LABEL } from "@/lib/labels";
 import { api, endpoints } from "@/lib/api";
 import { useStore } from "@/lib/store";
@@ -179,7 +178,7 @@ function Approvisionnement() {
               o: (
                 <span className="inline-flex flex-col items-start gap-0.5">
                   <StatusBadge tone={b.origine === "AUTO_PRODUCTION" ? "info" : "neutral"}>{ORIGINE_BESOIN_LABEL[b.origine] ?? b.origine}</StatusBadge>
-                  {b.ordres_fabrication.length > 0 && <span className="text-[11.5px] text-muted">{ofsDuBesoin(state, b)}</span>}
+                  {b.ordres_fabrication_numeros.length > 0 && <span className="text-[11.5px] text-muted">Pour {b.ordres_fabrication_numeros.join(", ")}</span>}
                 </span>
               ),
               d: formatDate(b.date_creation),
