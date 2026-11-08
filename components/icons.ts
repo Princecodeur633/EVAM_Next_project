@@ -74,11 +74,17 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   shield: Shield,
   check: CheckCircle2,
   package: Package,
+  users: Users,
 };
 
 /** Icône de chaque écran du menu, par route. */
 export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/accueil": Home,
+  "/personnel": Users,
+  "/personnel/affectations": ListChecks,
+  "/personnel/pointages": ClipboardCheck,
+  "/personnel/remunerations": HandCoins,
+  "/personnel/paie": Wallet,
   "/dashboard": LayoutDashboard,
   "/production/planning": CalendarDays,
   "/production/of": ClipboardList,
@@ -172,6 +178,7 @@ export const ROLE_ICONS: Record<string, LucideIcon> = {
   package: Package,
   truck: Truck,
   ledger: ClipboardList,
+  users: Users,
 };
 
 export const ACCENT_CLASS: Record<string, string> = {

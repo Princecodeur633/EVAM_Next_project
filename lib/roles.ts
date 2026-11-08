@@ -25,7 +25,7 @@ export type RoleProfile = {
   rules: string[];
   flow: FlowId[];
   accent: "navy" | "teal" | "amber" | "green" | "red" | "slate";
-  icon: "shield" | "bar" | "factory" | "wrench" | "check" | "boxes" | "cart" | "handshake" | "banknote" | "package" | "truck" | "ledger";
+  icon: "shield" | "bar" | "factory" | "wrench" | "check" | "boxes" | "cart" | "handshake" | "banknote" | "package" | "truck" | "ledger" | "users";
   homeHint: string;
   /** Chemins référentiel en écriture (création / modification). */
   paramAllow: string[];
@@ -73,13 +73,33 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
       "/parametrage/sage",
     ],
   },
+  RH: {
+    role: "RH",
+    label: "Ressources humaines",
+    station: "Personnel",
+    mission: "Tenez les fiches des ouvriers, pointez chaque journée, validez les pointages et préparez la paie.",
+    posture: "Les ouvriers n’ont pas de compte : tout passe par vous. Un pointage validé ne change plus.",
+    owns: ["Fiches des ouvriers", "Rémunérations", "Pointages", "Préparation de la paie"],
+    never: ["Valider ou payer la paie", "Accéder à la production, aux ventes ou à la caisse"],
+    rules: [
+      "1. Créer la fiche de l’ouvrier et sa rémunération.",
+      "2. Pointer chaque journée, puis valider les pointages.",
+      "3. Préparer la paie de la période.",
+      "4. La DAF valide, le caissier paie contre émargement.",
+    ],
+    flow: [],
+    accent: "teal",
+    icon: "users",
+    homeHint: "Pointer la journée, valider les pointages, préparer la paie.",
+    paramAllow: [],
+  },
   DIRECTION: {
     role: "DIRECTION",
     label: "PDG / Direction",
     station: "Pilotage",
     mission: "Autorisez les décaissements, surveillez les alertes et lisez les marges et le rendement.",
     posture: "Tout en lecture : les équipes métier saisissent, vous pilotez.",
-    owns: ["Autoriser / refuser les décaissements", "Générer le rapport", "Supervision en lecture"],
+    owns: ["Valider la paie des ouvriers", "Autoriser / refuser les décaissements", "Générer le rapport", "Supervision en lecture"],
     never: ["Valider un OF ou une clôture", "Créer quoi que ce soit", "Accéder au référentiel"],
     rules: [
       "1. Autoriser ou refuser les décaissements en attente.",
@@ -98,7 +118,7 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     station: "Planifier et piloter",
     mission: "Planifiez, lancez les OF, demandez les matières et menez chaque OF jusqu’à la clôture.",
     posture: "Vous orchestrez l’atelier. Le stock vendable n’existe qu’après libération qualité.",
-    owns: ["Plans", "Ordres de fabrication", "Demandes de matières", "Compléments"],
+    owns: ["Affectations des ouvriers", "Plans", "Ordres de fabrication", "Demandes de matières", "Compléments"],
     never: ["Libérer un lot", "Encaisser", "Accéder aux coûts", "Modifier une fiche technique"],
     rules: [
       "1. Créer le plan.",
@@ -224,7 +244,7 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     station: "Caisse",
     mission: "Ouvrez votre session, encaissez les factures, demandez un décaissement si besoin, puis clôturez en justifiant l’écart.",
     posture: "Le caissier ne modifie ni commande, ni prix, ni stock.",
-    owns: ["Encaissements", "Demandes de décaissement", "Clôture de session"],
+    owns: ["Paie des ouvriers en espèces", "Encaissements", "Demandes de décaissement", "Clôture de session"],
     never: ["Supprimer un écart", "Valider un BL", "Exporter la comptabilité"],
     rules: [
       "1. Ouvrir la session.",
@@ -282,7 +302,7 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
     station: "Finance",
     mission: "Fixez la fiscalité, traitez anomalies et écarts, recalculez les coûts, exportez puis clôturez la période.",
     posture: "Pas de saisie d’écriture libre : vous contrôlez, exportez et clôturez.",
-    owns: ["Fiscalité", "Anomalies", "Exports", "Clôtures", "Coûts", "Autorisation des décaissements"],
+    owns: ["Valider la paie des ouvriers", "Fiscalité", "Anomalies", "Exports", "Clôtures", "Coûts", "Autorisation des décaissements"],
     never: ["Saisir un mouvement de stock", "Lancer un OF", "Saisir une écriture"],
     rules: [
       "0. Fixer la fiscalité (codes fiscaux des articles).",

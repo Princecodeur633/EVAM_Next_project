@@ -14,6 +14,7 @@ export const ROLE_HOME: Record<Profil, string> = {
   RESPONSABLE_DISTRIBUTION: "/accueil",
   CHAUFFEUR: "/accueil",
   COMPTABILITE_DAF: "/accueil",
+  RH: "/accueil",
 };
 
 export type NavItem = {
@@ -259,6 +260,22 @@ const PROD_STOCK: NavItem[] = [
   { href: "/stocks/lots-matieres", label: "Lots matières" },
 ];
 
+/** Équipes de production, sans les montants (Responsable Production, Agent). */
+const PERSONNEL_EQUIPES: HubTab[] = [
+  { label: "Ouvriers", href: "/personnel" },
+  { label: "Affectations", href: "/personnel/affectations" },
+  { label: "Pointages", href: "/personnel/pointages" },
+];
+
+/** Personnel vu par la DAF et la Direction : la paie à valider d’abord. */
+const PERSONNEL_PAIE: HubTab[] = [
+  { label: "Paie", href: "/personnel/paie" },
+  { label: "Rémunérations", href: "/personnel/remunerations" },
+  { label: "Pointages", href: "/personnel/pointages" },
+  { label: "Ouvriers", href: "/personnel" },
+  { label: "Affectations", href: "/personnel/affectations" },
+];
+
 function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup {
   return { id, label, icon, items };
 }
@@ -273,6 +290,15 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.ftAdmin,
       I.industriel,
       { ...I.referentiel, hub: REF_TABS },
+      {
+        href: "/personnel",
+        label: "Ouvriers",
+        hint: "Fiches, compétences, affectations",
+        hub: [
+          { label: "Ouvriers", href: "/personnel" },
+          { label: "Affectations", href: "/personnel/affectations" },
+        ],
+      },
       I.documents,
       I.parametres,
       I.audit,
@@ -287,6 +313,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.coutsMarges, hub: COUTS_MARGES },
       { ...I.anomaliesEcritures, hub: ANOMALIES_ECRITURES },
       I.decaissements,
+      { href: "/personnel/paie", label: "Personnel & paie", hint: "Paie à valider, rémunérations, pointages", hub: PERSONNEL_PAIE },
       I.industriel,
       I.documents,
     ]),
@@ -304,6 +331,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       },
       I.of,
       I.sorties,
+      { href: "/personnel", label: "Équipes", hint: "Ouvriers, affectations, pointages", hub: PERSONNEL_EQUIPES },
       { href: "/qualite/controles", label: "Qualité", hint: "Contrôles, non-conformités, indicateurs", hub: QUALITE_SUIVI },
       { ...I.stock, label: "Stock", hub: PROD_STOCK.map((i) => ({ label: i.label, href: i.href })) },
       { ...I.referentiel, hint: "Articles, matières, fiches techniques, socle industriel", hub: PROD_REF_TABS },
@@ -314,6 +342,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
     g("atelier", "Atelier", "factory", [
       { href: "/production/of", label: "Mes OF", hint: "OF qui vous sont affectés" },
       { href: "/production/suivi", label: "Saisir", hint: "Étape, perte, eau, session" },
+      { href: "/personnel", label: "Équipe", hint: "Ouvriers, affectations, pointages", hub: PERSONNEL_EQUIPES },
       I.accueil,
     ]),
   ],
@@ -395,6 +424,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.accueil,
       { href: "/caisse", label: "Caisse", hint: "Encaisser les factures" },
       I.decaissements,
+      { href: "/personnel/paie", label: "Paie des ouvriers", hint: "États validés à payer en espèces" },
       { href: "/caisse/cloture", label: "Ma session", hint: "Solde, clôture et écart" },
     ]),
   ],
@@ -415,6 +445,16 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/distribution/bl", label: "Historique", hint: "Mes livraisons passées" },
     ]),
   ],
+  RH: [
+    g("rh", "Ressources humaines", "users", [
+      I.accueil,
+      { href: "/personnel", label: "Ouvriers", hint: "Fiches, contrats, départs" },
+      { href: "/personnel/affectations", label: "Affectations", hint: "Postes et équipes d’OF" },
+      { href: "/personnel/pointages", label: "Pointages", hint: "Feuille du jour et validation" },
+      { href: "/personnel/remunerations", label: "Rémunérations", hint: "Salaires et taux journaliers" },
+      { href: "/personnel/paie", label: "Paie", hint: "Préparer les états de paie" },
+    ]),
+  ],
   // Menu à plat : 7 entrées, chacune à onglets.
   COMPTABILITE_DAF: [
     g("fin", "Finance", "ledger", [
@@ -423,6 +463,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/comptabilite/ecritures", label: "Comptabilité", hint: "Écritures, exports, clôtures, paramètres", hub: DAF_COMPTA },
       { ...I.coutsMarges, label: "Coûts", hub: COUTS_MARGES },
       { href: "/caisse/cloture", label: "Caisse", hint: "Sessions et décaissements", hub: DAF_CAISSE },
+      { href: "/personnel/paie", label: "Personnel & paie", hint: "Paie à valider, rémunérations, pointages", hub: PERSONNEL_PAIE },
       { href: "/parametrage/fiscalite", label: "Fiscalité", hint: "Familles et codes fiscaux" },
       I.documents,
       I.audit,
@@ -454,6 +495,8 @@ export function flattenNav(role: Profil) {
 function matchesItem(href: string, itemHref: string) {
   if (href === itemHref) return true;
   if (itemHref === "/parametrage") return false;
+  // Chaque écran du personnel a ses propres droits (la paie n’est pas ouverte aux équipes).
+  if (itemHref === "/personnel") return false;
   if (itemHref === "/caisse") {
     return (
       href.startsWith("/caisse/encaissement/") ||
@@ -642,6 +685,11 @@ export function breadcrumbs(pathname: string) {
     utilisateurs: "Utilisateurs & profils",
     parametres: "Paramètres",
     audit: "Journal",
+    personnel: "Personnel",
+    affectations: "Affectations",
+    pointages: "Pointages",
+    remunerations: "Rémunérations",
+    paie: "Paie",
   };
   const parts = pathname.split("/").filter(Boolean);
   const crumbs: { href: string; label: string }[] = [{ href: "/accueil", label: "Poste" }];

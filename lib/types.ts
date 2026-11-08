@@ -12,7 +12,8 @@ export type Profil =
   | "CHAUFFEUR"
   | "COMPTABILITE_DAF"
   | "DIRECTION"
-  | "ADMIN_SI";
+  | "ADMIN_SI"
+  | "RH";
 
 /** Alias historique : le « rôle » UI est le profil backend. */
 export type Role = Profil;
@@ -536,6 +537,8 @@ export interface BesoinApprovisionnement {
   quantite_besoin: string;
   origine: OrigineBesoin;
   satisfait: boolean;
+  /** OF dont les matières manquantes sont couvertes par ce besoin. */
+  ordres_fabrication: number[];
   date_creation: string;
 }
 
@@ -1141,11 +1144,6 @@ export interface Chauffeur {
   permis_numero: string;
 }
 
-export interface DepotDistribution {
-  id: number;
-  nom: string;
-}
-
 export interface Tournee {
   id: number;
   numero: string;
@@ -1201,14 +1199,6 @@ export interface BonLivraison {
   tournee_numero?: string | null;
   vehicule_immatriculation?: string | null;
   chauffeur_nom?: string | null;
-}
-
-export interface TransfertDepot {
-  id: number;
-  depot_source: number;
-  depot_destination: number;
-  date_transfert: string;
-  statut: string;
 }
 
 export interface ReclamationClient {
@@ -1319,6 +1309,8 @@ export interface CoutMainOeuvre {
   ordre_fabrication: number;
   heures: string;
   cout_horaire: string;
+  /** Renseigné quand la ligne vient de la paie des ouvriers : elle ne se modifie pas. */
+  etat_paie?: number | null;
 }
 
 export interface Amortissement {
@@ -1387,7 +1379,7 @@ export interface Cloture {
 export type CleCompte =
   | "CLIENTS" | "FOURNISSEURS" | "VENTES_PRODUITS_FINIS" | "TVA_COLLECTEE" | "ACCISES"
   | "CENTIMES_ADDITIONNELS" | "RABAIS_ACCORDES" | "ACHATS_MATIERES" | "CAISSE" | "BANQUE"
-  | "MOBILE_MONEY" | "CHARGES_DIVERSES";
+  | "MOBILE_MONEY" | "CHARGES_DIVERSES" | "CHARGES_PERSONNEL" | "PERSONNEL";
 
 export interface CompteParametre {
   id: number;
@@ -2437,6 +2429,139 @@ export interface HistoriqueLigne {
   par: string;
 }
 
+/* ---------- Personnel : ouvriers (sans compte), affectations, pointages, paie ---------- */
+
+export type TypeContrat = "PERMANENT" | "TEMPORAIRE";
+export type TypePiece = "CNI" | "PASSEPORT" | "CARTE_SEJOUR" | "AUTRE";
+export type ModeRemuneration = "MENSUEL" | "JOURNALIER";
+export type PeriodicitePaie = "HEBDOMADAIRE" | "MENSUELLE";
+export type Presence = "PRESENT" | "DEMI_JOURNEE" | "ABSENT";
+export type StatutPointage = "SAISI" | "VALIDE";
+export type StatutEtatPaie = "BROUILLON" | "VALIDE" | "PAYE" | "ANNULE";
+
+export interface Ouvrier {
+  id: number;
+  /** Généré (OUV-000001), jamais saisi. */
+  matricule: string;
+  nom: string;
+  prenom: string;
+  nom_complet: string;
+  date_naissance: string | null;
+  telephone: string;
+  adresse: string;
+  type_piece: TypePiece | "";
+  numero_piece: string;
+  type_contrat: TypeContrat;
+  date_entree: string;
+  date_fin_contrat: string | null;
+  usine: number | null;
+  /** Étapes du socle industriel que l'ouvrier sait tenir. */
+  competences: number[];
+  competences_libelles: string[];
+  actif: boolean;
+  /** Actif et dans sa période de contrat aujourd'hui. */
+  sous_contrat: boolean;
+  motif_sortie: string;
+  observations: string;
+  date_creation: string;
+}
+
+export interface AffectationOuvrier {
+  id: number;
+  ouvrier: number;
+  ouvrier_nom: string;
+  ouvrier_matricule: string;
+  type_contrat: TypeContrat;
+  etape: number | null;
+  etape_libelle: string;
+  poste: number | null;
+  poste_code: string | null;
+  ordre_fabrication: number | null;
+  of_numero: string | null;
+  date_debut: string;
+  date_fin: string | null;
+  observations: string;
+  affecte_par: number | null;
+  date_creation: string;
+}
+
+export interface ConditionRemuneration {
+  id: number;
+  ouvrier: number;
+  ouvrier_nom: string;
+  mode: ModeRemuneration;
+  montant: string;
+  periodicite_paie: PeriodicitePaie;
+  date_effet: string;
+  saisi_par: number | null;
+  date_creation: string;
+}
+
+export interface Pointage {
+  id: number;
+  ouvrier: number;
+  ouvrier_nom: string;
+  ouvrier_matricule: string;
+  date: string;
+  presence: Presence;
+  absence_justifiee: boolean;
+  motif_absence: string;
+  etape: number | null;
+  etape_libelle: string | null;
+  poste: number | null;
+  poste_code: string | null;
+  ordre_fabrication: number | null;
+  of_numero: string | null;
+  /** Part de journée : 1, 0,5 ou 0. */
+  fraction_jour: string;
+  observations: string;
+  statut: StatutPointage;
+  saisi_par: number | null;
+  valide_par: number | null;
+  date_validation: string | null;
+}
+
+/** Une ligne de la feuille du jour : l'ouvrier, son affectation du jour et son pointage éventuel. */
+export interface LigneFeuillePointage {
+  ouvrier: number;
+  matricule: string;
+  nom: string;
+  type_contrat: TypeContrat;
+  affectations: AffectationOuvrier[];
+  pointage: Pointage | null;
+}
+
+export interface FeuillePointage {
+  date: string;
+  lignes: LigneFeuillePointage[];
+}
+
+export interface EtatPaie {
+  id: number;
+  numero: string;
+  ouvrier: number;
+  ouvrier_nom: string;
+  ouvrier_matricule: string;
+  periodicite: PeriodicitePaie;
+  date_debut: string;
+  date_fin: string;
+  jours_travailles: string;
+  /** Absences non justifiées retenues sur un salaire mensuel. */
+  jours_absence_retenus: string;
+  /** Salaire mensuel : jours ouvrables payés faute de pointage (à vérifier). */
+  jours_non_pointes: number;
+  montant: string;
+  statut: StatutEtatPaie;
+  prepare_par: number | null;
+  valide_par: number | null;
+  date_validation: string | null;
+  decaissement: number | null;
+  decaissement_numero: string | null;
+  date_paiement: string | null;
+  motif_annulation: string;
+  date_creation: string;
+}
+
 export interface AppState {
   currentUserId: number | null;
   depotId: number | null;
@@ -2498,11 +2623,14 @@ export interface AppState {
   ecartsCaisse: EcartCaisse[];
   vehicules: Vehicule[];
   chauffeurs: Chauffeur[];
-  depotsDistribution: DepotDistribution[];
   tournees: Tournee[];
   preparations: PreparationLivraison[];
   bonsLivraison: BonLivraison[];
-  transferts: TransfertDepot[];
+  ouvriers: Ouvrier[];
+  affectationsOuvriers: AffectationOuvrier[];
+  remunerations: ConditionRemuneration[];
+  pointages: Pointage[];
+  etatsPaie: EtatPaie[];
   reclamations: ReclamationClient[];
   retoursPhysiques: RetourPhysique[];
   controlesRetour: ControleRetour[];

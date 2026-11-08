@@ -1,5 +1,6 @@
 import { api, apiBlob, apiUpload, listAll, ouvrirPdf } from "./client";
 import type { CoutParSite, FactureCharge, ReleveElectricite, ValeurCle, VolumeEauSite } from "../types";
+import type { AffectationOuvrier, ConditionRemuneration, EtatPaie, FeuillePointage, Ouvrier, PeriodicitePaie, Pointage, Presence } from "../types";
 import type {
   Devis,
   DonneeObligatoireEtape,
@@ -94,7 +95,6 @@ import type {
   DemandeComplementaire,
   DemandeMatiere,
   Depot,
-  DepotDistribution,
   EcartCaisse,
   ElementComposition,
   Encaissement,
@@ -134,7 +134,6 @@ import type {
   SuiviProduction,
   Tarif,
   Tournee,
-  TransfertDepot,
   Utilisateur,
   Vehicule,
 } from "../types";
@@ -197,11 +196,9 @@ export const endpoints = {
   ecartsCaisse: "/caisse/ecarts/",
   vehicules: "/distribution/vehicules/",
   chauffeurs: "/distribution/chauffeurs/",
-  depotsDistribution: "/distribution/depots/",
   tournees: "/distribution/tournees/",
   preparations: "/distribution/preparations/",
   bonsLivraison: "/distribution/bons-livraison/",
-  transferts: "/distribution/transferts/",
   reclamations: "/reclamations/reclamations/",
   retoursPhysiques: "/reclamations/retours-physiques/",
   controlesRetour: "/reclamations/controles/",
@@ -254,6 +251,11 @@ export const endpoints = {
   charges: "/couts/charges/",
   repartitionsCout: "/couts/repartitions/",
   // Mise à jour backend PR #6 à #8
+  ouvriers: "/personnel/ouvriers/",
+  affectationsOuvriers: "/personnel/affectations/",
+  remunerations: "/personnel/remunerations/",
+  pointages: "/personnel/pointages/",
+  etatsPaie: "/personnel/etats-paie/",
   devis: "/commercial/devis/",
   lignesDevis: "/commercial/lignes-devis/",
   reglesComptes: "/comptabilite/regles-comptes/",
@@ -327,11 +329,9 @@ export const catalog = {
   ecartsCaisse: () => listAll<EcartCaisse>(endpoints.ecartsCaisse),
   vehicules: () => listAll<Vehicule>(endpoints.vehicules),
   chauffeurs: () => listAll<Chauffeur>(endpoints.chauffeurs),
-  depotsDistribution: () => listAll<DepotDistribution>(endpoints.depotsDistribution),
   tournees: () => listAll<Tournee>(endpoints.tournees),
   preparations: () => listAll<PreparationLivraison>(endpoints.preparations),
   bonsLivraison: () => listAll<BonLivraison>(endpoints.bonsLivraison),
-  transferts: () => listAll<TransfertDepot>(endpoints.transferts),
   reclamations: () => listAll<ReclamationClient>(endpoints.reclamations),
   retoursPhysiques: () => listAll<RetourPhysique>(endpoints.retoursPhysiques),
   controlesRetour: () => listAll<ControleRetour>(endpoints.controlesRetour),
@@ -373,6 +373,11 @@ export const catalog = {
   nonConformites: () => listAll<NonConformite>(endpoints.nonConformites),
   naturesCout: () => listAll<NatureCout>(endpoints.naturesCout),
   charges: () => listAll<Charge>(endpoints.charges),
+  ouvriers: () => listAll<Ouvrier>(endpoints.ouvriers),
+  affectationsOuvriers: () => listAll<AffectationOuvrier>(endpoints.affectationsOuvriers),
+  remunerations: () => listAll<ConditionRemuneration>(endpoints.remunerations),
+  pointages: () => listAll<Pointage>(endpoints.pointages),
+  etatsPaie: () => listAll<EtatPaie>(endpoints.etatsPaie),
   devis: () => listAll<Devis>(endpoints.devis),
   reglesComptes: () => listAll<RegleCompte>(endpoints.reglesComptes),
   evenementsProduction: () => listAll<EvenementProduction>(endpoints.evenementsProduction),
@@ -422,8 +427,17 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "conversions",
     // Données à saisir par étape (paramétrage avec les techniciens).
     "donneesEtapes",
+    // Ouvriers : fiches (compétences, site) et affectations.
+    "ouvriers",
+    "affectationsOuvriers",
+    "ofList",
   ],
   DIRECTION: [
+    "ouvriers",
+    "affectationsOuvriers",
+    "pointages",
+    "remunerations",
+    "etatsPaie",
     "articles",
     "stock",
     "lots",
@@ -508,6 +522,10 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "relevesElectricite",
   ],
   RESPONSABLE_PRODUCTION: [
+    // Équipes : ouvriers et pointages en lecture, jamais la rémunération.
+    "ouvriers",
+    "affectationsOuvriers",
+    "pointages",
     "codesFiscaux",
     "famillesFiscales",
     "famillesArticle",
@@ -552,6 +570,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   // Agent : ses OF (filtrés par le backend), leurs besoins et saisies, de quoi choisir étape, poste et
   // machine, et les contrôles de ses OF. Il ne lit ni articles, ni stock, ni lots.
   AGENT_PRODUCTION: [
+    "ouvriers",
+    "affectationsOuvriers",
+    "pointages",
     "ofList",
     "besoinsMatieres",
     "demandesComplementaires",
@@ -619,7 +640,6 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "commandesFournisseur",
     "lignesCommandeFournisseur",
     "preparations",
-    "transferts",
     "fournisseurs",
     "activites",
     "usines",
@@ -696,7 +716,9 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   ],
   // Caissier : ni clients ni articles côté backend ; les noms viennent de la facture (client_nom).
   // Lignes de commande et de facture : fiche commande ouverte depuis la caisse.
-  CAISSIER: ["commandes", "lignesCommande", "factures", "lignesFacture", "caisses", "sessionsCaisse", "encaissements", "decaissements", "ecartsCaisse"],
+  CAISSIER: ["commandes", "lignesCommande", "factures", "lignesFacture", "caisses", "sessionsCaisse", "encaissements", "decaissements", "ecartsCaisse", "etatsPaie"],
+  // RH : son module seulement (le backend ne lui ouvre ni le socle industriel ni les OF).
+  RH: ["ouvriers", "affectationsOuvriers", "remunerations", "pointages", "etatsPaie"],
   RESPONSABLE_DISTRIBUTION: [
     // Palettes (lecture) : numéros de lot des lignes de transfert.
     "palettes",
@@ -704,7 +726,6 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "stock",
     "vehicules",
     "chauffeurs",
-    "depotsDistribution",
     "tournees",
     "preparations",
     "bonsLivraison",
@@ -721,6 +742,12 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   // Chauffeur : le backend ne renvoie que ses tournées et ses BL (articles, client et adresse inclus).
   CHAUFFEUR: ["tournees", "bonsLivraison"],
   COMPTABILITE_DAF: [
+    // Personnel : consultation, et validation de la paie des ouvriers.
+    "ouvriers",
+    "affectationsOuvriers",
+    "pointages",
+    "remunerations",
+    "etatsPaie",
     "famillesFiscales",
     "famillesArticle",
     "articles",
@@ -789,6 +816,25 @@ export function detail(path: string, id: number) {
 }
 
 export const actions = {
+  // --- Personnel ---
+  /** Ouvriers actifs, sous contrat, compétents pour l'étape et sans poste ce jour-là. */
+  ouvriersDisponibles: (etape: number, date: string) => api.get<Ouvrier[]>(`${endpoints.ouvriers}disponibles/?etape=${etape}&date=${date}`),
+  feuillePointage: (date: string) => api.get<FeuillePointage>(`${endpoints.pointages}feuille/?date=${date}`),
+  /** Tout ou rien : une ligne refusée annule la saisie (erreurs renvoyées par ouvrier). */
+  saisirPointagesJour: (
+    date: string,
+    lignes: { ouvrier: number; presence: Presence; absence_justifiee: boolean; motif_absence: string; observations: string }[],
+  ) => api.post<Pointage[]>(`${endpoints.pointages}saisie_jour/`, { date, lignes }),
+  validerPointage: (id: number) => api.post<Pointage>(`${endpoints.pointages}${id}/valider/`),
+  validerPointagesPeriode: (du: string, au: string, ouvrier?: number) =>
+    api.post<{ valides: number }>(`${endpoints.pointages}valider_periode/`, ouvrier ? { du, au, ouvrier } : { du, au }),
+  preparerPaie: (periodicite: PeriodicitePaie, date: string) =>
+    api.post<{ etats: EtatPaie[]; erreurs: Record<string, string[]> }>(`${endpoints.etatsPaie}preparer/`, { periodicite, date }),
+  recalculerPaie: (id: number) => api.post<EtatPaie>(`${endpoints.etatsPaie}${id}/recalculer/`),
+  validerPaie: (id: number) => api.post<EtatPaie>(`${endpoints.etatsPaie}${id}/valider/`),
+  annulerPaie: (id: number, motif: string) => api.post<EtatPaie>(`${endpoints.etatsPaie}${id}/annuler/`, { motif }),
+  payerPaie: (id: number) => api.post<EtatPaie>(`${endpoints.etatsPaie}${id}/payer/`),
+  emargementPaie: (ids: number[]) => ouvrirPdf(`${endpoints.etatsPaie}emargement/?ids=${ids.join(",")}`, "emargement-paie"),
   validerFiche: (id: number) => api.post<FicheTechnique>(`${endpoints.fichesTechniques}${id}/valider/`),
   convertirPlanEnOf: (id: number, agents_affectes?: number[]) =>
     api.post<OrdreFabrication>(`${endpoints.plans}${id}/convertir_en_of/`, agents_affectes?.length ? { agents_affectes } : {}),

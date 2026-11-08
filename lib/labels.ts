@@ -40,7 +40,14 @@ import type {
   OrigineBesoin,
   PeriodeRapport,
   Priorite,
+  ModeRemuneration,
+  PeriodicitePaie,
+  Presence,
   Profil,
+  StatutEtatPaie,
+  StatutPointage,
+  TypeContrat,
+  TypePiece,
   ResultatControleRetour,
   StatutAnomalie,
   StatutAvoir,
@@ -87,9 +94,50 @@ export const PROFIL_LABEL: Record<Profil, string> = {
   COMPTABILITE_DAF: "Comptabilité / DAF",
   DIRECTION: "PDG / Direction",
   ADMIN_SI: "Administrateur SI",
+  RH: "Ressources humaines",
 };
 
 export const ROLE_LABEL = PROFIL_LABEL;
+
+export const TYPE_CONTRAT_LABEL: Record<TypeContrat, string> = {
+  PERMANENT: "Permanent",
+  TEMPORAIRE: "Temporaire",
+};
+
+export const TYPE_PIECE_LABEL: Record<TypePiece, string> = {
+  CNI: "Carte nationale d’identité",
+  PASSEPORT: "Passeport",
+  CARTE_SEJOUR: "Carte de séjour",
+  AUTRE: "Autre",
+};
+
+export const MODE_REMUNERATION_LABEL: Record<ModeRemuneration, string> = {
+  MENSUEL: "Salaire mensuel fixe",
+  JOURNALIER: "Taux journalier",
+};
+
+export const PERIODICITE_PAIE_LABEL: Record<PeriodicitePaie, string> = {
+  HEBDOMADAIRE: "Hebdomadaire",
+  MENSUELLE: "Mensuelle",
+};
+
+export const PRESENCE_LABEL: Record<Presence, string> = {
+  PRESENT: "Présent",
+  DEMI_JOURNEE: "Demi-journée",
+  ABSENT: "Absent",
+};
+
+export const STATUT_POINTAGE_LABEL: Record<StatutPointage, string> = {
+  SAISI: "Saisi",
+  VALIDE: "Validé",
+};
+
+export const STATUT_ETAT_PAIE_LABEL: Record<StatutEtatPaie, string> = {
+  BROUILLON: "Préparé",
+  VALIDE: "Validé",
+  PAYE: "Payé",
+  ANNULE: "Annulé",
+};
 
 export const TYPE_ARTICLE_LABEL: Record<TypeArticle, string> = {
   MATIERE_PREMIERE: "Matière première",

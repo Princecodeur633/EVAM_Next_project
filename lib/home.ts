@@ -261,6 +261,73 @@ function ofDonut(list: OrdreFabrication[]): HomeChart {
   };
 }
 
+/** RH : pointages à valider, paie en préparation, contrats qui se terminent. */
+function rh(state: AppState): HomeData {
+  const actifs = state.ouvriers.filter((o) => o.actif);
+  const aValider = state.pointages.filter((p) => p.statut === "SAISI");
+  const prepares = state.etatsPaie.filter((e) => e.statut === "BROUILLON");
+  const dans14Jours = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const finsContrat = actifs.filter((o) => o.date_fin_contrat && o.date_fin_contrat <= dans14Jours).sort((a, b) => (a.date_fin_contrat ?? "").localeCompare(b.date_fin_contrat ?? ""));
+  return {
+    actions: [
+      { href: "/personnel/pointages", label: "Pointer la journée", icon: ClipboardCheck },
+      { href: "/personnel/paie", label: "Préparer la paie", icon: Wallet },
+    ],
+    kpis: [
+      { label: "Ouvriers actifs", value: actifs.length, hint: `${actifs.filter((o) => o.type_contrat === "TEMPORAIRE").length} temporaire(s)`, icon: Users, href: "/personnel" },
+      { label: "Pointages à valider", value: aValider.length, tone: aValider.length ? "warning" : "success", icon: ClipboardCheck, href: "/personnel/pointages" },
+      { label: "États de paie préparés", value: prepares.length, hint: formatDa(sum(prepares, (e) => e.montant)), icon: Wallet, href: "/personnel/paie" },
+      { label: "Fins de contrat sous 14 jours", value: finsContrat.length, tone: finsContrat.length ? "warning" : "default", icon: CalendarClock, href: "/personnel" },
+    ],
+    sections: [
+      section({
+        id: "pointages",
+        title: "Pointages à valider",
+        icon: ClipboardCheck,
+        href: "/personnel/pointages",
+        tone: "warning",
+        empty: "Tous les pointages sont validés.",
+        all: [...aValider].sort(byDateDesc((p) => p.date)).map((p) => ({
+          href: "/personnel/pointages",
+          title: p.ouvrier_nom,
+          detail: formatDate(p.date),
+        })),
+      }),
+      section({
+        id: "contrats",
+        title: "Contrats qui se terminent",
+        icon: CalendarClock,
+        href: "/personnel",
+        empty: "Aucune fin de contrat proche.",
+        all: finsContrat.map((o) => ({
+          href: "/personnel",
+          title: o.nom_complet,
+          detail: `Fin le ${formatDate(o.date_fin_contrat ?? "")}`,
+        })),
+      }),
+    ],
+  };
+}
+
+/** Ajoute en tête de l’accueil les états de paie qui attendent ce profil. */
+function avecPaie(home: HomeData, etats: AppState["etatsPaie"], title: string): HomeData {
+  if (!etats.length) return home;
+  const carte = section({
+    id: "paie",
+    title,
+    icon: Wallet,
+    href: "/personnel/paie",
+    tone: "warning",
+    empty: "",
+    all: etats.map((e) => ({
+      href: "/personnel/paie",
+      title: e.ouvrier_nom,
+      detail: `${e.numero} · ${formatDa(num(e.montant))}`,
+    })),
+  });
+  return { ...home, sections: [carte, ...home.sections] };
+}
+
 // ---------- contenu par poste ----------
 
 export function homeForRole(role: Profil, state: AppState, h: HomeHelpers): HomeData {
@@ -268,7 +335,7 @@ export function homeForRole(role: Profil, state: AppState, h: HomeHelpers): Home
     case "ADMIN_SI":
       return admin(state, h);
     case "DIRECTION":
-      return direction(state, h);
+      return avecPaie(direction(state, h), state.etatsPaie.filter((e) => e.statut === "BROUILLON"), "Paie des ouvriers à valider");
     case "RESPONSABLE_PRODUCTION":
       return respProduction(state, h);
     case "AGENT_PRODUCTION":
@@ -282,13 +349,15 @@ export function homeForRole(role: Profil, state: AppState, h: HomeHelpers): Home
     case "COMMERCIAL":
       return commercial(state, h);
     case "CAISSIER":
-      return caissier(state, h);
+      return avecPaie(caissier(state, h), state.etatsPaie.filter((e) => e.statut === "VALIDE"), "Paie des ouvriers à payer");
     case "RESPONSABLE_DISTRIBUTION":
       return distribution(state, h);
     case "CHAUFFEUR":
       return chauffeur(state, h);
     case "COMPTABILITE_DAF":
-      return daf(state, h);
+      return avecPaie(daf(state, h), state.etatsPaie.filter((e) => e.statut === "BROUILLON"), "Paie des ouvriers à valider");
+    case "RH":
+      return rh(state);
   }
 }
 
