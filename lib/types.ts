@@ -539,6 +539,7 @@ export interface BesoinApprovisionnement {
   satisfait: boolean;
   /** OF dont les matières manquantes sont couvertes par ce besoin. */
   ordres_fabrication: number[];
+  ordres_fabrication_numeros: string[];
   date_creation: string;
 }
 

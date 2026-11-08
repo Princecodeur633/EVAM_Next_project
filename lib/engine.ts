@@ -1,4 +1,4 @@
-import type { AppState, BesoinApprovisionnement, Profil, StockArticle } from "./types";
+import type { AppState, Profil, StockArticle } from "./types";
 import { num } from "./utils";
 
 export const ACTIONS = {
@@ -150,13 +150,6 @@ export type ActionName = keyof typeof ACTIONS;
 export function canAct(role: Profil | null, action: ActionName) {
   if (!role) return false;
   return (ACTIONS[action] as readonly Profil[]).includes(role);
-}
-
-/** OF couverts par un besoin d'achat : numéros si le profil lit les OF, sinon leur nombre. */
-export function ofsDuBesoin(state: AppState, besoin: BesoinApprovisionnement) {
-  const numeros = besoin.ordres_fabrication.flatMap((id) => state.ofList.find((o) => o.id === id)?.numero ?? []);
-  if (numeros.length === besoin.ordres_fabrication.length) return `Pour ${numeros.join(", ")}`;
-  return `Pour ${besoin.ordres_fabrication.length} OF`;
 }
 
 export function stockDisponible(line: StockArticle) {

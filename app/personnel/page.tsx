@@ -1,7 +1,7 @@
 "use client";
 
 import { RefCrud } from "@/components/RefCrud";
-import { Guard, PageHeader, StatusBadge } from "@/components/ui";
+import { PageHeader, StatusBadge } from "@/components/ui";
 import { endpoints } from "@/lib/api";
 import { TYPE_CONTRAT_LABEL, TYPE_PIECE_LABEL } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -17,18 +17,11 @@ const opt = <T extends string>(labels: Record<T, string>) => (Object.keys(labels
 export default function OuvriersPage() {
   const { state, can } = useStore();
   const writable = can("GERER_OUVRIERS");
-  // Le backend n’ouvre pas le socle industriel au RH : site et compétences ne se choisissent que s’il est chargé.
-  const avecSocle = state.etapesStandard.length > 0;
   const nomUsine = (id: number | null) => state.usines.find((u) => u.id === id)?.nom;
 
   return (
     <div className="space-y-4 max-w-[1440px]">
       <PageHeader eyebrow="Personnel" title="Ouvriers" description="Fiches des personnes qui travaillent dans le processus de production, sans accès à l’application." />
-      {writable && !avecSocle && (
-        <Guard variant="warn" title="Site et zones de compétence : à compléter par l’Administrateur SI">
-          Votre profil n’a pas accès au socle industriel (usines, étapes). Créez la fiche ici, l’Administrateur SI y ajoute le site et les zones de compétence, sans lesquels l’ouvrier ne peut pas être affecté.
-        </Guard>
-      )}
       <RefCrud<Ouvrier>
         titre="Registre des ouvriers"
         items={state.ouvriers}
@@ -97,13 +90,12 @@ export default function OuvriersPage() {
             type: "date",
             aide: "Obligatoire pour un temporaire. Pour un permanent : date de départ prévue, sinon vide.",
           },
-          { cle: "usine", label: "Site de rattachement", type: "select", visible: () => avecSocle, options: state.usines.map((u) => ({ value: u.id, label: u.nom })) },
+          { cle: "usine", label: "Site de rattachement", type: "select", options: state.usines.map((u) => ({ value: u.id, label: u.nom })) },
           {
             cle: "competences",
             label: "Zones de compétence",
             type: "multi",
             aide: "Étapes que l’ouvrier sait tenir : il ne peut être affecté qu’à celles-ci.",
-            visible: () => avecSocle,
             options: state.etapesStandard.filter((e) => e.actif).map((e) => ({ value: e.id, label: e.libelle })),
           },
           { cle: "actif", label: "Actif (décocher au départ de l’ouvrier)", type: "checkbox", pleineLargeur: true },
