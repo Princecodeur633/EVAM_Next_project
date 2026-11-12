@@ -284,6 +284,7 @@ const EAU_COUT: HubTab[] = [
   { label: "Éléments de coût", href: "/eau/elements" },
   { label: "Prévisions", href: "/eau/previsions" },
   { label: "Équipements", href: "/eau/equipements" },
+  { label: "Pièces installées", href: "/eau/installations" },
   { label: "Paramètres", href: "/eau/parametres" },
 ];
 
@@ -294,6 +295,7 @@ const EAU_TRAITEMENT: HubTab[] = [
   { label: "Heures machine", href: "/eau/heures" },
   { label: "Pressions", href: "/eau/pressions" },
   { label: "Pertes", href: "/eau/pertes" },
+  { label: "Maintenance", href: "/eau/maintenance" },
 ];
 
 /** Eau vue par la Production : ses saisies et la synthèse. */
@@ -302,6 +304,7 @@ const EAU_PRODUCTION: HubTab[] = [
   { label: "Heures machine", href: "/eau/heures" },
   { label: "Prévisions", href: "/eau/previsions" },
   { label: "Synthèse", href: "/eau/traitement" },
+  { label: "Maintenance", href: "/eau/maintenance" },
   { label: "Équipements", href: "/eau/equipements" },
 ];
 
@@ -328,7 +331,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
           { label: "Affectations", href: "/personnel/affectations" },
         ],
       },
-      { href: "/eau", label: "Coût de l’eau", hint: "Consultation", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }] },
+      { href: "/eau", label: "Coût de l’eau", hint: "Consultation", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }, { label: "Maintenance", href: "/eau/maintenance" }] },
       I.documents,
       I.parametres,
       I.audit,
@@ -344,7 +347,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.anomaliesEcritures, hub: ANOMALIES_ECRITURES },
       I.decaissements,
       { href: "/personnel/paie", label: "Personnel & paie", hint: "Paie à valider, rémunérations, pointages", hub: PERSONNEL_PAIE },
-      { href: "/eau", label: "Coût de l’eau", hint: "Standard, paramètres, traitement", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }] },
+      { href: "/eau", label: "Coût de l’eau", hint: "Standard, paramètres, traitement", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }, { label: "Maintenance", href: "/eau/maintenance" }] },
       I.industriel,
       I.documents,
     ]),
@@ -494,6 +497,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/eau/heures", label: "Heures machine", hint: "Arrêts et pannes" },
       { href: "/eau/pressions", label: "Pressions", hint: "Membranes" },
       { href: "/eau/pertes", label: "Pertes d’eau", hint: "Rinçages, lavages, fuites" },
+      { href: "/eau/maintenance", label: "Maintenance", hint: "Échéances et interventions" },
       { href: "/eau/equipements", label: "Équipements", hint: "Puissance, heures standard (lecture)" },
       I.industriel,
     ]),
@@ -517,7 +521,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.coutsMarges, label: "Coûts", hub: COUTS_MARGES },
       { href: "/caisse/cloture", label: "Caisse", hint: "Sessions et décaissements", hub: DAF_CAISSE },
       { href: "/personnel/paie", label: "Personnel & paie", hint: "Paie à valider, rémunérations, pointages", hub: PERSONNEL_PAIE },
-      { href: "/eau", label: "Coût de l’eau", hint: "Standard, paramètres, traitement", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }] },
+      { href: "/eau", label: "Coût de l’eau", hint: "Standard, paramètres, traitement", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }, { label: "Maintenance", href: "/eau/maintenance" }] },
       { href: "/parametrage/fiscalite", label: "Fiscalité", hint: "Familles et codes fiscaux" },
       I.documents,
       I.audit,
@@ -754,6 +758,8 @@ export function breadcrumbs(pathname: string) {
     compteurs: "Compteurs",
     heures: "Heures machine",
     pressions: "Pressions",
+    maintenance: "Maintenance",
+    installations: "Pièces installées",
   };
   const parts = pathname.split("/").filter(Boolean);
   const crumbs: { href: string; label: string }[] = [{ href: "/accueil", label: "Poste" }];

@@ -265,13 +265,15 @@ function ofDonut(list: OrdreFabrication[]): HomeChart {
 /** Contrôle de gestion : standards proposés à valider, paramètres à compléter. */
 function controleGestion(state: AppState): HomeData {
   const proposes = state.coutsStandardsEau.filter((c) => c.statut === "PROPOSE");
+  // Remplacements signalés par les techniciens dont la nouvelle pièce n'a pas encore de prix.
+  const pieces = state.interventionsEau.filter((i) => i.nouvelle_piece_enregistree === false);
   const enVigueur = [...state.coutsStandardsEau].filter((c) => c.statut === "VALIDE").sort((a, b) => b.mois_application.localeCompare(a.mois_application))[0];
   return {
     actions: [{ href: "/eau", label: "Calculer le coût de l’eau", icon: Calculator }],
     kpis: [
       { label: "Standard validé", value: enVigueur ? `${formatQty(num(enVigueur.cout_m3), 2)} FCFA/m³` : "—", hint: enVigueur ? `depuis ${enVigueur.mois_application}` : "Aucun standard validé", icon: Calculator, href: "/eau" },
       { label: "Standards à valider", value: proposes.length, tone: proposes.length ? "warning" : "default", icon: ClipboardCheck, href: "/eau" },
-      { label: "Éléments de coût", value: state.elementsCoutEau.length, icon: ListChecks, href: "/eau/elements" },
+      { label: "Pièces à enregistrer", value: pieces.length, tone: pieces.length ? "warning" : "default", icon: ListChecks, href: "/eau/installations" },
     ],
     sections: [
       section({
@@ -282,6 +284,15 @@ function controleGestion(state: AppState): HomeData {
         tone: "warning",
         empty: "Aucun standard en attente.",
         all: proposes.map((c) => ({ href: "/eau", title: `${c.usine_code} · ${c.mois_application}`, detail: `${formatQty(num(c.cout_m3), 2)} FCFA/m³` })),
+      }),
+      section({
+        id: "pieces",
+        title: "Nouvelles pièces à enregistrer",
+        icon: ListChecks,
+        href: "/eau/installations",
+        tone: "warning",
+        empty: "Aucun remplacement en attente.",
+        all: pieces.map((i) => ({ href: "/eau/installations", title: i.element_remplace_libelle ?? "Pièce", detail: `${i.equipement_code} · remplacée le ${formatDate(i.date)}` })),
       }),
     ],
   };

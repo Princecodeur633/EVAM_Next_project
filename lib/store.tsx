@@ -367,6 +367,8 @@ function emptyState(): AppState {
     exceptionsHeuresEau: [],
     relevesPressionEau: [],
     pertesEau: [],
+    interventionsEau: [],
+    installationsEau: [],
     reclamations: [],
     retoursPhysiques: [],
     controlesRetour: [],

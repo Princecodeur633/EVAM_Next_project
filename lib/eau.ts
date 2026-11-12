@@ -10,7 +10,9 @@ import type {
   JoursMarche,
   MotifArretEau,
   PeriodeEau,
+  StatutEcheanceEau,
   StatutStandardEau,
+  TypeInterventionEau,
   TypeCompteurEau,
   TypePerteEau,
 } from "./types";
@@ -95,6 +97,21 @@ export const STATUT_STANDARD_EAU_LABEL: Record<StatutStandardEau, string> = {
   PROPOSE: "Proposé",
   VALIDE: "Validé",
   REJETE: "Rejeté",
+};
+
+export const TYPE_INTERVENTION_EAU_LABEL: Record<TypeInterventionEau, string> = {
+  PREVENTIVE: "Préventive (plan de maintenance)",
+  AU_BESOIN: "Au besoin (panne, réparation)",
+  REMPLACEMENT: "Remplacement d’une pièce",
+};
+
+export const STATUT_ECHEANCE_EAU: Record<StatutEcheanceEau, { label: string; tone: "danger" | "warning" | "info" | "success" }> = {
+  EN_RETARD: { label: "En retard", tone: "danger" },
+  A_FAIRE: { label: "À faire (7 jours)", tone: "warning" },
+  A_VENIR: { label: "À venir", tone: "info" },
+  FIN_DE_VIE_PROCHE: { label: "Dernier mois", tone: "warning" },
+  FIN_DE_VIE_DEPASSEE: { label: "Fin de vie dépassée", tone: "danger" },
+  EN_SERVICE: { label: "En service", tone: "success" },
 };
 
 export const optionsDe = <T extends string>(labels: Record<T, string>) => (Object.keys(labels) as T[]).map((k) => ({ value: k, label: labels[k] }));

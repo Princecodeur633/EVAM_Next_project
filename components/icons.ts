@@ -89,6 +89,8 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/eau/pressions": TrendingDown,
   "/eau/pertes": PackageMinus,
   "/eau/equipements": Settings2,
+  "/eau/maintenance": Wrench,
+  "/eau/installations": Box,
   "/personnel/affectations": ListChecks,
   "/personnel/pointages": ClipboardCheck,
   "/personnel/remunerations": HandCoins,

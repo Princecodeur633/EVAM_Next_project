@@ -2792,6 +2792,85 @@ export interface PerteEau {
   date_saisie: string;
 }
 
+export type TypeInterventionEau = "PREVENTIVE" | "AU_BESOIN" | "REMPLACEMENT";
+
+/** Intervention de maintenance (techniciens, sans montant). */
+export interface InterventionEau {
+  id: number;
+  equipement: number;
+  equipement_code: string;
+  type_intervention: TypeInterventionEau;
+  date: string;
+  description: string;
+  pieces_utilisees: string;
+  /** Préventive : l'opération du plan (élément de coût « Préventive »). */
+  operation: number | null;
+  operation_libelle: string | null;
+  /** Remplacement : la pièce étalée remplacée et sa quantité. */
+  element_remplace: number | null;
+  element_remplace_libelle: string | null;
+  quantite_remplacee: string | null;
+  /** Remplacement : la nouvelle pièce est-elle déjà enregistrée (lot installé) ? null sinon. */
+  nouvelle_piece_enregistree: boolean | null;
+  saisi_par: number | null;
+  saisi_par_nom: string | null;
+  date_saisie: string;
+}
+
+/** Lot de pièces étalées réellement en place (contrôle de gestion, avec les prix). */
+export interface InstallationEau {
+  id: number;
+  element: number;
+  element_libelle: string;
+  quantite: string;
+  prix_unitaire: string;
+  duree_vie_mois: number;
+  mois_installation: string;
+  /** Dernier mois étalé (fin de vie). */
+  dernier_mois: string;
+  remplace: number | null;
+  intervention: number | null;
+  mois_deja_etales: number | null;
+  /** Part de l'ancien prix pas encore étalée : charge exceptionnelle du mois d'installation. */
+  valeur_residuelle: string | null;
+  montant_etale_mensuel: string;
+  observations: string;
+  saisi_par: number | null;
+  saisi_par_nom: string | null;
+  date_saisie: string;
+}
+
+export type StatutEcheanceEau = "EN_RETARD" | "A_FAIRE" | "A_VENIR" | "FIN_DE_VIE_PROCHE" | "FIN_DE_VIE_DEPASSEE" | "EN_SERVICE";
+
+/** Échéances de maintenance d'un site (sans aucun prix). */
+export interface EcheancesMaintenanceEau {
+  usine: string;
+  date: string;
+  preventive: {
+    operation: number;
+    libelle: string;
+    etape: string;
+    equipement: string | null;
+    frequence: string;
+    intervalle_jours: number;
+    derniere_intervention: string | null;
+    prochaine_echeance: string;
+    jours_restants: number;
+    statut: StatutEcheanceEau;
+  }[];
+  fins_de_vie: {
+    installation: number;
+    element: number;
+    libelle: string;
+    equipement: string | null;
+    quantite_en_place: string;
+    mois_installation: string;
+    duree_vie_mois: number;
+    dernier_mois: string;
+    statut: StatutEcheanceEau;
+  }[];
+}
+
 /** Synthèse mensuelle du traitement de l'eau (sans coût). */
 export interface SyntheseTraitementEau {
   usine: string;
@@ -2904,6 +2983,8 @@ export interface AppState {
   exceptionsHeuresEau: ExceptionHeuresEau[];
   relevesPressionEau: RelevePressionEau[];
   pertesEau: PerteEau[];
+  interventionsEau: InterventionEau[];
+  installationsEau: InstallationEau[];
   reclamations: ReclamationClient[];
   retoursPhysiques: RetourPhysique[];
   controlesRetour: ControleRetour[];
