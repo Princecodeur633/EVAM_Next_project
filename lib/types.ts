@@ -13,7 +13,9 @@ export type Profil =
   | "COMPTABILITE_DAF"
   | "DIRECTION"
   | "ADMIN_SI"
-  | "RH";
+  | "RH"
+  | "CONTROLE_GESTION"
+  | "TECHNICIEN_EAU";
 
 /** Alias historique : le « rôle » UI est le profil backend. */
 export type Role = Profil;
@@ -30,6 +32,7 @@ export type ModuleMetier =
   | "DISTRIBUTION"
   | "COUTS"
   | "COMPTABILITE"
+  | "EAU"
   | "ADMINISTRATION";
 
 /** Catégories du Guide du paramétrage (§6). Emballage, consommable et fluide de process
@@ -2563,6 +2566,263 @@ export interface EtatPaie {
   date_creation: string;
 }
 
+/* ---------- Coût de l'eau traitée (module eau) ---------- */
+
+export type BlocEau = "FORAGE" | "TRAITEMENT";
+export type FamilleChargeEau = "COURANTE" | "ETALEE" | "PREVENTIVE" | "AU_BESOIN";
+export type CategorieChargeEau =
+  | "ELECTRICITE" | "CARBURANT" | "AMORTISSEMENT" | "DUREE_DE_VIE" | "CONSOMMABLE" | "ANALYSE"
+  | "MAINTENANCE_PREVENTIVE" | "MAINTENANCE_AU_BESOIN";
+export type PeriodeEau = "JOUR" | "SEMAINE" | "MOIS" | "AN";
+export type JoursMarche = "TOUS" | "LUNDI_SAMEDI" | "LUNDI_VENDREDI";
+export type StatutStandardEau = "PROPOSE" | "VALIDE" | "REJETE";
+export type OrigineStandardEau = "PREVISIONNEL" | "REVISION";
+export type TypeCompteurEau = "COMPTEUR_FORAGE" | "DEBITMETRE";
+export type MotifArretEau = "ARRET_PROGRAMME" | "PANNE" | "LIGNE_ARRETEE" | "MAINTENANCE" | "COUPURE_COURANT" | "AUTRE";
+export type CausePerteEau =
+  | "RINCAGE_BOUTEILLES" | "LAVAGE_FILTRES" | "CIP" | "REJET_ULTRAFILTRATION"
+  | "FUITE" | "DEBORDEMENT" | "LOT_REJETE" | "CASSE" | "AUTRE";
+export type TypePerteEau = "NORMALE" | "ANORMALE";
+
+/** Paramètre versionné : s'applique à partir de son mois, jamais en arrière. */
+export interface VersionEau {
+  id: number;
+  /** AAAA-MM */
+  mois_application: string;
+  motif: string;
+  saisi_par: number | null;
+  saisi_par_nom: string | null;
+  date_saisie: string;
+  /** Mois commencé et une autre version existe : ni modifiable ni supprimable. */
+  figee: boolean;
+}
+
+export interface ParametresEau extends VersionEau {
+  usine: number;
+  usine_code: string;
+  seuil_ecart_standard_pct: string;
+  seuil_volume_minimal_pct: string;
+  taux_rejet_tolere_pct: string | null;
+  seuil_grosse_reparation: string | null;
+  jour_cloture: number;
+}
+
+export interface CaracteristiquesEquipement extends VersionEau {
+  equipement: number;
+  equipement_code: string;
+  equipement_designation: string;
+  /** Déduit de l'étape du poste de l'équipement ; null hors coût de l'eau (ex. remplissage). */
+  bloc: BlocEau | null;
+  puissance_kw: string | null;
+  heures_marche_jour: string | null;
+  jours_de_marche: JoursMarche;
+  pression_max_bar: string | null;
+}
+
+export interface PrevisionVolumeEau extends VersionEau {
+  usine: number;
+  article: number;
+  article_code: string;
+  bouteilles_par_mois: number;
+  volume_m3: string;
+}
+
+export interface PrevisionCaptageEau extends VersionEau {
+  usine: number;
+  volume_site_eau_m3: string;
+  volume_autres_sites_m3: string;
+  part_site_eau: string;
+}
+
+export interface ElementCoutEau {
+  id: number;
+  usine: number;
+  libelle: string;
+  etape: number;
+  etape_libelle: string;
+  equipement: number | null;
+  equipement_code: string | null;
+  famille: FamilleChargeEau;
+  categorie: CategorieChargeEau;
+  unite: string;
+  a_indiquer: string;
+  ordre: number;
+  bloc: BlocEau | null;
+  date_creation: string;
+}
+
+export interface VersionElementCoutEau extends VersionEau {
+  element: number;
+  element_libelle: string;
+  famille: FamilleChargeEau;
+  retire: boolean;
+  quantite: string | null;
+  prix_unitaire: string | null;
+  frequence: string | null;
+  periode: PeriodeEau | "";
+  duree_vie_mois: number | null;
+}
+
+/** Calcul prévisionnel du coût de l'eau (montants en texte, arrondis au centime). */
+export interface CalculCoutEau {
+  usine: string;
+  mois: string;
+  volume: { formats: { article: string; bouteilles_par_mois: number; contenance_l: string | null; volume_m3: string }[]; total_m3: string | null };
+  partage_forage: { volume_site_eau_m3: string | null; volume_autres_sites_m3: string | null; part_site_eau: string | null };
+  charges: {
+    element: number;
+    bloc: BlocEau;
+    etape: string;
+    libelle: string;
+    equipement: string | null;
+    famille: FamilleChargeEau;
+    categorie: CategorieChargeEau;
+    a_indiquer: string;
+    quantite: string | null;
+    unite: string;
+    prix_unitaire: string | null;
+    frequence: string | null;
+    periode: PeriodeEau | null;
+    duree_vie_mois: number | null;
+    part_site: string | null;
+    cout_mensuel: string | null;
+    cout_m3: string | null;
+    version_du: string | null;
+  }[];
+  synthese: {
+    cout_forage: string | null;
+    cout_forage_m3: string | null;
+    cout_traitement: string | null;
+    cout_traitement_m3: string | null;
+    cout_mensuel: string | null;
+    cout_m3: string | null;
+    cout_litre: string | null;
+    controle: string;
+  };
+  alertes: string[];
+  bloquants: string[];
+}
+
+export interface CoutStandardEau {
+  id: number;
+  usine: number;
+  usine_code: string;
+  mois_application: string;
+  origine: OrigineStandardEau;
+  statut: StatutStandardEau;
+  volume_m3: string;
+  cout_forage: string;
+  cout_traitement: string;
+  cout_mensuel: string;
+  cout_m3: string;
+  cout_litre: string;
+  /** Calcul qui a produit cette version (conservé). */
+  detail: Partial<CalculCoutEau>;
+  propose_par: number | null;
+  propose_par_nom: string | null;
+  date_proposition: string;
+  valide_par: number | null;
+  valide_par_nom: string | null;
+  date_validation: string | null;
+  motif: string;
+}
+
+export interface CompteurEau {
+  id: number;
+  code: string;
+  libelle: string;
+  type_compteur: TypeCompteurEau;
+  usine: number;
+  site_desservi: number | null;
+  actif: boolean;
+}
+
+export interface ReleveCompteurEau {
+  id: number;
+  compteur: number;
+  compteur_code: string;
+  date: string;
+  index: string;
+  observations: string;
+  saisi_par: number | null;
+  saisi_par_nom: string | null;
+  date_saisie: string;
+}
+
+export interface ExceptionHeuresEau {
+  id: number;
+  date: string;
+  equipement: number | null;
+  ligne: number | null;
+  heures_en_moins: string;
+  motif: MotifArretEau;
+  commentaire: string;
+  saisi_par: number | null;
+  saisi_par_nom: string | null;
+  date_saisie: string;
+}
+
+export interface RelevePressionEau {
+  id: number;
+  equipement: number;
+  equipement_code: string;
+  date: string;
+  pression_bar: string;
+  observations: string;
+  pression_max: string | null;
+  au_dessus_du_seuil: boolean;
+  saisi_par: number | null;
+  saisi_par_nom: string | null;
+  date_saisie: string;
+}
+
+export interface PerteEau {
+  id: number;
+  usine: number;
+  date: string;
+  cause: CausePerteEau;
+  type_perte: TypePerteEau;
+  volume_estime_m3: string | null;
+  article: number | null;
+  nombre_bouteilles: number | null;
+  commentaire: string;
+  volume_m3: string | null;
+  saisi_par: number | null;
+  saisi_par_nom: string | null;
+  date_saisie: string;
+}
+
+/** Synthèse mensuelle du traitement de l'eau (sans coût). */
+export interface SyntheseTraitementEau {
+  usine: string;
+  mois: string;
+  jusqu_au: string;
+  compteurs: { compteur: number; code: string; libelle: string; type: TypeCompteurEau; site_desservi: string | null; volume_m3: string | null }[];
+  partage_forage: {
+    volume_site_eau_m3: string | null;
+    volume_autres_sites_m3: string | null;
+    part_site_eau: string | null;
+    compteur_forage_m3: string | null;
+    ecart_compteur_debitmetres_m3: string | null;
+  };
+  heures_machine: {
+    equipement: number;
+    code: string;
+    designation: string;
+    bloc: BlocEau | null;
+    hors_cout_eau: boolean;
+    jours_de_marche: number;
+    heures_standard: string;
+    heures_en_moins: string;
+    heures_retenues: string;
+    puissance_kw: string | null;
+    kw_heures: string | null;
+  }[];
+  total_kw_heures: string;
+  pertes: { normales_m3: string; anormales_m3: string; declarations: number };
+  alertes: string[];
+}
+
 export interface AppState {
   currentUserId: number | null;
   depotId: number | null;
@@ -2632,6 +2892,18 @@ export interface AppState {
   remunerations: ConditionRemuneration[];
   pointages: Pointage[];
   etatsPaie: EtatPaie[];
+  parametresEau: ParametresEau[];
+  caracteristiquesEquipements: CaracteristiquesEquipement[];
+  previsionsVolumesEau: PrevisionVolumeEau[];
+  previsionsCaptageEau: PrevisionCaptageEau[];
+  elementsCoutEau: ElementCoutEau[];
+  versionsElementsCoutEau: VersionElementCoutEau[];
+  coutsStandardsEau: CoutStandardEau[];
+  compteursEau: CompteurEau[];
+  relevesCompteursEau: ReleveCompteurEau[];
+  exceptionsHeuresEau: ExceptionHeuresEau[];
+  relevesPressionEau: RelevePressionEau[];
+  pertesEau: PerteEau[];
   reclamations: ReclamationClient[];
   retoursPhysiques: RetourPhysique[];
   controlesRetour: ControleRetour[];

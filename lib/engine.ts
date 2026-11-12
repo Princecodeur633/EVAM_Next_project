@@ -103,7 +103,7 @@ export const ACTIONS = {
   // --- Fiches techniques : essai (Admin SI, comme la validation) ---
   TESTER_FT: ["ADMIN_SI"],
   // --- Socle industriel : activités, usines, lignes, postes, machines, circuits ---
-  PARAM_INDUSTRIEL: ["ADMIN_SI"],
+  PARAM_INDUSTRIEL: ["ADMIN_SI", "CONTROLE_GESTION"],
   PARAM_PRODUCTION: ["ADMIN_SI"],
   SAISIR_CHANGEMENT_SERIE: ["RESPONSABLE_PRODUCTION", "AGENT_PRODUCTION"],
   /** Cuve préparée, nettoyage, arrêt/redémarrage : déclenchent les contrôles prévus au plan. */
@@ -141,6 +141,13 @@ export const ACTIONS = {
   PREPARER_PAIE: ["RH", "ADMIN_SI"],
   VALIDER_PAIE: ["COMPTABILITE_DAF", "DIRECTION"],
   PAYER_PAIE: ["CAISSIER"],
+  // --- Coût de l'eau traitée ---
+  PARAM_EAU: ["CONTROLE_GESTION"],
+  PREVOIR_VOLUMES_EAU: ["CONTROLE_GESTION", "RESPONSABLE_PRODUCTION"],
+  GERER_COMPTEURS_EAU: ["TECHNICIEN_EAU", "CONTROLE_GESTION"],
+  RELEVER_EAU: ["TECHNICIEN_EAU"],
+  EXCEPTIONS_HEURES_EAU: ["TECHNICIEN_EAU", "RESPONSABLE_PRODUCTION"],
+  DECLARER_PERTE_EAU: ["TECHNICIEN_EAU", "RESPONSABLE_PRODUCTION", "AGENT_PRODUCTION"],
   // --- Documents imprimés : identité et logo de l'entreprise ---
   PARAM_DOCUMENTS: ["ADMIN_SI", "COMPTABILITE_DAF"],
 } as const;

@@ -15,6 +15,8 @@ export const ROLE_HOME: Record<Profil, string> = {
   CHAUFFEUR: "/accueil",
   COMPTABILITE_DAF: "/accueil",
   RH: "/accueil",
+  CONTROLE_GESTION: "/accueil",
+  TECHNICIEN_EAU: "/accueil",
 };
 
 export type NavItem = {
@@ -276,6 +278,33 @@ const PERSONNEL_PAIE: HubTab[] = [
   { label: "Affectations", href: "/personnel/affectations" },
 ];
 
+/** Coût de l'eau traitée : calcul et paramétrage (Contrôle de gestion ; consultation DAF, Direction, Admin SI). */
+const EAU_COUT: HubTab[] = [
+  { label: "Coût standard", href: "/eau" },
+  { label: "Éléments de coût", href: "/eau/elements" },
+  { label: "Prévisions", href: "/eau/previsions" },
+  { label: "Équipements", href: "/eau/equipements" },
+  { label: "Paramètres", href: "/eau/parametres" },
+];
+
+/** Traitement de l'eau : saisies des techniciens, sans aucun coût. */
+const EAU_TRAITEMENT: HubTab[] = [
+  { label: "Synthèse", href: "/eau/traitement" },
+  { label: "Compteurs", href: "/eau/compteurs" },
+  { label: "Heures machine", href: "/eau/heures" },
+  { label: "Pressions", href: "/eau/pressions" },
+  { label: "Pertes", href: "/eau/pertes" },
+];
+
+/** Eau vue par la Production : ses saisies et la synthèse. */
+const EAU_PRODUCTION: HubTab[] = [
+  { label: "Pertes", href: "/eau/pertes" },
+  { label: "Heures machine", href: "/eau/heures" },
+  { label: "Prévisions", href: "/eau/previsions" },
+  { label: "Synthèse", href: "/eau/traitement" },
+  { label: "Équipements", href: "/eau/equipements" },
+];
+
 function g(id: string, label: string, icon: string, items: NavItem[]): NavGroup {
   return { id, label, icon, items };
 }
@@ -299,6 +328,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
           { label: "Affectations", href: "/personnel/affectations" },
         ],
       },
+      { href: "/eau", label: "Coût de l’eau", hint: "Consultation", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }] },
       I.documents,
       I.parametres,
       I.audit,
@@ -314,6 +344,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.anomaliesEcritures, hub: ANOMALIES_ECRITURES },
       I.decaissements,
       { href: "/personnel/paie", label: "Personnel & paie", hint: "Paie à valider, rémunérations, pointages", hub: PERSONNEL_PAIE },
+      { href: "/eau", label: "Coût de l’eau", hint: "Standard, paramètres, traitement", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }] },
       I.industriel,
       I.documents,
     ]),
@@ -332,6 +363,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       I.of,
       I.sorties,
       { href: "/personnel", label: "Équipes", hint: "Ouvriers, affectations, pointages", hub: PERSONNEL_EQUIPES },
+      { href: "/eau/pertes", label: "Eau", hint: "Pertes, heures machine, prévisions de bouteilles", hub: EAU_PRODUCTION },
       { href: "/qualite/controles", label: "Qualité", hint: "Contrôles, non-conformités, indicateurs", hub: QUALITE_SUIVI },
       { ...I.stock, label: "Stock", hub: PROD_STOCK.map((i) => ({ label: i.label, href: i.href })) },
       { ...I.referentiel, hint: "Articles, matières, fiches techniques, socle industriel", hub: PROD_REF_TABS },
@@ -343,6 +375,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/production/of", label: "Mes OF", hint: "OF qui vous sont affectés" },
       { href: "/production/suivi", label: "Saisir", hint: "Étape, perte, eau, session" },
       { href: "/personnel", label: "Équipe", hint: "Ouvriers, affectations, pointages", hub: PERSONNEL_EQUIPES },
+      { href: "/eau/pertes", label: "Pertes d’eau", hint: "Déclarer une perte d’eau" },
       I.accueil,
     ]),
   ],
@@ -445,6 +478,26 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { href: "/distribution/bl", label: "Historique", hint: "Mes livraisons passées" },
     ]),
   ],
+  CONTROLE_GESTION: [
+    g("cg", "Contrôle de gestion", "droplets", [
+      I.accueil,
+      { href: "/eau", label: "Coût de l’eau", hint: "Standard, éléments, prévisions, paramètres", hub: EAU_COUT },
+      { href: "/eau/traitement", label: "Traitement", hint: "Volumes, heures machine, pertes", hub: EAU_TRAITEMENT },
+      { ...I.industriel, hint: "Étapes, équipements, postes" },
+    ]),
+  ],
+  TECHNICIEN_EAU: [
+    g("eau", "Traitement de l’eau", "droplets", [
+      I.accueil,
+      { href: "/eau/traitement", label: "Synthèse", hint: "Volumes, partage du forage, heures machine" },
+      { href: "/eau/compteurs", label: "Compteurs", hint: "Relevés du jour" },
+      { href: "/eau/heures", label: "Heures machine", hint: "Arrêts et pannes" },
+      { href: "/eau/pressions", label: "Pressions", hint: "Membranes" },
+      { href: "/eau/pertes", label: "Pertes d’eau", hint: "Rinçages, lavages, fuites" },
+      { href: "/eau/equipements", label: "Équipements", hint: "Puissance, heures standard (lecture)" },
+      I.industriel,
+    ]),
+  ],
   RH: [
     g("rh", "Ressources humaines", "users", [
       I.accueil,
@@ -464,6 +517,7 @@ export const ROLE_MENU: Record<Profil, NavGroup[]> = {
       { ...I.coutsMarges, label: "Coûts", hub: COUTS_MARGES },
       { href: "/caisse/cloture", label: "Caisse", hint: "Sessions et décaissements", hub: DAF_CAISSE },
       { href: "/personnel/paie", label: "Personnel & paie", hint: "Paie à valider, rémunérations, pointages", hub: PERSONNEL_PAIE },
+      { href: "/eau", label: "Coût de l’eau", hint: "Standard, paramètres, traitement", hub: [...EAU_COUT, { label: "Traitement", href: "/eau/traitement" }] },
       { href: "/parametrage/fiscalite", label: "Fiscalité", hint: "Familles et codes fiscaux" },
       I.documents,
       I.audit,
@@ -497,6 +551,8 @@ function matchesItem(href: string, itemHref: string) {
   if (itemHref === "/parametrage") return false;
   // Chaque écran du personnel a ses propres droits (la paie n’est pas ouverte aux équipes).
   if (itemHref === "/personnel") return false;
+  // Idem pour l’eau : le coût n’est jamais ouvert aux techniciens.
+  if (itemHref === "/eau") return false;
   if (itemHref === "/caisse") {
     return (
       href.startsWith("/caisse/encaissement/") ||
@@ -690,6 +746,14 @@ export function breadcrumbs(pathname: string) {
     pointages: "Pointages",
     remunerations: "Rémunérations",
     paie: "Paie",
+    eau: "Coût de l’eau",
+    elements: "Éléments de coût",
+    previsions: "Prévisions",
+    equipements: "Équipements",
+    traitement: "Traitement",
+    compteurs: "Compteurs",
+    heures: "Heures machine",
+    pressions: "Pressions",
   };
   const parts = pathname.split("/").filter(Boolean);
   const crumbs: { href: string; label: string }[] = [{ href: "/accueil", label: "Poste" }];

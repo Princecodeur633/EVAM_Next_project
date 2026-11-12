@@ -25,7 +25,7 @@ export type RoleProfile = {
   rules: string[];
   flow: FlowId[];
   accent: "navy" | "teal" | "amber" | "green" | "red" | "slate";
-  icon: "shield" | "bar" | "factory" | "wrench" | "check" | "boxes" | "cart" | "handshake" | "banknote" | "package" | "truck" | "ledger" | "users";
+  icon: "shield" | "bar" | "factory" | "wrench" | "check" | "boxes" | "cart" | "handshake" | "banknote" | "package" | "truck" | "ledger" | "users" | "droplets";
   homeHint: string;
   /** Chemins référentiel en écriture (création / modification). */
   paramAllow: string[];
@@ -72,6 +72,45 @@ export const ROLE_PROFILES: Record<Profil, RoleProfile> = {
       "/parametrage/seuils",
       "/parametrage/sage",
     ],
+  },
+  CONTROLE_GESTION: {
+    role: "CONTROLE_GESTION",
+    label: "Contrôle de gestion",
+    station: "Coût de l’eau",
+    mission: "Paramétrez le coût de l’eau traitée, calculez le standard au m³ et validez-le.",
+    posture: "Seul profil qui modifie les paramètres du coût de l’eau. Une modification ne s’applique qu’aux mois suivants.",
+    owns: ["Paramètres et éléments de coût de l’eau", "Prévisions", "Validation du coût standard", "Socle industriel"],
+    never: ["Saisir les relevés des techniciens", "Modifier un mois passé"],
+    rules: [
+      "1. Renseigner les prévisions de bouteilles et le partage du forage.",
+      "2. Chiffrer les éléments de coût (versions par mois).",
+      "3. Calculer, proposer puis valider le coût standard.",
+    ],
+    flow: ["couter"],
+    accent: "teal",
+    icon: "droplets",
+    homeHint: "Vérifier le calcul du mois, puis valider le standard proposé.",
+    paramAllow: [],
+  },
+  TECHNICIEN_EAU: {
+    role: "TECHNICIEN_EAU",
+    label: "Technicien traitement de l’eau",
+    station: "Traitement de l’eau",
+    mission: "Relevez les compteurs et les pressions, déclarez les arrêts machine et les pertes d’eau.",
+    posture: "Saisies techniques seulement : les coûts et les seuils financiers ne vous sont jamais montrés.",
+    owns: ["Relevés des compteurs", "Exceptions d’heures machine", "Pressions des membranes", "Pertes d’eau"],
+    never: ["Voir un coût", "Modifier un paramètre"],
+    rules: [
+      "1. Relever chaque compteur une fois par jour.",
+      "2. Déclarer les arrêts et pannes (les heures standard sont reportées seules).",
+      "3. Relever la pression des membranes.",
+      "4. Déclarer les pertes d’eau.",
+    ],
+    flow: [],
+    accent: "teal",
+    icon: "droplets",
+    homeHint: "Relever les compteurs du jour.",
+    paramAllow: [],
   },
   RH: {
     role: "RH",

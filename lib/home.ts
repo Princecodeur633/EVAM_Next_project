@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
+  Calculator,
   BadgeAlert,
   Ban,
   CalendarClock,
@@ -59,7 +60,7 @@ import {
   TYPE_PROBLEME_LABEL,
 } from "./labels";
 import type { AppState, Caisse, ControleRealise, OrdreFabrication, Profil, SessionCaisse, StatutOF } from "./types";
-import { formatDa, formatDate, formatDateTime, formatQty, num } from "./utils";
+import { dateISO, formatDa, formatDate, formatDateTime, formatQty, num } from "./utils";
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger" | "teal";
 export type KpiTone = "default" | "warning" | "success" | "danger" | "teal";
@@ -261,6 +262,70 @@ function ofDonut(list: OrdreFabrication[]): HomeChart {
   };
 }
 
+/** Contrôle de gestion : standards proposés à valider, paramètres à compléter. */
+function controleGestion(state: AppState): HomeData {
+  const proposes = state.coutsStandardsEau.filter((c) => c.statut === "PROPOSE");
+  const enVigueur = [...state.coutsStandardsEau].filter((c) => c.statut === "VALIDE").sort((a, b) => b.mois_application.localeCompare(a.mois_application))[0];
+  return {
+    actions: [{ href: "/eau", label: "Calculer le coût de l’eau", icon: Calculator }],
+    kpis: [
+      { label: "Standard validé", value: enVigueur ? `${formatQty(num(enVigueur.cout_m3), 2)} FCFA/m³` : "—", hint: enVigueur ? `depuis ${enVigueur.mois_application}` : "Aucun standard validé", icon: Calculator, href: "/eau" },
+      { label: "Standards à valider", value: proposes.length, tone: proposes.length ? "warning" : "default", icon: ClipboardCheck, href: "/eau" },
+      { label: "Éléments de coût", value: state.elementsCoutEau.length, icon: ListChecks, href: "/eau/elements" },
+    ],
+    sections: [
+      section({
+        id: "standards",
+        title: "Coûts standards à valider",
+        icon: ClipboardCheck,
+        href: "/eau",
+        tone: "warning",
+        empty: "Aucun standard en attente.",
+        all: proposes.map((c) => ({ href: "/eau", title: `${c.usine_code} · ${c.mois_application}`, detail: `${formatQty(num(c.cout_m3), 2)} FCFA/m³` })),
+      }),
+    ],
+  };
+}
+
+/** Technicien eau : relevés du jour et pressions au-dessus du seuil. */
+function technicienEau(state: AppState): HomeData {
+  const jour = dateISO();
+  const actifs = state.compteursEau.filter((c) => c.actif);
+  const releves = new Set(state.relevesCompteursEau.filter((r) => r.date === jour).map((r) => r.compteur));
+  const aRelever = actifs.filter((c) => !releves.has(c.id));
+  const alertes = state.relevesPressionEau.filter((r) => r.au_dessus_du_seuil).sort(byDateDesc((r) => r.date)).slice(0, 10);
+  return {
+    actions: [
+      { href: "/eau/compteurs", label: "Relever les compteurs", icon: ClipboardCheck },
+      { href: "/eau/pertes", label: "Déclarer une perte", icon: PackageMinus },
+    ],
+    kpis: [
+      { label: "Compteurs à relever aujourd’hui", value: aRelever.length, tone: aRelever.length ? "warning" : "success", icon: ClipboardCheck, href: "/eau/compteurs" },
+      { label: "Pressions au-dessus du seuil", value: alertes.length, tone: alertes.length ? "danger" : "success", icon: AlertTriangle, href: "/eau/pressions" },
+    ],
+    sections: [
+      section({
+        id: "compteurs",
+        title: "Compteurs à relever aujourd’hui",
+        icon: ClipboardCheck,
+        href: "/eau/compteurs",
+        tone: "warning",
+        empty: "Tous les compteurs sont relevés.",
+        all: aRelever.map((c) => ({ href: "/eau/compteurs", title: c.code, detail: c.libelle })),
+      }),
+      section({
+        id: "pressions",
+        title: "Pressions trop hautes",
+        icon: AlertTriangle,
+        href: "/eau/pressions",
+        tone: "danger",
+        empty: "Aucune alerte.",
+        all: alertes.map((r) => ({ href: "/eau/pressions", title: r.equipement_code, detail: `${r.pression_bar} bar le ${formatDate(r.date)} (max ${r.pression_max})` })),
+      }),
+    ],
+  };
+}
+
 /** RH : pointages à valider, paie en préparation, contrats qui se terminent. */
 function rh(state: AppState): HomeData {
   const actifs = state.ouvriers.filter((o) => o.actif);
@@ -358,6 +423,10 @@ export function homeForRole(role: Profil, state: AppState, h: HomeHelpers): Home
       return avecPaie(daf(state, h), state.etatsPaie.filter((e) => e.statut === "BROUILLON"), "Paie des ouvriers à valider");
     case "RH":
       return rh(state);
+    case "CONTROLE_GESTION":
+      return controleGestion(state);
+    case "TECHNICIEN_EAU":
+      return technicienEau(state);
   }
 }
 

@@ -75,12 +75,20 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   check: CheckCircle2,
   package: Package,
   users: Users,
+  droplets: Droplets,
 };
 
 /** Icône de chaque écran du menu, par route. */
 export const ITEM_ICONS: Record<string, LucideIcon> = {
   "/accueil": Home,
   "/personnel": Users,
+  "/eau": Calculator,
+  "/eau/traitement": Droplets,
+  "/eau/compteurs": ClipboardCheck,
+  "/eau/heures": CalendarClock,
+  "/eau/pressions": TrendingDown,
+  "/eau/pertes": PackageMinus,
+  "/eau/equipements": Settings2,
   "/personnel/affectations": ListChecks,
   "/personnel/pointages": ClipboardCheck,
   "/personnel/remunerations": HandCoins,
@@ -179,6 +187,7 @@ export const ROLE_ICONS: Record<string, LucideIcon> = {
   truck: Truck,
   ledger: ClipboardList,
   users: Users,
+  droplets: Droplets,
 };
 
 export const ACCENT_CLASS: Record<string, string> = {

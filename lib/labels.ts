@@ -95,6 +95,8 @@ export const PROFIL_LABEL: Record<Profil, string> = {
   DIRECTION: "PDG / Direction",
   ADMIN_SI: "Administrateur SI",
   RH: "Ressources humaines",
+  CONTROLE_GESTION: "Contrôle de gestion",
+  TECHNICIEN_EAU: "Technicien traitement de l’eau",
 };
 
 export const ROLE_LABEL = PROFIL_LABEL;
