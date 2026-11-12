@@ -243,7 +243,7 @@ export type Action =
       depot?: number | null;
     }
   | { type: "CREATE_FOURNISSEUR"; nom: string; contact?: string; telephone?: string; email?: string; adresse?: string; ifu?: string }
-  | { type: "CREATE_MVT"; article: number; depot: number; type_mouvement: string; quantite: number; motif?: string; document_origine?: string }
+  | { type: "CREATE_MVT"; article: number; depot: number; type_mouvement: string; quantite: number; motif?: string; document_origine?: string; element_eau?: number | null }
   | { type: "CREATE_INVENTAIRE"; depot: number; date_inventaire: string }
   | { type: "ADD_LIGNE_INVENTAIRE"; inventaire: number; article: number; quantite_theorique: number; quantite_comptee: number }
   | { type: "CLOTURER_INVENTAIRE"; id: number }
@@ -369,6 +369,9 @@ function emptyState(): AppState {
     pertesEau: [],
     interventionsEau: [],
     installationsEau: [],
+    validationsSansImputationEau: [],
+    cloturesEau: [],
+    valorisationsEauOF: [],
     reclamations: [],
     retoursPhysiques: [],
     controlesRetour: [],
@@ -1145,6 +1148,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               quantite: action.quantite,
               motif: action.motif ?? "",
               document_origine: action.document_origine ?? "",
+              ...(action.element_eau ? { element_eau: action.element_eau } : {}),
             });
             break;
           case "CREATE_INVENTAIRE":

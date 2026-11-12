@@ -4,9 +4,9 @@ import { BadgeVersion } from "@/components/eau";
 import { RefCrud } from "@/components/RefCrud";
 import { PageHeader } from "@/components/ui";
 import { endpoints } from "@/lib/api";
-import { moisCourant, versionsEnVigueur } from "@/lib/eau";
+import { VALORISATION_SORTIES_LABEL, moisCourant, optionsDe, versionsEnVigueur } from "@/lib/eau";
 import { useStore } from "@/lib/store";
-import type { ParametresEau } from "@/lib/types";
+import type { ParametresEau, ValorisationSortiesStockEau } from "@/lib/types";
 import { formatDa, num } from "@/lib/utils";
 
 /** Seuils et jour de clôture du coût de l'eau, par site, versionnés par mois. */
@@ -36,6 +36,7 @@ export default function ParametresEauPage() {
           taux_rejet_tolere_pct: "",
           seuil_grosse_reparation: "",
           jour_cloture: "10",
+          valorisation_sorties_stock: "PEPS",
           mois_application: moisCourant(),
           motif: "",
         }}
@@ -46,6 +47,7 @@ export default function ParametresEauPage() {
           { cle: "r", label: "Rejet toléré", className: "text-right", rendu: (p) => <span className="num">{p.taux_rejet_tolere_pct != null ? `${num(p.taux_rejet_tolere_pct)} %` : "À fixer"}</span> },
           { cle: "g", label: "Grosse réparation", className: "text-right", rendu: (p) => <span className="num">{p.seuil_grosse_reparation != null ? formatDa(num(p.seuil_grosse_reparation)) : "À fixer"}</span> },
           { cle: "j", label: "Clôture", rendu: (p) => `le ${p.jour_cloture} du mois suivant` },
+          { cle: "p", label: "Sorties de stock", rendu: (p) => p.valorisation_sorties_stock },
           { cle: "m", label: "À partir de", rendu: (p) => p.mois_application },
           { cle: "s", label: "", rendu: (p) => <BadgeVersion enVigueur={enVigueur.has(p)} figee={p.figee} avenir={p.mois_application > moisCourant()} /> },
         ]}
@@ -55,7 +57,15 @@ export default function ParametresEauPage() {
           { cle: "seuil_volume_minimal_pct", label: "Seuil de volume minimal (% du prévu)", type: "number", aide: "En dessous, le standard n’est pas révisé." },
           { cle: "taux_rejet_tolere_pct", label: "Taux de rejet toléré (%)", type: "number", aide: "Vide = à fixer." },
           { cle: "seuil_grosse_reparation", label: "Seuil de « grosse réparation » (FCFA HT)", type: "number", aide: "Vide = à fixer avec l’expert-comptable." },
-          { cle: "jour_cloture", label: "Jour de clôture du mois (1 à 28)", type: "number", requis: true },
+          { cle: "jour_cloture", label: "Jour de clôture du mois (1 à 28)", type: "number", requis: true, aide: "Date limite pour imputer les charges du mois, dans le mois suivant." },
+          {
+            cle: "valorisation_sorties_stock",
+            label: "Valorisation des sorties de stock",
+            type: "select",
+            requis: true,
+            aide: "Pour le coût de l’eau seulement : le stock comptable reste au CMUP.",
+            options: optionsDe<ValorisationSortiesStockEau>(VALORISATION_SORTIES_LABEL),
+          },
           { cle: "mois_application", label: "S’applique à partir de", type: "month", requis: true, creationSeulement: true },
           { cle: "motif", label: "Motif de la modification", pleineLargeur: true },
         ]}

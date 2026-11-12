@@ -281,6 +281,7 @@ const PERSONNEL_PAIE: HubTab[] = [
 /** Coût de l'eau traitée : calcul et paramétrage (Contrôle de gestion ; consultation DAF, Direction, Admin SI). */
 const EAU_COUT: HubTab[] = [
   { label: "Coût standard", href: "/eau" },
+  { label: "Coût réel & clôture", href: "/eau/reel" },
   { label: "Éléments de coût", href: "/eau/elements" },
   { label: "Prévisions", href: "/eau/previsions" },
   { label: "Équipements", href: "/eau/equipements" },
@@ -759,6 +760,7 @@ export function breadcrumbs(pathname: string) {
     heures: "Heures machine",
     pressions: "Pressions",
     maintenance: "Maintenance",
+    reel: "Coût réel & clôture",
     installations: "Pièces installées",
   };
   const parts = pathname.split("/").filter(Boolean);

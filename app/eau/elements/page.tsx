@@ -48,7 +48,7 @@ export default function ElementsCoutEauPage() {
         libelleItem={(e) => e.libelle}
         supprimable={(e) => !state.versionsElementsCoutEau.some((v) => v.element === e.id)}
         vide="Aucun élément de coût."
-        valeursInitiales={{ usine: state.usines[0]?.id ?? 0, libelle: "", etape: 0, equipement: 0, famille: "COURANTE", categorie: "ELECTRICITE", unite: "", a_indiquer: "", ordre: 0 }}
+        valeursInitiales={{ usine: state.usines[0]?.id ?? 0, libelle: "", etape: 0, equipement: 0, famille: "COURANTE", categorie: "ELECTRICITE", unite: "", a_indiquer: "", ordre: 0, attendue_chaque_mois: false }}
         colonnes={[
           {
             cle: "l",
@@ -63,7 +63,16 @@ export default function ElementsCoutEauPage() {
               </span>
             ),
           },
-          { cle: "f", label: "Famille", rendu: (e) => FAMILLE_CHARGE_LABEL[e.famille] },
+          {
+            cle: "f",
+            label: "Famille",
+            rendu: (e) => (
+              <span className="inline-flex flex-col">
+                <span>{FAMILLE_CHARGE_LABEL[e.famille]}</span>
+                {e.attendue_chaque_mois && <span className="text-[11.5px] text-warning">Attendue chaque mois</span>}
+              </span>
+            ),
+          },
           { cle: "c", label: "Catégorie", rendu: (e) => CATEGORIE_CHARGE_LABEL[e.categorie] },
           {
             cle: "v",
@@ -104,6 +113,13 @@ export default function ElementsCoutEauPage() {
           { cle: "categorie", label: "Catégorie", type: "select", requis: true, options: optionsDe<CategorieChargeEau>(CATEGORIE_CHARGE_LABEL) },
           { cle: "unite", label: "Unité de la quantité", placeholder: "kW, kg, L, unité, lot, analyse, kit…" },
           { cle: "ordre", label: "Ordre d’affichage", type: "number" },
+          {
+            cle: "attendue_chaque_mois",
+            label: "Charge attendue chaque mois (à imputer ou à valider « sans imputation » avant la clôture)",
+            type: "checkbox",
+            pleineLargeur: true,
+            visible: (f) => f.famille === "COURANTE" || f.famille === "PREVENTIVE",
+          },
           { cle: "a_indiquer", label: "Ce qu’il faut indiquer", pleineLargeur: true, placeholder: "Ex : puissance (kW) ; prix du kWh ; heures de marche par période" },
         ]}
         actionsDrawer={(e) => <Versions element={e} writable={writable} />}

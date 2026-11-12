@@ -5,6 +5,9 @@
 import type {
   BlocEau,
   CategorieChargeEau,
+  DecisionRevisionEau,
+  StatutChargeAttendueEau,
+  ValorisationSortiesStockEau,
   CausePerteEau,
   FamilleChargeEau,
   JoursMarche,
@@ -113,6 +116,29 @@ export const STATUT_ECHEANCE_EAU: Record<StatutEcheanceEau, { label: string; ton
   FIN_DE_VIE_DEPASSEE: { label: "Fin de vie dépassée", tone: "danger" },
   EN_SERVICE: { label: "En service", tone: "success" },
 };
+
+export const DECISION_REVISION_EAU: Record<DecisionRevisionEau, { label: string; tone: "success" | "info" | "warning" }> = {
+  MAINTENU: { label: "Standard maintenu", tone: "success" },
+  MAINTENU_VOLUME_FAIBLE: { label: "Standard maintenu (volume trop faible)", tone: "info" },
+  NOUVEAU_PROPOSE: { label: "Nouveau standard proposé", tone: "warning" },
+};
+
+export const STATUT_CHARGE_ATTENDUE_EAU: Record<StatutChargeAttendueEau, { label: string; tone: "success" | "info" | "danger" }> = {
+  IMPUTEE: { label: "Imputée", tone: "success" },
+  VALIDEE_SANS_IMPUTATION: { label: "Sans imputation", tone: "info" },
+  MANQUANTE: { label: "Manquante", tone: "danger" },
+};
+
+export const VALORISATION_SORTIES_LABEL: Record<ValorisationSortiesStockEau, string> = {
+  PEPS: "PEPS / FIFO (premier entré, premier sorti)",
+  CMUP: "CMUP (coût moyen pondéré)",
+};
+
+/** Mois précédent (AAAA-MM) : par défaut, le mois à clôturer. */
+export function moisPrecedent(mois: string) {
+  const [a, m] = mois.split("-").map(Number);
+  return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, "0")}`;
+}
 
 export const optionsDe = <T extends string>(labels: Record<T, string>) => (Object.keys(labels) as T[]).map((k) => ({ value: k, label: labels[k] }));
 

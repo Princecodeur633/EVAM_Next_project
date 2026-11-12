@@ -265,11 +265,21 @@ function ofDonut(list: OrdreFabrication[]): HomeChart {
 /** Contrôle de gestion : standards proposés à valider, paramètres à compléter. */
 function controleGestion(state: AppState): HomeData {
   const proposes = state.coutsStandardsEau.filter((c) => c.statut === "PROPOSE");
+  // Mois précédent pas encore clôturé (dès qu'un standard existe).
+  const precedent = (() => {
+    const d = new Date();
+    d.setDate(0);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  })();
+  const aCloturer = state.coutsStandardsEau.some((c) => c.statut === "VALIDE") && !state.cloturesEau.some((c) => c.mois === precedent);
   // Remplacements signalés par les techniciens dont la nouvelle pièce n'a pas encore de prix.
   const pieces = state.interventionsEau.filter((i) => i.nouvelle_piece_enregistree === false);
   const enVigueur = [...state.coutsStandardsEau].filter((c) => c.statut === "VALIDE").sort((a, b) => b.mois_application.localeCompare(a.mois_application))[0];
   return {
-    actions: [{ href: "/eau", label: "Calculer le coût de l’eau", icon: Calculator }],
+    actions: [
+      { href: "/eau", label: "Calculer le coût de l’eau", icon: Calculator },
+      ...(aCloturer ? [{ href: "/eau/reel", label: `Clôturer ${precedent}`, icon: ClipboardCheck }] : []),
+    ],
     kpis: [
       { label: "Standard validé", value: enVigueur ? `${formatQty(num(enVigueur.cout_m3), 2)} FCFA/m³` : "—", hint: enVigueur ? `depuis ${enVigueur.mois_application}` : "Aucun standard validé", icon: Calculator, href: "/eau" },
       { label: "Standards à valider", value: proposes.length, tone: proposes.length ? "warning" : "default", icon: ClipboardCheck, href: "/eau" },

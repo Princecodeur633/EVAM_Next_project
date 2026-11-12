@@ -89,12 +89,17 @@ function MouvementDrawer({ onClose }: { onClose: () => void }) {
   const [depot, setDepot] = useState(state.depotId ?? 0);
   const [qty, setQty] = useState("");
   const [motif, setMotif] = useState("");
+  const [elementEau, setElementEau] = useState(0);
   const [saving, setSaving] = useState(false);
-  const valide = article && depot && Number(qty) !== 0 && qty !== "" && motif.trim() && (type === "AJUSTEMENT" || Number(qty) > 0);
+  // Sorties vers le forage ou le traitement de l'eau (sel, produits, kits, pièces) : ni pièce étalée (elle s'installe) ni électricité.
+  const elementsEau = state.elementsCoutEau.filter((e) => e.famille !== "ETALEE" && e.categorie !== "ELECTRICITE");
+  const types: TypeMouvement[] = elementsEau.length ? [...MANUELS, "SORTIE", "RETOUR"] : MANUELS;
+  const versEau = type === "SORTIE" || type === "RETOUR";
+  const valide = article && depot && Number(qty) !== 0 && qty !== "" && motif.trim() && (type === "AJUSTEMENT" || Number(qty) > 0) && (!versEau || elementEau);
 
   async function submit() {
     setSaving(true);
-    const ok = await dispatch({ type: "CREATE_MVT", article, depot, type_mouvement: type, quantite: Number(qty), motif: motif.trim() });
+    const ok = await dispatch({ type: "CREATE_MVT", article, depot, type_mouvement: type, quantite: Number(qty), motif: motif.trim(), element_eau: versEau ? elementEau : null });
     setSaving(false);
     if (ok) onClose();
   }
@@ -119,7 +124,7 @@ function MouvementDrawer({ onClose }: { onClose: () => void }) {
     >
       <DrawerSection title="Type">
         <div className="grid grid-cols-2 gap-2">
-          {MANUELS.map((k) => (
+          {types.map((k) => (
             <button
               key={k}
               type="button"
@@ -128,11 +133,16 @@ function MouvementDrawer({ onClose }: { onClose: () => void }) {
               className={cn("h-10 rounded-[8px] border text-[13px] font-medium transition-colors", type === k ? "bg-primary text-white border-primary" : "border-line-strong bg-surface hover:bg-surface-2")}
             >
               {TYPE_MVT_LABEL[k]}
+              {k === "SORTIE" || k === "RETOUR" ? " · eau" : ""}
             </button>
           ))}
         </div>
         <p className="text-[11.5px] text-muted">
-          {type === "AJUSTEMENT" ? "Quantité positive pour ajouter, négative pour retirer (écart constaté)." : "Quantité déplacée depuis le dépôt choisi."}
+          {type === "AJUSTEMENT"
+            ? "Quantité positive pour ajouter, négative pour retirer (écart constaté)."
+            : versEau
+              ? "Sortie vers le forage ou le traitement de l’eau (ou retour au magasin) : elle entre dans le coût réel de l’eau du mois, valorisée en PEPS."
+              : "Quantité déplacée depuis le dépôt choisi."}
         </p>
       </DrawerSection>
       <DrawerSection title="Mouvement">
@@ -161,6 +171,18 @@ function MouvementDrawer({ onClose }: { onClose: () => void }) {
             <input type="number" step="any" className={cn(inputClass, "num text-right")} value={qty} onChange={(e) => setQty(e.target.value)} />
           </Field>
         </div>
+        {versEau && (
+          <Field label="Coût de l’eau : élément">
+            <select className={inputClass} value={elementEau} onChange={(e) => setElementEau(Number(e.target.value))}>
+              <option value={0}>Choisir…</option>
+              {elementsEau.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.libelle}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Motif (obligatoire)">
           <input className={inputClass} value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Casse constatée, rangement…" />
         </Field>

@@ -4,6 +4,12 @@ import type {
   CalculCoutEau,
   CaracteristiquesEquipement,
   CompteurEau,
+  CalculReelEau,
+  ChargesAttenduesEau,
+  ClotureMoisEau,
+  EvolutionCoutEau,
+  ValidationSansImputationEau,
+  ValorisationEauOF,
   EcheancesMaintenanceEau,
   InstallationEau,
   InterventionEau,
@@ -289,6 +295,9 @@ export const endpoints = {
   pertesEau: "/eau/pertes/",
   interventionsEau: "/eau/interventions/",
   installationsEau: "/eau/installations/",
+  validationsSansImputationEau: "/eau/validations-sans-imputation/",
+  cloturesEau: "/eau/clotures/",
+  valorisationsEauOF: "/eau/valorisations-of/",
   devis: "/commercial/devis/",
   lignesDevis: "/commercial/lignes-devis/",
   reglesComptes: "/comptabilite/regles-comptes/",
@@ -425,6 +434,9 @@ export const catalog = {
   pertesEau: () => listAll<PerteEau>(endpoints.pertesEau),
   interventionsEau: () => listAll<InterventionEau>(endpoints.interventionsEau),
   installationsEau: () => listAll<InstallationEau>(endpoints.installationsEau),
+  validationsSansImputationEau: () => listAll<ValidationSansImputationEau>(endpoints.validationsSansImputationEau),
+  cloturesEau: () => listAll<ClotureMoisEau>(endpoints.cloturesEau),
+  valorisationsEauOF: () => listAll<ValorisationEauOF>(endpoints.valorisationsEauOF),
   devis: () => listAll<Devis>(endpoints.devis),
   reglesComptes: () => listAll<RegleCompte>(endpoints.reglesComptes),
   evenementsProduction: () => listAll<EvenementProduction>(endpoints.evenementsProduction),
@@ -479,11 +491,11 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
     "affectationsOuvriers",
     "ofList",
     // Coût de l'eau : consultation.
-    "parametresEau", "caracteristiquesEquipements", "previsionsVolumesEau", "previsionsCaptageEau", "elementsCoutEau", "versionsElementsCoutEau", "coutsStandardsEau", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau", "installationsEau",
+    "parametresEau", "caracteristiquesEquipements", "previsionsVolumesEau", "previsionsCaptageEau", "elementsCoutEau", "versionsElementsCoutEau", "coutsStandardsEau", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau", "installationsEau", "validationsSansImputationEau", "cloturesEau", "valorisationsEauOF",
   ],
   DIRECTION: [
     // Coût de l'eau : consultation.
-    "parametresEau", "caracteristiquesEquipements", "previsionsVolumesEau", "previsionsCaptageEau", "elementsCoutEau", "versionsElementsCoutEau", "coutsStandardsEau", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau", "installationsEau",
+    "parametresEau", "caracteristiquesEquipements", "previsionsVolumesEau", "previsionsCaptageEau", "elementsCoutEau", "versionsElementsCoutEau", "coutsStandardsEau", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau", "installationsEau", "validationsSansImputationEau", "cloturesEau", "valorisationsEauOF",
     "ouvriers",
     "affectationsOuvriers",
     "pointages",
@@ -775,7 +787,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   CAISSIER: ["commandes", "lignesCommande", "factures", "lignesFacture", "caisses", "sessionsCaisse", "encaissements", "decaissements", "ecartsCaisse", "etatsPaie"],
   // RH : son module ; usines, étapes, postes et OF (lecture) pour les compétences et les affectations.
   // Contrôle de gestion : paramètre et valide le coût de l'eau ; écrit le socle industriel.
-  CONTROLE_GESTION: [...INDUSTRIEL, "parametresEau", "caracteristiquesEquipements", "previsionsVolumesEau", "previsionsCaptageEau", "elementsCoutEau", "versionsElementsCoutEau", "coutsStandardsEau", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau", "installationsEau"],
+  CONTROLE_GESTION: [...INDUSTRIEL, "parametresEau", "caracteristiquesEquipements", "previsionsVolumesEau", "previsionsCaptageEau", "elementsCoutEau", "versionsElementsCoutEau", "coutsStandardsEau", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau", "installationsEau", "validationsSansImputationEau", "cloturesEau", "valorisationsEauOF"],
   // Technicien eau : saisies du traitement, jamais les coûts ni les seuils.
   TECHNICIEN_EAU: [...INDUSTRIEL, "caracteristiquesEquipements", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau"],
   RH: ["ouvriers", "affectationsOuvriers", "remunerations", "pointages", "etatsPaie", "usines", "etapesStandard", "postes", "ofList"],
@@ -803,7 +815,7 @@ const CATALOG_BY_ROLE: Record<Profil, CatalogKey[]> = {
   CHAUFFEUR: ["tournees", "bonsLivraison"],
   COMPTABILITE_DAF: [
     // Coût de l'eau : consultation.
-    "parametresEau", "caracteristiquesEquipements", "previsionsVolumesEau", "previsionsCaptageEau", "elementsCoutEau", "versionsElementsCoutEau", "coutsStandardsEau", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau", "installationsEau",
+    "parametresEau", "caracteristiquesEquipements", "previsionsVolumesEau", "previsionsCaptageEau", "elementsCoutEau", "versionsElementsCoutEau", "coutsStandardsEau", "compteursEau", "relevesCompteursEau", "exceptionsHeuresEau", "relevesPressionEau", "pertesEau", "interventionsEau", "installationsEau", "validationsSansImputationEau", "cloturesEau", "valorisationsEauOF",
     // Personnel : consultation, et validation de la paie des ouvriers.
     "ouvriers",
     "affectationsOuvriers",
@@ -884,6 +896,10 @@ export const actions = {
     api.post<CoutStandardEau>(`${endpoints.coutsStandardsEau}proposer/`, { usine, mois_application }),
   validerCoutEau: (id: number, motif = "") => api.post<CoutStandardEau>(`${endpoints.coutsStandardsEau}${id}/valider/`, { motif }),
   rejeterCoutEau: (id: number, motif: string) => api.post<CoutStandardEau>(`${endpoints.coutsStandardsEau}${id}/rejeter/`, { motif }),
+  coutReelEau: (usine: number, mois: string) => api.get<CalculReelEau>(`/eau/reel/calcul/?usine=${usine}&mois=${mois}`),
+  chargesAttenduesEau: (usine: number, mois: string) => api.get<ChargesAttenduesEau>(`/eau/reel/charges-attendues/?usine=${usine}&mois=${mois}`),
+  evolutionCoutEau: (usine: number) => api.get<EvolutionCoutEau>(`/eau/reel/evolution/?usine=${usine}`),
+  cloturerMoisEau: (usine: number, mois: string) => api.post<ClotureMoisEau>(`${endpoints.cloturesEau}cloturer/`, { usine, mois }),
   echeancesMaintenanceEau: (usine: number) => api.get<EcheancesMaintenanceEau>(`/eau/maintenance/echeances/?usine=${usine}`),
   syntheseTraitementEau: (usine: number, mois: string) => api.get<SyntheseTraitementEau>(`/eau/traitement/synthese/?usine=${usine}&mois=${mois}`),
   // --- Personnel ---

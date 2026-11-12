@@ -655,6 +655,8 @@ export interface MouvementStock {
   quantite: string;
   motif: string;
   document_origine: string;
+  /** Sortie (ou retour) vers le forage ou le traitement de l'eau. */
+  element_eau?: number | null;
   utilisateur: number;
   date_mouvement: string;
 }
@@ -1341,6 +1343,8 @@ export interface CoutReel {
   cout_amortissement_total: string;
   /** Charges de production réparties par la cascade jusqu'à cet OF. */
   cout_charges_reparties?: string;
+  /** OF du site eau, mois clôturé : eau au coût standard (remplace les charges amont de la cascade). */
+  cout_eau?: string;
   date_calcul: string;
 }
 
@@ -2020,6 +2024,10 @@ export interface Charge {
   equipement: number | null;
   ordre_fabrication: number | null;
   tournee: number | null;
+  /** Charge du forage ou du traitement de l'eau : l'élément du coût de l'eau auquel elle s'impute. */
+  element_eau?: number | null;
+  /** Grosse réparation étalée sur N mois (au-delà du seuil du site). */
+  duree_etalement_eau_mois?: number | null;
   statut_donnee: StatutDonnee;
   source: string;
   observations: string;
@@ -2605,6 +2613,8 @@ export interface ParametresEau extends VersionEau {
   taux_rejet_tolere_pct: string | null;
   seuil_grosse_reparation: string | null;
   jour_cloture: number;
+  /** Valorisation des sorties de stock vers l'eau (le stock comptable reste au CMUP). */
+  valorisation_sorties_stock: ValorisationSortiesStockEau;
 }
 
 export interface CaracteristiquesEquipement extends VersionEau {
@@ -2647,6 +2657,8 @@ export interface ElementCoutEau {
   unite: string;
   a_indiquer: string;
   ordre: number;
+  /** À imputer (ou valider « sans imputation ») avant la clôture de chaque mois. */
+  attendue_chaque_mois: boolean;
   bloc: BlocEau | null;
   date_creation: string;
 }
@@ -2871,6 +2883,149 @@ export interface EcheancesMaintenanceEau {
   }[];
 }
 
+export type ValorisationSortiesStockEau = "PEPS" | "CMUP";
+export type DecisionRevisionEau = "MAINTENU" | "MAINTENU_VOLUME_FAIBLE" | "NOUVEAU_PROPOSE";
+export type StatutChargeAttendueEau = "IMPUTEE" | "VALIDEE_SANS_IMPUTATION" | "MANQUANTE";
+
+/** Charge attendue absente un mois donné, validée « sans imputation » avec un motif. */
+export interface ValidationSansImputationEau {
+  id: number;
+  element: number;
+  element_libelle: string;
+  mois: string;
+  motif: string;
+  valide_par: number | null;
+  valide_par_nom: string | null;
+  date_validation: string;
+}
+
+/** Coût réel du mois (calculé à la volée, ou conservé à la clôture). */
+export interface CalculReelEau {
+  usine: string;
+  mois: string;
+  volumes: {
+    formats: {
+      article: string;
+      contenance_l: string | null;
+      bouteilles_conformes: string;
+      bouteilles_rejetees: string;
+      volume_m3: string;
+      eau_rejetee_m3: string;
+      taux_rejet: string;
+      classement_rejet: string | null;
+    }[];
+    volume_m3: string | null;
+    eau_captee_site_m3: string | null;
+    part_site_eau: string | null;
+    taux_pertes_site: string | null;
+    pertes_rejets_normales_m3: string | null;
+    pertes_rejets_anormales_m3: string | null;
+    pertes_declarees: { normales_m3: string; anormales_m3: string; declarations: number };
+  };
+  electricite: { facture_site: string; total_kw_heures: string; part_forage: string; part_traitement: string; part_production_hors_eau: string };
+  charges: {
+    element: number | null;
+    bloc: BlocEau;
+    libelle: string;
+    famille: FamilleChargeEau;
+    prevu: string | null;
+    reel_avant_part: string | null;
+    au_besoin_avant_part?: string | null;
+    exceptionnel_avant_part?: string | null;
+    kw_heures?: string | null;
+  }[];
+  sorties_stock: {
+    valorisation: ValorisationSortiesStockEau;
+    mouvements: { mouvement: string; date: string; article: string; type: string; quantite: string; element: string; valeur: string; valeur_cmup: string | null }[];
+  };
+  charges_attendues: { element: number; libelle: string; statut: StatutChargeAttendueEau; motif: string }[];
+  synthese: {
+    cout_forage_avant_partage: string | null;
+    cout_forage_site_eau: string | null;
+    cout_forage_autres_sites: string | null;
+    cout_traitement: string | null;
+    cout_reel_courant: string | null;
+    charges_au_besoin: string | null;
+    charges_exceptionnelles: string | null;
+    cout_reel_total: string | null;
+    cout_m3: string | null;
+    cout_m3_courant: string | null;
+    cout_standard_m3: string | null;
+    eau_valorisee_of: string | null;
+    ecart_du_mois: string | null;
+    valeur_perte_anormale: string | null;
+    ecart_total_pct: string | null;
+    ecart_courant_pct: string | null;
+  };
+  alertes: string[];
+  bloquants: string[];
+  manquantes: string[];
+  /** Date de clôture si le mois est clôturé (résultat conservé), sinon null. */
+  cloture: string | null;
+  volumes_eau_brute_reportes?: string[];
+}
+
+export interface ClotureMoisEau {
+  id: number;
+  usine: number;
+  usine_code: string;
+  mois: string;
+  volume_m3: string;
+  cout_reel_courant: string;
+  cout_reel_total: string;
+  cout_m3: string;
+  cout_m3_courant: string;
+  cout_standard_m3: string;
+  valorisation_of: string;
+  ecart: string;
+  resultat: Partial<CalculReelEau>;
+  ecart_courant_pct: string | null;
+  volume_prevu_m3: string | null;
+  decision: DecisionRevisionEau | "";
+  standard_propose: number | null;
+  cloture_par: number | null;
+  cloture_par_nom: string | null;
+  date_cloture: string;
+}
+
+/** Eau d'un OF valorisée au coût standard à la clôture du mois. */
+export interface ValorisationEauOF {
+  id: number;
+  cloture: number;
+  ordre_fabrication: number;
+  of_numero: string;
+  mois: string;
+  volume_m3: string;
+  cout_standard_m3: string;
+  montant_eau: string;
+  electricite_production: string;
+  montant_total: string;
+}
+
+export interface ChargesAttenduesEau {
+  usine: string;
+  mois: string;
+  date_limite: string;
+  cloture: boolean;
+  charges: { element: number; libelle: string; statut: StatutChargeAttendueEau; motif: string }[];
+}
+
+export interface EvolutionCoutEau {
+  usine: string;
+  mois: {
+    mois: string;
+    volume_m3: string;
+    cout_m3: string;
+    cout_m3_courant: string;
+    cout_standard_m3: string;
+    ecart_total_pct: string | null;
+    ecart_courant_pct: string | null;
+    decision: DecisionRevisionEau | "";
+    decision_libelle: string;
+    standard_propose: { id: number; mois_application: string; cout_m3: string; statut: StatutStandardEau } | null;
+  }[];
+}
+
 /** Synthèse mensuelle du traitement de l'eau (sans coût). */
 export interface SyntheseTraitementEau {
   usine: string;
@@ -2985,6 +3140,9 @@ export interface AppState {
   pertesEau: PerteEau[];
   interventionsEau: InterventionEau[];
   installationsEau: InstallationEau[];
+  validationsSansImputationEau: ValidationSansImputationEau[];
+  cloturesEau: ClotureMoisEau[];
+  valorisationsEauOF: ValorisationEauOF[];
   reclamations: ReclamationClient[];
   retoursPhysiques: RetourPhysique[];
   controlesRetour: ControleRetour[];
