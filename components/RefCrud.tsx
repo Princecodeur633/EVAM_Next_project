@@ -17,7 +17,7 @@ export type FormRef = Record<string, Valeur>;
 export type ChampRef = {
   cle: string;
   label: string;
-  type?: "text" | "number" | "select" | "checkbox" | "multi" | "textarea" | "date";
+  type?: "text" | "number" | "select" | "checkbox" | "multi" | "textarea" | "date" | "month";
   options?: { value: string | number; label: string }[];
   requis?: boolean;
   aide?: string;
@@ -173,7 +173,7 @@ function RefDrawer<T extends { id: number }>({
       let v = form[c.cle];
       if (c.type === "select" && (v === 0 || v === "")) v = typeof valeursInitiales[c.cle] === "string" ? "" : null;
       if (c.type === "number" && v === "") v = null;
-      if (c.type === "date" && v === "") v = null;
+      if ((c.type === "date" || c.type === "month") && v === "") v = null;
       corps[c.cle] = v;
     }
     await onSave(corps, item?.id);
@@ -227,7 +227,7 @@ function RefDrawer<T extends { id: number }>({
       saisie = (
         <input
           className={cn(inputClass, c.type === "number" && "num text-right")}
-          type={c.type === "number" ? "number" : c.type === "date" ? "date" : "text"}
+          type={c.type === "number" ? "number" : c.type === "date" ? "date" : c.type === "month" ? "month" : "text"}
           step={c.type === "number" ? "any" : undefined}
           disabled={verrou}
           placeholder={c.placeholder}

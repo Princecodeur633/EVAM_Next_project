@@ -19,6 +19,7 @@ const MODULE_LABEL: Record<ModuleMetier, string> = {
   DISTRIBUTION: "Distribution",
   COUTS: "Coûts",
   COMPTABILITE: "Comptabilité",
+  EAU: "Coût de l’eau",
   ADMINISTRATION: "Administration",
 };
 

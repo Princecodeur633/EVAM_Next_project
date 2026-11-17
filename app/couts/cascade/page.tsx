@@ -18,6 +18,7 @@ import {
   STATUT_REPARTITION_LABEL,
   TRAITEMENT_LABEL,
 } from "@/lib/labels";
+import { FAMILLE_CHARGE_LABEL } from "@/lib/eau";
 import { useStore } from "@/lib/store";
 import type {
   CategorieCout,
@@ -198,6 +199,8 @@ function CalculPeriode({ periode, gestion }: { periode: string; gestion: boolean
 
 function Charges({ periode, gestion }: { periode: string; gestion: boolean }) {
   const { state } = useStore();
+  // Éléments du coût de l'eau auxquels une charge réelle peut s'imputer (pas les charges étalées, qui se calculent seules).
+  const elementsEau = state.elementsCoutEau.filter((e) => e.famille !== "ETALEE");
   const charges = state.charges.filter((c) => c.periode === periode);
   const total = charges.reduce((a, c) => a + num(c.montant), 0);
   const nonReparties = charges.filter((c) => c.statut_repartition === "NON_REPARTIE" || c.statut_repartition === "PARTIELLE");
@@ -222,7 +225,7 @@ function Charges({ periode, gestion }: { periode: string; gestion: boolean }) {
         libelleItem={(c) => `${c.numero} · ${c.nature_libelle ?? ""}`}
         supprimable={() => true}
         vide="Aucune charge saisie pour cette période."
-        valeursInitiales={{ nature: 0, periode, montant: "", usine: 0, activite: 0, equipement: 0, ordre_fabrication: 0, tournee: 0, statut_donnee: "REEL", source: "", observations: "" }}
+        valeursInitiales={{ nature: 0, periode, montant: "", usine: 0, activite: 0, equipement: 0, ordre_fabrication: 0, tournee: 0, element_eau: 0, duree_etalement_eau_mois: "", statut_donnee: "REEL", source: "", observations: "" }}
         champs={[
           { cle: "nature", label: "Élément de coût", type: "select", options: natures, requis: true },
           { cle: "periode", label: "Période (AAAA-MM)", requis: true },
@@ -233,6 +236,21 @@ function Charges({ periode, gestion }: { periode: string; gestion: boolean }) {
           { cle: "equipement", label: "Équipement", type: "select", options: state.equipements.map((e) => ({ value: e.id, label: `${e.code} · ${e.designation}` })) },
           { cle: "ordre_fabrication", label: "OF (charge directe)", type: "select", options: state.ofList.map((o) => ({ value: o.id, label: o.numero })) },
           { cle: "tournee", label: "Tournée (distribution)", type: "select", options: state.tournees.map((t) => ({ value: t.id, label: t.numero })) },
+          {
+            cle: "element_eau",
+            label: "Coût de l’eau : élément",
+            type: "select",
+            aide: "Charge du forage ou du traitement de l’eau (facture d’électricité du site, entretien, analyses, réparation…). Une charge étalée ne s’impute pas.",
+            visible: () => elementsEau.length > 0,
+            options: elementsEau.map((e) => ({ value: e.id, label: `${e.libelle} (${FAMILLE_CHARGE_LABEL[e.famille].toLowerCase()})` })),
+          },
+          {
+            cle: "duree_etalement_eau_mois",
+            label: "Grosse réparation : étaler sur (mois)",
+            type: "number",
+            aide: "Seulement au-delà du seuil de grosse réparation du site. Vide = imputée au mois.",
+            visible: (f) => state.elementsCoutEau.find((e) => e.id === f.element_eau)?.famille === "AU_BESOIN",
+          },
           { cle: "source", label: "Source", placeholder: "facture SBEE n°…, relevé compteur", pleineLargeur: true },
           { cle: "observations", label: "Observations", type: "textarea" },
         ]}
@@ -256,7 +274,14 @@ function Charges({ periode, gestion }: { periode: string; gestion: boolean }) {
             cle: "s",
             label: "Rattachement",
             rendu: (c) =>
-              [c.usine_code, c.activite ? state.activites.find((a) => a.id === c.activite)?.code : null, c.facture_numero && `part de ${c.facture_numero}`].filter(Boolean).join(" · ") || "Commune",
+              [
+                c.usine_code,
+                c.activite ? state.activites.find((a) => a.id === c.activite)?.code : null,
+                c.facture_numero && `part de ${c.facture_numero}`,
+                c.element_eau && `eau : ${state.elementsCoutEau.find((e) => e.id === c.element_eau)?.libelle ?? c.element_eau}`,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "Commune",
           },
           { cle: "m", label: "Montant", className: "text-right", rendu: (c) => <span className="num">{formatDa(num(c.montant))}</span> },
           { cle: "d", label: "Donnée", rendu: (c) => (c.statut_donnee === "ESTIME" ? <StatusBadge tone="warning">Estimé</StatusBadge> : "Réel") },
